@@ -53,12 +53,14 @@ perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify 
 - `src/accountable_surface/effector.py` — the efferent arm: the `Effector` contract +
   `FilesystemEffector` (inert until authorized; bounded; reversible; self-verifying).
 - `src/accountable_surface/web_effector.py` — native web actuation: `WebEffector`
-  (navigate / fill by accessible label, origin-bounded; **no browser, no external deps**).
+  (navigate / fill by label / submit, origin-bounded; **no browser, no external deps**).
+- `src/accountable_surface/os_effector.py` — OS actuation: `CommandEffector`
+  (allowlisted commands, bounded cwd, no shell; irreversible → needs-human).
 - `src/accountable_surface/http_driver.py` — the real native backend: stdlib
-  `html.parser` + the witnessed clean GET; drives live server-rendered pages.
+  `html.parser` + the witnessed clean GET/POST; drives live server-rendered pages.
 - `src/accountable_surface/server.py` — a FastMCP **live MCP server** exposing
   `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` — 67 tests. `examples/`: `demo.py`, `actuate_demo.py`,
+- `tests/` — 80 tests. `examples/`: `demo.py`, `actuate_demo.py`,
   `web_actuate_demo.py` (native web actuation vs a real localhost server),
   `goal_demo.py` (bounded autonomy: a multi-step goal that halts on an unauthorized
   step), `smoke_mcp.py` (a real MCP stdio round-trip).
@@ -113,20 +115,21 @@ appends every perception/decision — so the witnessed self-view spans sessions.
 ## Roadmap
 
 **Built (v0):** witnessed perception · pre-execution gate · interoception · durable
-memory · live MCP server · **the efferent arm** — accountable actuation with two
-**native** backends (`FilesystemEffector` + `WebEffector` on a **real stdlib HTTP/HTML
-driver**, acting on *structure* not pixels) + the perceive→plan→gate→act→re-perceive→
-verify loop, with rollback. Built to *surpass* Playwright for server-rendered web — no
-browser binary. **Goal/task mode** (`pursue`) runs a multi-step plan as **bounded
-autonomy** — one grant envelope, no per-step prompt — halting the instant a step is
-denied or fails verification. A plan (even a model's plan) is not authority; each step
-earns it.
+memory · live MCP server · **the efferent arm** — accountable actuation with **three
+native backends** (`FilesystemEffector`; `WebEffector` on a real stdlib HTTP/HTML
+driver — navigate, fill by label, submit; `CommandEffector` for allowlisted OS
+commands), acting on *structure* not pixels, through the perceive→plan→gate→act→
+re-perceive→verify loop with rollback. **Irreversible** actions (a POST, a command)
+escalate to needs-human unless the operator passes `allow_irreversible`. Built to
+*surpass* Playwright for server-rendered web — no browser binary. **Goal/task mode**
+(`pursue`) runs a multi-step plan as **bounded autonomy** — one grant envelope, no
+per-step prompt — halting the instant a step is denied or fails verification. A plan
+(even a model's plan) is not authority; each step earns it.
 
-**Next:** a **form-submit** action (POST) to complete the native web arm; an **OS
-effector** (bounded shell / UI automation; irreversible → needs-human) under the same
-contract; and a **reference cortex** that grounds work in relevant, *verified*
-literature + curated knowledge (a citation that isn't checked launders falsehood — so
-it obeys the same organ contract). **Zero external dependencies
+**Next:** a **reference cortex** that grounds work in relevant, *verified* literature
++ curated knowledge (a citation that isn't checked launders falsehood — so it obeys the
+same organ contract); and richer goal **planning** (decompose a goal into steps, each
+still gated). **Zero external dependencies
 in the core** — stdlib + the sibling-native repos; the optional MCP server (`[server]`
 extra) is the lone edge-adapter. Four pillars: **Accountability, Usability,
 Accessibility, Efficiency**.

@@ -116,3 +116,46 @@ def test_actuate_native_navigation_is_verified(site):
     assert out.verified is True
     assert drv.current_url() == site + "/form"
     assert any(e.kind == "actuation" for e in surface.journal)
+
+
+@pytest.fixture
+def post_site():
+    thanks = b"<!doctype html><html><head><title>Thanks</title></head><body>ok</body></html>"
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            if self.path == "/form":
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                self.wfile.write(HTML_FORM)
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def do_POST(self):  # noqa: N802
+            self.rfile.read(int(self.headers.get("Content-Length", 0)))
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            self.wfile.write(thanks)
+
+        def log_message(self, *args):
+            pass
+
+    srv = socketserver.TCPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{srv.server_address[1]}"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_http_submit_posts_and_lands_on_confirmation(post_site):
+    drv = HttpDriver()
+    drv.navigate(post_site + "/form")
+    drv.fill("Email", "neo@x.io")
+    drv.submit(post_site + "/submit", {"Email": "neo@x.io"})
+    assert drv.snapshot()["title"] == "Thanks"  # the POST response, perceived
+    assert drv.current_url() == post_site + "/submit"
