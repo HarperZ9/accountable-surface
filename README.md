@@ -119,8 +119,10 @@ web, not depend on it) and an OS effector, under the same contract; **goal/task 
 (autonomy bounded by the operator grant — *yolo within an explicit, revocable,
 witnessed envelope*); and a **reference cortex** that grounds work in relevant,
 *verified* literature + curated knowledge (a citation that isn't checked launders
-falsehood — so it obeys the same organ contract). **Zero external dependencies**
-throughout. Four pillars: **Accountability, Usability, Accessibility, Efficiency**.
+falsehood — so it obeys the same organ contract). **Zero external dependencies in the
+core** — stdlib + the sibling-native repos; the optional MCP server (`[server]`
+extra) is the lone edge-adapter. Four pillars: **Accountability, Usability,
+Accessibility, Efficiency**.
 
 ## License
 
