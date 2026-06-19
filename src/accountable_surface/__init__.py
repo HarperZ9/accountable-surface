@@ -11,7 +11,17 @@ MCP server (`server`) additionally needs `mcp` (the `[server]` extra).
 
 from __future__ import annotations
 
-from .surface import AccountableSurface, ActionOutcome, JournalEntry
+from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
+from .surface import AccountableSurface, ActionOutcome, ActuationOutcome, JournalEntry
 
-__all__ = ["AccountableSurface", "ActionOutcome", "JournalEntry"]
+__all__ = [
+    "AccountableSurface",
+    "ActionOutcome",
+    "ActuationOutcome",
+    "JournalEntry",
+    "FilesystemEffector",
+    "Plan",
+    "RefusedActuation",
+    "Verdict",
+]
 __version__ = "0.1.0"

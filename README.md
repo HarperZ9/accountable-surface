@@ -22,8 +22,8 @@ and self-checked.
 ## The loop
 
 ```
-perceive (afferent)  ->  gate (allow / deny / needs-human)  ->  [act]  ->  witness (journal)
-   coherence-membrane            proof-surface                            interocept + JSONL
+perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify  ->  witness
+  afferent          proof-surface                  fs / Playwright / OS  re-perceive   journal
 ```
 
 - **Perceive** — organs emit witnessed `Observation`s (provenance digest + a
@@ -40,18 +40,23 @@ perceive (afferent)  ->  gate (allow / deny / needs-human)  ->  [act]  ->  witne
 - **Awareness is not authority** — the model perceives freely but cannot authorize its own actions.
 - **Accountable over time** — the journal is append-only and replayed; the self-view
   is content-addressed, so the record cannot silently drift.
-- Today the surface is **advisory** — it returns the gate's decision and never
-  executes. An effector (the efferent arm) is the next phase (see Roadmap).
+- **Action only on `allow`, and verified** — `propose` is advisory; `actuate`
+  closes the loop: it acts ONLY on a gate `allow`, through an effector bounded by
+  construction, then **verifies the effect by re-perceiving** and rolls back a
+  failed reversible action. Nothing is assumed-done.
 
 ## Layout
 
 - `src/accountable_surface/surface.py` — `AccountableSurface`: `perceive`, `propose`
-  (gated), `interocept` (witnessed self-view), a durable journal. Never executes.
+  (gated), `actuate` (the full accountable-actuation loop), `interocept` (witnessed
+  self-view), a durable journal.
+- `src/accountable_surface/effector.py` — the efferent arm: the `Effector` contract +
+  `FilesystemEffector` (inert until authorized; bounded; reversible; self-verifying).
 - `src/accountable_surface/server.py` — a FastMCP **live MCP server** exposing
   `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` — 34 tests. `examples/demo.py` — a runnable transcript;
-  `examples/smoke_mcp.py` — a real MCP stdio round-trip.
-- `docs/` — design specs (interoception, persistence).
+- `tests/` — 47 tests. `examples/`: `demo.py` (perceive+gate transcript),
+  `actuate_demo.py` (the actuation loop), `smoke_mcp.py` (a real MCP stdio round-trip).
+- `docs/` — design specs (interoception, persistence, actuation).
 
 ## Install & run
 
@@ -102,15 +107,17 @@ appends every perception/decision — so the witnessed self-view spans sessions.
 ## Roadmap
 
 **Built (v0):** witnessed perception · pre-execution gate · interoception ·
-durable memory · live MCP server.
+durable memory · live MCP server · **the efferent arm** — accountable actuation
+(`FilesystemEffector` + the perceive→plan→gate→act→re-perceive→verify loop, with
+rollback).
 
-**Next — the efferent arm (actuation), accountable by design:** an *effector*
-organ that, on a gate `allow`, actually drives the workstation (a browser via
-Playwright; the OS) and then **verifies its own work** by re-perceiving the
-result against the intended post-condition. Autonomy bounded by the operator
-grant — *yolo within an explicit, revocable, witnessed envelope* — with scrutiny
-built into every step. Four pillars: **Accountability, Usability, Accessibility,
-Efficiency**: perceiving and acting through *structure* (the accessibility tree),
+**Next:** more effector backends — **Playwright** (act on the accessibility tree /
+DOM, not pixels) and the OS — under the same contract; **goal/task mode** (autonomy
+bounded by the operator grant — *yolo within an explicit, revocable, witnessed
+envelope*); and a **reference cortex** that grounds work in relevant, *verified*
+literature + curated knowledge (a citation that isn't checked launders falsehood —
+so it obeys the same organ contract). Four pillars throughout: **Accountability,
+Usability, Accessibility, Efficiency** — perceiving and acting through *structure*,
 not pixels, is more auditable, more accessible, and cheaper at once.
 
 ## License
