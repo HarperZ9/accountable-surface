@@ -62,9 +62,26 @@ class ActionOutcome:
     request: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class ActuationOutcome:
+    """The result of the full actuation loop. `acted` is whether the effector
+    touched the world; `verified` is whether the surface's own re-perception
+    confirmed the intended effect; `rolled_back` reverses a failed reversible act."""
+
+    acted: bool
+    decision: str  # the gate decision: allow / deny / needs-human
+    verified: bool
+    verdict: str  # "pass" | "failed" | "not-acted"
+    rolled_back: bool
+    reasons: list[str]
+    before_digest: str
+    after_digest: str | None
+
+
 class AccountableSurface:
-    """Perceive through witnessed organs; gate every action; journal everything.
-    Never executes."""
+    """Perceive through witnessed organs; gate every action; actuate only through a
+    gated, self-verifying effector; journal everything. It never acts except on a
+    gate `allow`, and it verifies its own work by re-perceiving."""
 
     def __init__(self, journal_path: str | Path | None = None) -> None:
         self._web = WebDocumentOrgan()
@@ -174,6 +191,83 @@ class AccountableSurface:
             )
         )
         return outcome
+
+    def actuate(
+        self,
+        effector: Any,
+        *,
+        target: str,
+        content: bytes,
+        authorization: dict[str, Any],
+        expected_digest: str | None = None,
+    ) -> ActuationOutcome:
+        """Run the full accountable-actuation loop: perceive -> plan -> gate -> ACT
+        -> re-perceive -> verify. The effector acts ONLY on a gate `allow`; the
+        surface verifies the effect by re-perceiving and rolls back a failed-but-
+        reversible actuation. Every step is journaled."""
+        before = effector.perceive(target)
+        plan = effector.preview(target, content, before)
+        outcome = self.propose(
+            action_kind=plan.action_kind,
+            target=target,
+            authorization=authorization,
+            observation=before,
+            expected_digest=expected_digest,
+        )
+        if outcome.decision != "allow":
+            return self._record_actuation(
+                plan, acted=False, decision=outcome.decision, verdict="not-acted",
+                verified=False, rolled_back=False, reasons=outcome.reasons,
+                before=before, after=None,
+            )
+        effector.act(plan, outcome, content)
+        after = effector.perceive(target)
+        verdict = effector.verify(plan, after)
+        verified = verdict.status == "pass"
+        rolled_back = False
+        if not verified and plan.reversible:
+            effector.rollback(plan)
+            rolled_back = True
+            after = effector.perceive(target)
+        return self._record_actuation(
+            plan, acted=True, decision="allow", verdict=verdict.status,
+            verified=verified, rolled_back=rolled_back,
+            reasons=[verdict.detail] if verdict.detail else [],
+            before=before, after=after,
+        )
+
+    def _record_actuation(
+        self, plan, *, acted, decision, verdict, verified, rolled_back, reasons, before, after
+    ) -> ActuationOutcome:
+        """Journal an actuation outcome (a witnessed before/after digest pair) and
+        return it. The surface attests to what it did, not merely that it tried."""
+        state = "not-acted" if not acted else ("verified" if verified else "UNVERIFIED")
+        self._record(
+            JournalEntry(
+                kind="actuation",
+                summary=f"{plan.action_kind} -> {plan.target}: {state}"
+                + (" (rolled back)" if rolled_back else ""),
+                detail={
+                    "acted": acted,
+                    "decision": decision,
+                    "verified": verified,
+                    "verdict": verdict,
+                    "rolled_back": rolled_back,
+                    "before_sha256": before.data.get("sha256"),
+                    "after_sha256": after.data.get("sha256") if after is not None else None,
+                },
+            )
+        )
+        return ActuationOutcome(
+            acted=acted,
+            decision=decision,
+            verified=verified,
+            verdict=verdict,
+            rolled_back=rolled_back,
+            reasons=reasons,
+            before_digest=before.provenance.digest,
+            after_digest=after.provenance.digest if after is not None else None,
+        )
 
     def interocept(self) -> Observation:
         """Perceive the surface's OWN session — a witnessed, tamper-evident view
