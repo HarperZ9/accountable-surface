@@ -23,7 +23,7 @@ and self-checked.
 
 ```
 perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify  ->  witness
-  afferent          proof-surface                  fs / Playwright / OS  re-perceive   journal
+  afferent          proof-surface                    fs · web · OS       re-perceive   journal
 ```
 
 - **Perceive** — organs emit witnessed `Observation`s (provenance digest + a
@@ -52,9 +52,11 @@ perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify 
   self-view), a durable journal.
 - `src/accountable_surface/effector.py` — the efferent arm: the `Effector` contract +
   `FilesystemEffector` (inert until authorized; bounded; reversible; self-verifying).
+- `src/accountable_surface/web_effector.py` — native web actuation: `WebEffector`
+  (navigate / fill by accessible label, origin-bounded; **no browser, no external deps**).
 - `src/accountable_surface/server.py` — a FastMCP **live MCP server** exposing
   `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` — 47 tests. `examples/`: `demo.py` (perceive+gate transcript),
+- `tests/` — 57 tests. `examples/`: `demo.py` (perceive+gate transcript),
   `actuate_demo.py` (the actuation loop), `smoke_mcp.py` (a real MCP stdio round-trip).
 - `docs/` — design specs (interoception, persistence, actuation).
 
@@ -106,19 +108,19 @@ appends every perception/decision — so the witnessed self-view spans sessions.
 
 ## Roadmap
 
-**Built (v0):** witnessed perception · pre-execution gate · interoception ·
-durable memory · live MCP server · **the efferent arm** — accountable actuation
-(`FilesystemEffector` + the perceive→plan→gate→act→re-perceive→verify loop, with
-rollback).
+**Built (v0):** witnessed perception · pre-execution gate · interoception · durable
+memory · live MCP server · **the efferent arm** — accountable actuation with two
+**native** backends (`FilesystemEffector` + `WebEffector`, acting on *structure* not
+pixels) + the perceive→plan→gate→act→re-perceive→verify loop, with rollback.
 
-**Next:** more effector backends — **Playwright** (act on the accessibility tree /
-DOM, not pixels) and the OS — under the same contract; **goal/task mode** (autonomy
-bounded by the operator grant — *yolo within an explicit, revocable, witnessed
-envelope*); and a **reference cortex** that grounds work in relevant, *verified*
-literature + curated knowledge (a citation that isn't checked launders falsehood —
-so it obeys the same organ contract). Four pillars throughout: **Accountability,
-Usability, Accessibility, Efficiency** — perceiving and acting through *structure*,
-not pixels, is more auditable, more accessible, and cheaper at once.
+**Next:** a **native HTTP/HTML driver** for `WebEffector` (stdlib `urllib` +
+`html.parser`, no browser binary — built to *surpass* Playwright for server-rendered
+web, not depend on it) and an OS effector, under the same contract; **goal/task mode**
+(autonomy bounded by the operator grant — *yolo within an explicit, revocable,
+witnessed envelope*); and a **reference cortex** that grounds work in relevant,
+*verified* literature + curated knowledge (a citation that isn't checked launders
+falsehood — so it obeys the same organ contract). **Zero external dependencies**
+throughout. Four pillars: **Accountability, Usability, Accessibility, Efficiency**.
 
 ## License
 
