@@ -13,13 +13,22 @@ from __future__ import annotations
 
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
 from .http_driver import HttpDriver, parse_html
-from .surface import AccountableSurface, ActionOutcome, ActuationOutcome, JournalEntry
+from .surface import (
+    AccountableSurface,
+    ActionOutcome,
+    ActuationOutcome,
+    GoalOutcome,
+    JournalEntry,
+    Step,
+)
 from .web_effector import FakePageDriver, WebAction, WebEffector
 
 __all__ = [
     "AccountableSurface",
     "ActionOutcome",
     "ActuationOutcome",
+    "GoalOutcome",
+    "Step",
     "JournalEntry",
     "FilesystemEffector",
     "Plan",
