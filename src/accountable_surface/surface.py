@@ -224,6 +224,7 @@ class AccountableSurface:
         content: Any,
         authorization: dict[str, Any],
         expected_digest: str | None = None,
+        allow_irreversible: bool = False,
     ) -> ActuationOutcome:
         """Run the full accountable-actuation loop: perceive -> plan -> gate -> ACT
         -> re-perceive -> verify. The effector acts ONLY on a gate `allow`; the
@@ -242,6 +243,16 @@ class AccountableSurface:
             return self._record_actuation(
                 plan, acted=False, decision=outcome.decision, verdict="not-acted",
                 verified=False, rolled_back=False, reasons=outcome.reasons,
+                before=before, after=None,
+            )
+        if not plan.reversible and not allow_irreversible:
+            # Irreversible action: the gate allowed it, but it cannot be undone, so a
+            # bare grant is not enough — escalate to needs-human unless the operator
+            # pre-authorized irreversibility (an explicit, separate session policy).
+            return self._record_actuation(
+                plan, acted=False, decision="needs-human", verdict="irreversible-needs-human",
+                verified=False, rolled_back=False,
+                reasons=["irreversible action needs explicit allow_irreversible in the grant, or human approval"],
                 before=before, after=None,
             )
         try:
@@ -303,7 +314,8 @@ class AccountableSurface:
         )
 
     def pursue(
-        self, goal: str, steps, *, authorization: dict[str, Any], max_steps: int | None = None
+        self, goal: str, steps, *, authorization: dict[str, Any], max_steps: int | None = None,
+        allow_irreversible: bool = False,
     ) -> GoalOutcome:
         """Execute a task plan (a sequence of Steps) autonomously within ONE operator
         grant envelope — perceive→plan→gate→act→verify per step — with NO per-step human
@@ -319,7 +331,8 @@ class AccountableSurface:
                 halted = f"step budget reached ({limit} of {len(steps)})"
                 break
             outcome = self.actuate(
-                step.effector, target=step.target, content=step.content, authorization=authorization
+                step.effector, target=step.target, content=step.content, authorization=authorization,
+                allow_irreversible=allow_irreversible,
             )
             outcomes.append(outcome)
             if not outcome.acted:
