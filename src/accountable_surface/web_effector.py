@@ -27,10 +27,10 @@ from accountable_surface.effector import Plan, RefusedActuation, Verdict
 class WebAction:
     """A semantic action on the accessibility tree — never a pixel coordinate."""
 
-    kind: str  # "navigate" | "fill"
-    url: str = ""  # navigate: destination; fill: the page the field is on
+    kind: str  # "navigate" | "fill" | "submit"
+    url: str = ""  # navigate: destination; fill: the page; submit: the POST/action url
     selector: str = ""  # fill: the field's accessible name / label
-    value: str = ""  # fill: the value to enter
+    value: str = ""  # fill: the value to enter; submit: the expected response title
 
 
 def _canon(snapshot: dict) -> bytes:
@@ -56,6 +56,10 @@ class FakePageDriver:
     def back(self) -> None:
         if self._history:
             self._url = self._history.pop()
+
+    def submit(self, url: str, data: dict) -> None:
+        """Submit form data and land on the result page (the form's action url)."""
+        self.navigate(url)
 
     def fill(self, selector: str, value: str) -> None:
         self._pages.setdefault(self._url, {"title": self._url, "fields": {}})
@@ -101,14 +105,18 @@ class WebEffector:
     def preview(self, target: str, action: WebAction, before: Observation | None = None) -> Plan:
         action_kind = f"web.{action.kind}"
         if action.kind == "navigate":
-            post_target, content_sha = action.url, sha256_hex(action.url.encode("utf-8"))
+            post_target, content_sha, reversible = action.url, sha256_hex(action.url.encode("utf-8")), True
         elif action.kind == "fill":
-            post_target, content_sha = f"{action.url}#{action.selector}", sha256_hex(action.value.encode("utf-8"))
+            post_target = f"{action.url}#{action.selector}"
+            content_sha, reversible = sha256_hex(action.value.encode("utf-8")), True
+        elif action.kind == "submit":
+            # a POST mutates server state — irreversible (escalates unless pre-authorized)
+            post_target, content_sha, reversible = action.url, sha256_hex(action.value.encode("utf-8")), False
         else:
             raise RefusedActuation(f"unsupported web action: {action.kind!r}")
         digest = "sha256:" + sha256_hex(f"{action_kind}|{post_target}|{content_sha}".encode("utf-8"))
         existed = bool((before.data.get("fields", {}) if before else {}).get(action.selector))
-        return Plan(action_kind, post_target, content_sha, True, existed, digest)
+        return Plan(action_kind, post_target, content_sha, reversible, existed, digest)
 
     def act(self, plan: Plan, allow_receipt: Any, action: WebAction) -> Observation:
         """Perform the action — only on a gate allow for THIS plan, only within the
@@ -129,6 +137,9 @@ class WebEffector:
                 raise RefusedActuation("not on the target page — navigate (accountably) first")
             self._prior[plan.digest] = ("fill", action.selector, self._driver.field_value(action.selector))
             self._driver.fill(action.selector, action.value)
+        elif action.kind == "submit":
+            self._prior[plan.digest] = ("submit",)
+            self._driver.submit(action.url, dict(self._driver.snapshot().get("fields", {})))
         return self.perceive(plan.target)
 
     def verify(self, plan: Plan, after: Observation) -> Verdict:
@@ -141,6 +152,10 @@ class WebEffector:
             value = after.data.get("fields", {}).get(selector)
             ok = value is not None and sha256_hex(str(value).encode("utf-8")) == plan.content_sha256
             return Verdict("pass" if ok else "failed", "field " + ("holds intent" if ok else "does NOT hold intent"))
+        if plan.action_kind == "web.submit":
+            title = after.data.get("title") or ""
+            ok = sha256_hex(title.encode("utf-8")) == plan.content_sha256
+            return Verdict("pass" if ok else "failed", "response " + ("matches intent" if ok else "does NOT match intent"))
         return Verdict("failed", "unknown action kind")
 
     def rollback(self, plan: Plan) -> Observation:
@@ -152,6 +167,8 @@ class WebEffector:
         elif info[0] == "fill":
             _, selector, prior = info
             self._driver.fill(selector, prior if prior is not None else "")
+        elif info[0] == "submit":
+            raise RefusedActuation("submit is irreversible — nothing to roll back")
         return self.perceive(plan.target)
 
     def selftest(self) -> bool:

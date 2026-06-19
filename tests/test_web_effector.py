@@ -158,3 +158,57 @@ def test_actuate_permissive_grant_still_bounded_by_effector():
     assert out.acted is False
     assert out.verdict == "refused-by-effector"
     assert drv.current_url() == "https://ok.test/"
+
+
+# --- form submit (POST) — an irreversible action ----------------------------
+
+def _site_with_thanks():
+    drv = FakePageDriver(
+        pages={
+            "https://ok.test/form": {"title": "form", "fields": {"Email": ""}},
+            "https://ok.test/thanks": {"title": "Thanks", "fields": {}},
+        },
+        start="https://ok.test/form",
+    )
+    return WebEffector(drv, allowed_origins=["https://ok.test"]), drv
+
+
+def test_submit_is_irreversible_in_the_plan():
+    eff, _ = _site_with_thanks()
+    plan = eff.preview("https://ok.test/form", WebAction("submit", url="https://ok.test/thanks", value="Thanks"))
+    assert plan.action_kind == "web.submit"
+    assert plan.reversible is False
+
+
+def test_submit_acts_and_verifies_by_response():
+    eff, drv = _site_with_thanks()
+    drv.fill("Email", "neo@x.io")
+    action = WebAction("submit", url="https://ok.test/thanks", value="Thanks")
+    plan = eff.preview("https://ok.test/form", action, eff.perceive())
+    after = eff.act(plan, _Allow("web.submit", "https://ok.test/thanks"), action=action)
+    assert drv.current_url() == "https://ok.test/thanks"
+    assert eff.verify(plan, after).status == "pass"  # the response title confirms
+
+
+def test_actuate_submit_escalates_without_irreversible_permission():
+    eff, drv = _site_with_thanks()
+    out = AccountableSurface().actuate(
+        eff, target="https://ok.test/form",
+        content=WebAction("submit", url="https://ok.test/thanks", value="Thanks"),
+        authorization=_grant(["web.submit"]),
+    )
+    assert out.acted is False
+    assert out.decision == "needs-human"  # a POST is irreversible
+    assert drv.current_url() == "https://ok.test/form"  # did NOT submit
+
+
+def test_actuate_submit_with_irreversible_permission_acts():
+    eff, drv = _site_with_thanks()
+    out = AccountableSurface().actuate(
+        eff, target="https://ok.test/form",
+        content=WebAction("submit", url="https://ok.test/thanks", value="Thanks"),
+        authorization=_grant(["web.submit"]), allow_irreversible=True,
+    )
+    assert out.acted is True
+    assert out.verified is True
+    assert drv.current_url() == "https://ok.test/thanks"
