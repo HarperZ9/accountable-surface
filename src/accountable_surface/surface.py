@@ -353,6 +353,26 @@ class AccountableSurface:
         )
         return GoalOutcome(achieved, len(outcomes), acted, halted, outcomes)
 
+    def ground(self, subject: str, cortex: Any) -> Any:
+        """Perceive relevant, witnessed knowledge for a subject via a reference cortex.
+        References are provenance-bound and relevance-scored; the cortex flags when it
+        cannot ground (confidence) and asserts nothing. Journaled, not trusted."""
+        grounding = cortex.ground(subject)
+        self._record(
+            JournalEntry(
+                kind="grounding",
+                summary=f"ground {subject!r}: {grounding.confidence} ({len(grounding.references)} refs)",
+                detail={
+                    "subject": subject,
+                    "confidence": grounding.confidence,
+                    "refs": [{"source": r.source, "ref_id": r.ref_id, "relevance": r.relevance}
+                             for r in grounding.references],
+                    "digest": grounding.digest,
+                },
+            )
+        )
+        return grounding
+
     def interocept(self) -> Observation:
         """Perceive the surface's OWN session — a witnessed, tamper-evident view
         of what it has perceived and what the gate decided. A pure read: it does
