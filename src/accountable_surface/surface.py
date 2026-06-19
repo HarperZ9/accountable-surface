@@ -80,6 +80,28 @@ class ActuationOutcome:
     after_digest: str | None
 
 
+@dataclass(frozen=True)
+class Step:
+    """One intended action in a task plan: an effector, a target, and the content
+    (bytes for the filesystem, a WebAction for the web). The plan may come from a
+    model — each step is still independently gated."""
+
+    effector: Any
+    target: str
+    content: Any
+
+
+@dataclass(frozen=True)
+class GoalOutcome:
+    """The result of pursuing a goal within a grant envelope."""
+
+    achieved: bool
+    steps_attempted: int
+    steps_acted: int
+    halted_reason: str  # "" iff achieved; else why the task stopped
+    outcomes: list
+
+
 class AccountableSurface:
     """Perceive through witnessed organs; gate every action; actuate only through a
     gated, self-verifying effector; journal everything. It never acts except on a
@@ -279,6 +301,44 @@ class AccountableSurface:
             before_digest=before.provenance.digest,
             after_digest=after.provenance.digest if after is not None else None,
         )
+
+    def pursue(
+        self, goal: str, steps, *, authorization: dict[str, Any], max_steps: int | None = None
+    ) -> GoalOutcome:
+        """Execute a task plan (a sequence of Steps) autonomously within ONE operator
+        grant envelope — perceive→plan→gate→act→verify per step — with NO per-step human
+        prompt (the envelope is pre-authorized), but halting on the first step that is
+        denied, escalated, refused, or fails verification. Bounded autonomy made safe by
+        per-step accountability: a plan (even a model's plan) is not authority."""
+        limit = len(steps) if max_steps is None else min(max_steps, len(steps))
+        outcomes: list[ActuationOutcome] = []
+        acted = 0
+        halted = ""
+        for index, step in enumerate(steps):
+            if index >= limit:
+                halted = f"step budget reached ({limit} of {len(steps)})"
+                break
+            outcome = self.actuate(
+                step.effector, target=step.target, content=step.content, authorization=authorization
+            )
+            outcomes.append(outcome)
+            if not outcome.acted:
+                halted = f"step {index} not acted ({outcome.decision} / {outcome.verdict})"
+                break
+            acted += 1
+            if not outcome.verified:
+                halted = f"step {index} acted but FAILED verification (rolled_back={outcome.rolled_back})"
+                break
+        achieved = halted == "" and len(outcomes) == len(steps) and all(o.acted and o.verified for o in outcomes)
+        self._record(
+            JournalEntry(
+                kind="goal",
+                summary=f"goal {goal!r}: {'achieved' if achieved else 'halted'} ({acted}/{len(steps)} steps)"
+                + (f" — {halted}" if halted else ""),
+                detail={"achieved": achieved, "steps": len(steps), "acted": acted, "halted_reason": halted},
+            )
+        )
+        return GoalOutcome(achieved, len(outcomes), acted, halted, outcomes)
 
     def interocept(self) -> Observation:
         """Perceive the surface's OWN session — a witnessed, tamper-evident view

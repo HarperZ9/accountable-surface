@@ -58,9 +58,10 @@ perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify 
   `html.parser` + the witnessed clean GET; drives live server-rendered pages.
 - `src/accountable_surface/server.py` — a FastMCP **live MCP server** exposing
   `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` — 62 tests. `examples/`: `demo.py`, `actuate_demo.py`,
+- `tests/` — 67 tests. `examples/`: `demo.py`, `actuate_demo.py`,
   `web_actuate_demo.py` (native web actuation vs a real localhost server),
-  `smoke_mcp.py` (a real MCP stdio round-trip).
+  `goal_demo.py` (bounded autonomy: a multi-step goal that halts on an unauthorized
+  step), `smoke_mcp.py` (a real MCP stdio round-trip).
 - `docs/` — design specs (interoception, persistence, actuation).
 
 ## Install & run
@@ -116,14 +117,16 @@ memory · live MCP server · **the efferent arm** — accountable actuation with
 **native** backends (`FilesystemEffector` + `WebEffector` on a **real stdlib HTTP/HTML
 driver**, acting on *structure* not pixels) + the perceive→plan→gate→act→re-perceive→
 verify loop, with rollback. Built to *surpass* Playwright for server-rendered web — no
-browser binary.
+browser binary. **Goal/task mode** (`pursue`) runs a multi-step plan as **bounded
+autonomy** — one grant envelope, no per-step prompt — halting the instant a step is
+denied or fails verification. A plan (even a model's plan) is not authority; each step
+earns it.
 
 **Next:** a **form-submit** action (POST) to complete the native web arm; an **OS
 effector** (bounded shell / UI automation; irreversible → needs-human) under the same
-contract; **goal/task mode** (autonomy bounded by the operator grant — *yolo within an
-explicit, revocable, witnessed envelope*); and a **reference cortex** that grounds work
-in relevant, *verified* literature + curated knowledge (a citation that isn't checked
-launders falsehood — so it obeys the same organ contract). **Zero external dependencies
+contract; and a **reference cortex** that grounds work in relevant, *verified*
+literature + curated knowledge (a citation that isn't checked launders falsehood — so
+it obeys the same organ contract). **Zero external dependencies
 in the core** — stdlib + the sibling-native repos; the optional MCP server (`[server]`
 extra) is the lone edge-adapter. Four pillars: **Accountability, Usability,
 Accessibility, Efficiency**.
