@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
 from .http_driver import HttpDriver, parse_html
+from .os_effector import CommandEffector, SubprocessRunner
 from .surface import (
     AccountableSurface,
     ActionOutcome,
@@ -39,5 +40,7 @@ __all__ = [
     "FakePageDriver",
     "HttpDriver",
     "parse_html",
+    "CommandEffector",
+    "SubprocessRunner",
 ]
 __version__ = "0.1.0"
