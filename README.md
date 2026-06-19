@@ -62,10 +62,11 @@ perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify 
   `html.parser` + the witnessed clean GET/POST; drives live server-rendered pages.
 - `src/accountable_surface/server.py` — a FastMCP **live MCP server** exposing
   `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` — 87 tests. `examples/`: `demo.py`, `actuate_demo.py`,
+- `tests/` — 90 tests. `examples/`: `demo.py`, `actuate_demo.py`,
   `web_actuate_demo.py` (native web actuation vs a real localhost server),
   `goal_demo.py` (bounded autonomy), `grounding_demo.py` (the reference cortex admitting
-  when it can't ground), `smoke_mcp.py` (a real MCP stdio round-trip).
+  when it can't ground), `grounded_actuate_demo.py` (an action that must cite grounded
+  references), `smoke_mcp.py` (a real MCP stdio round-trip).
 - `docs/` — design specs (interoception, persistence, actuation).
 
 ## Install & run
@@ -129,7 +130,9 @@ per-step prompt — halting the instant a step is denied or fails verification. 
 (even a model's plan) is not authority; each step earns it. The **reference cortex**
 (`ground`) returns witnessed, relevance-scored references for a subject and flags
 **ungrounded** rather than surface an irrelevant citation — grounding that can't launder
-a bad source.
+a bad source. It is **wired into actuation**: an action may carry a *justification*; an
+**ungrounded premise escalates to needs-human** (evidence gated like authority), and the
+references ride along on the outcome as the action's citation.
 
 **Next:** richer goal **planning** (decompose a goal into steps, each still gated); a
 larger curated/internal corpus behind the reference cortex; and a native protocol option
