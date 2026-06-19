@@ -54,10 +54,13 @@ perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify 
   `FilesystemEffector` (inert until authorized; bounded; reversible; self-verifying).
 - `src/accountable_surface/web_effector.py` — native web actuation: `WebEffector`
   (navigate / fill by accessible label, origin-bounded; **no browser, no external deps**).
+- `src/accountable_surface/http_driver.py` — the real native backend: stdlib
+  `html.parser` + the witnessed clean GET; drives live server-rendered pages.
 - `src/accountable_surface/server.py` — a FastMCP **live MCP server** exposing
   `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` — 57 tests. `examples/`: `demo.py` (perceive+gate transcript),
-  `actuate_demo.py` (the actuation loop), `smoke_mcp.py` (a real MCP stdio round-trip).
+- `tests/` — 62 tests. `examples/`: `demo.py`, `actuate_demo.py`,
+  `web_actuate_demo.py` (native web actuation vs a real localhost server),
+  `smoke_mcp.py` (a real MCP stdio round-trip).
 - `docs/` — design specs (interoception, persistence, actuation).
 
 ## Install & run
@@ -110,17 +113,18 @@ appends every perception/decision — so the witnessed self-view spans sessions.
 
 **Built (v0):** witnessed perception · pre-execution gate · interoception · durable
 memory · live MCP server · **the efferent arm** — accountable actuation with two
-**native** backends (`FilesystemEffector` + `WebEffector`, acting on *structure* not
-pixels) + the perceive→plan→gate→act→re-perceive→verify loop, with rollback.
+**native** backends (`FilesystemEffector` + `WebEffector` on a **real stdlib HTTP/HTML
+driver**, acting on *structure* not pixels) + the perceive→plan→gate→act→re-perceive→
+verify loop, with rollback. Built to *surpass* Playwright for server-rendered web — no
+browser binary.
 
-**Next:** a **native HTTP/HTML driver** for `WebEffector` (stdlib `urllib` +
-`html.parser`, no browser binary — built to *surpass* Playwright for server-rendered
-web, not depend on it) and an OS effector, under the same contract; **goal/task mode**
-(autonomy bounded by the operator grant — *yolo within an explicit, revocable,
-witnessed envelope*); and a **reference cortex** that grounds work in relevant,
-*verified* literature + curated knowledge (a citation that isn't checked launders
-falsehood — so it obeys the same organ contract). **Zero external dependencies in the
-core** — stdlib + the sibling-native repos; the optional MCP server (`[server]`
+**Next:** a **form-submit** action (POST) to complete the native web arm; an **OS
+effector** (bounded shell / UI automation; irreversible → needs-human) under the same
+contract; **goal/task mode** (autonomy bounded by the operator grant — *yolo within an
+explicit, revocable, witnessed envelope*); and a **reference cortex** that grounds work
+in relevant, *verified* literature + curated knowledge (a citation that isn't checked
+launders falsehood — so it obeys the same organ contract). **Zero external dependencies
+in the core** — stdlib + the sibling-native repos; the optional MCP server (`[server]`
 extra) is the lone edge-adapter. Four pillars: **Accountability, Usability,
 Accessibility, Efficiency**.
 

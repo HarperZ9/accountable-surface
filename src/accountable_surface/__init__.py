@@ -12,6 +12,7 @@ MCP server (`server`) additionally needs `mcp` (the `[server]` extra).
 from __future__ import annotations
 
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
+from .http_driver import HttpDriver, parse_html
 from .surface import AccountableSurface, ActionOutcome, ActuationOutcome, JournalEntry
 from .web_effector import FakePageDriver, WebAction, WebEffector
 
@@ -27,5 +28,7 @@ __all__ = [
     "WebEffector",
     "WebAction",
     "FakePageDriver",
+    "HttpDriver",
+    "parse_html",
 ]
 __version__ = "0.1.0"
