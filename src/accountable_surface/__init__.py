@@ -14,6 +14,7 @@ from __future__ import annotations
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
 from .http_driver import HttpDriver, parse_html
 from .os_effector import CommandEffector, SubprocessRunner
+from .reference import ArxivSource, FakeSource, Grounding, Reference, ReferenceCortex, parse_arxiv_atom
 from .surface import (
     AccountableSurface,
     ActionOutcome,
@@ -42,5 +43,11 @@ __all__ = [
     "parse_html",
     "CommandEffector",
     "SubprocessRunner",
+    "ReferenceCortex",
+    "Reference",
+    "Grounding",
+    "FakeSource",
+    "ArxivSource",
+    "parse_arxiv_atom",
 ]
 __version__ = "0.1.0"

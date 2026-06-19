@@ -56,14 +56,16 @@ perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify 
   (navigate / fill by label / submit, origin-bounded; **no browser, no external deps**).
 - `src/accountable_surface/os_effector.py` — OS actuation: `CommandEffector`
   (allowlisted commands, bounded cwd, no shell; irreversible → needs-human).
+- `src/accountable_surface/reference.py` — the **reference cortex**: a grounding organ
+  (witnessed, relevance-scored references; admits "ungrounded"; native arXiv via stdlib).
 - `src/accountable_surface/http_driver.py` — the real native backend: stdlib
   `html.parser` + the witnessed clean GET/POST; drives live server-rendered pages.
 - `src/accountable_surface/server.py` — a FastMCP **live MCP server** exposing
   `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` — 80 tests. `examples/`: `demo.py`, `actuate_demo.py`,
+- `tests/` — 87 tests. `examples/`: `demo.py`, `actuate_demo.py`,
   `web_actuate_demo.py` (native web actuation vs a real localhost server),
-  `goal_demo.py` (bounded autonomy: a multi-step goal that halts on an unauthorized
-  step), `smoke_mcp.py` (a real MCP stdio round-trip).
+  `goal_demo.py` (bounded autonomy), `grounding_demo.py` (the reference cortex admitting
+  when it can't ground), `smoke_mcp.py` (a real MCP stdio round-trip).
 - `docs/` — design specs (interoception, persistence, actuation).
 
 ## Install & run
@@ -124,12 +126,14 @@ escalate to needs-human unless the operator passes `allow_irreversible`. Built t
 *surpass* Playwright for server-rendered web — no browser binary. **Goal/task mode**
 (`pursue`) runs a multi-step plan as **bounded autonomy** — one grant envelope, no
 per-step prompt — halting the instant a step is denied or fails verification. A plan
-(even a model's plan) is not authority; each step earns it.
+(even a model's plan) is not authority; each step earns it. The **reference cortex**
+(`ground`) returns witnessed, relevance-scored references for a subject and flags
+**ungrounded** rather than surface an irrelevant citation — grounding that can't launder
+a bad source.
 
-**Next:** a **reference cortex** that grounds work in relevant, *verified* literature
-+ curated knowledge (a citation that isn't checked launders falsehood — so it obeys the
-same organ contract); and richer goal **planning** (decompose a goal into steps, each
-still gated). **Zero external dependencies
+**Next:** richer goal **planning** (decompose a goal into steps, each still gated); a
+larger curated/internal corpus behind the reference cortex; and a native protocol option
+for the live surface. **Zero external dependencies
 in the core** — stdlib + the sibling-native repos; the optional MCP server (`[server]`
 extra) is the lone edge-adapter. Four pillars: **Accountability, Usability,
 Accessibility, Efficiency**.
