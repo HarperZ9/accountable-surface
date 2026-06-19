@@ -1,0 +1,20 @@
+# secrets / env (never commit)
+.env
+.env.*
+!.env.example
+CLAUDE.local.md
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+venv/
+
+# IO-boundary cache + runtime operator journals (operator-supplied, not source)
+.warden-safe-cache/
+*.session.jsonl
+journals/
