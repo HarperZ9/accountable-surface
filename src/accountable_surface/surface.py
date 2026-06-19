@@ -31,6 +31,8 @@ from coherence_membrane.membrane import build_gate_request, decide
 from coherence_membrane.observation import Observation, Provenance, Status, sha256_hex
 from coherence_membrane.organs.web import WebDocumentOrgan
 
+from accountable_surface.effector import RefusedActuation
+
 
 @dataclass(frozen=True)
 class JournalEntry:
@@ -197,7 +199,7 @@ class AccountableSurface:
         effector: Any,
         *,
         target: str,
-        content: bytes,
+        content: Any,
         authorization: dict[str, Any],
         expected_digest: str | None = None,
     ) -> ActuationOutcome:
@@ -209,7 +211,7 @@ class AccountableSurface:
         plan = effector.preview(target, content, before)
         outcome = self.propose(
             action_kind=plan.action_kind,
-            target=target,
+            target=plan.target,
             authorization=authorization,
             observation=before,
             expected_digest=expected_digest,
@@ -220,7 +222,16 @@ class AccountableSurface:
                 verified=False, rolled_back=False, reasons=outcome.reasons,
                 before=before, after=None,
             )
-        effector.act(plan, outcome, content)
+        try:
+            effector.act(plan, outcome, content)
+        except RefusedActuation as exc:
+            # The effector's construction-bound is a stricter, second gate: even a
+            # gate `allow` cannot make it act outside its bound. Report, never crash.
+            return self._record_actuation(
+                plan, acted=False, decision=outcome.decision, verdict="refused-by-effector",
+                verified=False, rolled_back=False, reasons=[str(exc)],
+                before=before, after=None,
+            )
         after = effector.perceive(target)
         verdict = effector.verify(plan, after)
         verified = verdict.status == "pass"

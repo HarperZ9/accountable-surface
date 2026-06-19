@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
 from .surface import AccountableSurface, ActionOutcome, ActuationOutcome, JournalEntry
+from .web_effector import FakePageDriver, WebAction, WebEffector
 
 __all__ = [
     "AccountableSurface",
@@ -23,5 +24,8 @@ __all__ = [
     "Plan",
     "RefusedActuation",
     "Verdict",
+    "WebEffector",
+    "WebAction",
+    "FakePageDriver",
 ]
 __version__ = "0.1.0"
