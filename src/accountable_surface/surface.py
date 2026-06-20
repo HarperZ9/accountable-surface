@@ -174,7 +174,12 @@ class AccountableSurface:
         estimated_cost: dict[str, Any] | None = None,
     ) -> ActionOutcome:
         """Route a proposed action through the write-gate. Returns the advisory
-        decision; the surface does not execute it."""
+        decision; the surface does not execute it.
+
+        ``expected_digest`` (a state precondition) must be a **raw 64-char lowercase
+        hex SHA-256** — NOT the ``sha256:``-prefixed form that ``Provenance.digest``
+        carries. A prefixed value is rejected as malformed and fails closed as an
+        *authorization* deny (not a *state* deny); strip the prefix before passing it."""
         request = build_gate_request(
             action_kind=action_kind,
             target=target,
