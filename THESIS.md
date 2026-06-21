@@ -87,6 +87,37 @@ mechanisms; it does the opposite — it makes a machine's own perception and act
 and gated, and it makes the builder's own work answerable to evidence. The strongest version
 is honest about its own limits, in public, with receipts — including this one.
 
+## Addendum — 2026-06-21
+
+*Additive note, appended after publication. It supplements the thesis above; it does not
+revise any claim in it.*
+
+**The problem the accountable loop pays down — Naur's theory-building.** Peter Naur,
+*Programming as Theory Building* (1985), argues that the code is not the program: the program
+is the *theory* in the programmer's head — how and why the parts connect. A generated artifact
+is the *shadow* of that theory; the theory is what is lost when an agent produces code on
+demand. This names precisely what an accountability substrate is *for*. The tax of trusting an
+artifact whose theory you do not hold is **comprehension debt**, and a re-checkable receipt is
+a debt-payment mechanism: checking is cheaper than re-deriving, so trust no longer requires
+re-holding the whole theory. The loop here witnesses the *form* — the criterion, the proof —
+not merely the output. **Honest bound:** this *supplements* human theory-building; it does not
+*replace* the skill Naur prescribes. It catches what un-built judgment misses and carries the
+theory as a witness — a tool answer to what is partly a skill problem.
+
+**The premise turned on itself — criterion independence.** This thesis rests on judging an
+artifact against a criterion it did not author ("proof before trust"). Turning that standard
+on the substrate itself surfaced a seam: a self-graded check (the criterion's author is also
+the artifact's producer) was, by the system's own records, indistinguishable from an
+independent one. The closure: record `author`/`producer` provenance, and downgrade a
+self-authored verdict to **UNVERIFIABLE** ("independence not witnessed") rather than letting it
+pass as decided. **Honest bounds, verbatim:** this is an **empirical demonstration plus a
+mechanism, not a proven theorem** — it shows the premise was unwitnessed and is now
+witnessable/enforceable; it does not prove independence is always decidable. The witness is
+**provenance-recorded, not cryptographic** — `author`/`producer` are claimed ids; this is
+trust-minimization, not trust-elimination (a forged id is the residual trust). And the
+enforcement is **opt-in** (strict mode off by default); the seam is closed where it is enabled,
+and elsewhere the system emits the honest independence annotation alongside the verdict.
+
 ---
 
 *The implementation is MIT-licensed and inspectable; the thesis is offered openly. Authorship
