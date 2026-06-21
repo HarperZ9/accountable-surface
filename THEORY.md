@@ -113,6 +113,45 @@ A theory becomes a law by surviving what one author cannot supply alone:
 Until then, this is a theory with a working proof-of-concept. Said plainly, because the whole
 point is that the claim and its receipt must match.
 
+## 7 · Addendum — 2026-06-21
+
+*Additive note, appended after publication. It supplements the theory above; it revises no
+axiom, conjecture, or status in §0–§6.*
+
+**§7.1 · Naur's theory-building — the motivation for the generator/checker split.** Peter Naur,
+*Programming as Theory Building* (1985): the code is not the program — the program is the
+*theory* in the programmer's head (how and why the parts connect); the artifact is its shadow.
+This is the cleanest foundational citation for why accountability must witness the *form*, not
+the output. A2 ("proof before trust") and the verifier ladder are, in Naur's terms, a mechanism
+for paying down **comprehension debt** — the tax of trusting an artifact whose theory you do not
+hold. A re-checkable receipt means *checking is cheaper than re-deriving*, so trust does not
+require re-holding the whole theory. External corroboration that the problem is real and
+field-recognized, not invented here. **Honest bound:** the layer **supplements** human
+theory-building; it does not **replace** it — a *built* answer (verification over generation)
+alongside the *skill* answer (draw the system, hold the theory), two angles on the same durable
+layer.
+
+**§7.2 · Criterion independence — the conjecture's premise, witnessed on itself.** The
+conjecture's load-bearing move is judgement against a criterion the system did not author. An
+adversarial pass found this premise **unverified by the system's own standard**: a self-graded
+reconcile (criterion's author == artifact's producer) produced records byte-identical to an
+independent one — the premise was not witnessed. The closure records `author`/`producer`
+provenance and, in strict mode, downgrades a self-authored verdict to **UNVERIFIABLE**
+("independence not witnessed") rather than letting it decide. This is A2 and the bilateral
+critic (§3) turned on the spine itself. **Honest bounds (stated as §0 requires):**
+
+1. This is an **empirical demonstration plus a mechanism, not a proven theorem.** It shows the
+   premise was unwitnessed and is now witnessable and enforceable; it does not prove
+   independence is *always* decidable.
+2. The witness is **provenance-recorded, not cryptographic.** `author`/`producer` are claimed
+   ids — trust-minimization, not trust-elimination; a forged id is the residual trust.
+3. **Enforcement is opt-in** (strict mode off by default). The seam is closed where strict is
+   enabled; elsewhere the system emits the honest independence annotation beside the verdict.
+
+This does not discharge §6's formalization item — mechanizing the is→ought / history→instant
+terminus as a checked theorem remains the separate, open track. It is the *empirical* half of
+"the theory applied to itself," not the *formal* one.
+
 ---
 
 *The implementation is MIT-licensed and inspectable; the theory is offered openly. Authorship
