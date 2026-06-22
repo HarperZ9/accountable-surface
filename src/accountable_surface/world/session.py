@@ -104,7 +104,7 @@ class WorldSession:
                     continue
                 files.append({"name": p.name, "size": p.stat().st_size})
                 if p.suffix.lower() == ".png":
-                    seen = sight_of(p, cols=80)   # witnessed sight: the glyph grid the model sees
+                    seen = sight_of(p, cols=96)   # witnessed sight: shape + colour the model sees
                     if seen:
                         sights.append(seen)
                 elif p.suffix.lower() in (".md", ".txt") and len(notes) < 5:
