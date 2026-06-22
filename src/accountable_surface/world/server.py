@@ -206,7 +206,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "not a PNG image"})
             fp = _WORLD.session.root / name
             fp.write_bytes(data)        # the operator places their own media in their sandbox world
-            return self._send(200, {"ok": True, "name": name, "sight": sight_of(fp, cols=80)})
+            return self._send(200, {"ok": True, "name": name, "sight": sight_of(fp, cols=96)})
         if path == "/chat":
             message = str(body.get("message", "")).strip()
             if not message:

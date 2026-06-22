@@ -62,6 +62,25 @@ def _disc_png(w=40, h=40):
     return encode_png(w, h, bytes(px), channels=3)
 
 
+def _split_png(top, bottom, w=24, h=24):
+    px = bytearray()
+    for y in range(h):
+        rgb = top if y < h // 2 else bottom
+        for _x in range(w):
+            px += bytes(rgb)
+    return encode_png(w, h, bytes(px), channels=3)
+
+
+def test_witnessed_sight_includes_colour_palette_and_spatial_map():
+    s = witness_image(_split_png((220, 40, 40), (40, 180, 70)), cols=24)  # red over green
+    assert "color" in s
+    names = " ".join(p["name"] for p in s["color"]["palette"])
+    assert "red" in names and "green" in names              # it perceives the actual colours
+    grid = s["color"]["map"]
+    assert "r" in grid[0] and "g" in grid[-1]               # and WHERE they sit (top red, bottom green)
+    assert s["color"]["legend"].get("r") == "red" and s["color"]["legend"].get("g") == "green"
+
+
 def test_describe_sight_reads_the_glyph_grid_honestly():
     sight = witness_image(_disc_png(), cols=32)
     desc = describe_sight(sight)
