@@ -102,8 +102,14 @@ def _world_brief(world_state, goal) -> str:
     note_block = ""
     for name, content in (world_state.get("notes") or {}).items():
         note_block += f"\n--- your note {name} ---\n{content}\n"
+    reel = world_state.get("reel")
+    reel_block = ""
+    if reel:
+        reel_block = (f"\nMOVING MATERIAL: a {reel['count']}-frame reel is playing ({reel['fps']} fps). "
+                      "One sampled frame (witnessed glyph grid):\n"
+                      + "\n".join((reel.get("sample") or {}).get("ascii", [])) + "\n")
     return (f"GOAL: {goal}\nWORLD ROOT: {world_state.get('root', '')}\nFILES: {files}\n"
-            f"FOCUS: {focus.get('name', '(none)')}{sight}\n"
+            f"FOCUS: {focus.get('name', '(none)')}{sight}{reel_block}\n"
             f"YOUR NOTES SO FAR:{note_block or ' (none yet)'}\n"
             f"RECENT WITNESSED JOURNAL: {recent}\nGRANTED ACTIONS: {grant}\n"
             "Propose the next action as one JSON object.")
