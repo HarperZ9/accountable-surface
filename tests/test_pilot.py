@@ -126,3 +126,25 @@ def test_ollama_pilot_fails_closed_on_transport_error():
     def boom(_):
         raise RuntimeError("ollama down")
     assert OllamaPilot("m", post=boom).propose({}, "g").done is True
+
+
+def test_ollama_pilot_converse_grounds_in_the_sight_and_returns_text():
+    captured = {}
+    def fake(body):
+        captured["body"] = body
+        return {"message": {"content": "It looks like a snail's shell to me."}}
+    op = OllamaPilot("m", post=fake)
+    state = {"sights": [{"name": "x.png", "width": 10, "height": 10, "ascii": ["@@@", "@.@"]}]}
+    reply = op.converse(state, [{"role": "user", "text": "earlier"}], "what do you see?")
+    assert reply == "It looks like a snail's shell to me."
+    msgs = captured["body"]["messages"]
+    assert msgs[0]["role"] == "system"                      # a chat system prompt
+    assert any("@@@" in m["content"] for m in msgs)          # the witnessed grid is in context
+    assert msgs[-1]["content"] == "what do you see?"          # the user's message last
+
+
+def test_converse_fails_soft_not_closed():
+    def boom(_):
+        raise RuntimeError("down")
+    reply = OllamaPilot("m", post=boom).converse({}, [], "hi")
+    assert "unavailable" in reply.lower()

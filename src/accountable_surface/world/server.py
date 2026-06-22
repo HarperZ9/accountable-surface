@@ -8,15 +8,20 @@ explicit, sandbox-scoped demo grant — default-deny still holds (no grant -> no
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import queue
+import re
 import threading
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from coherence_membrane.pngview import is_png
+
 from .session import WorldSession
+from .sight import sight_of, describe_sight
 from .pilot import autopilot, ClaudePilot, OllamaPilot, SightfulPilot
 
 _WEB = Path(__file__).resolve().parents[3] / "web"
@@ -34,6 +39,20 @@ def _sandbox_grant(actions=("fs.write",)) -> dict:
             "revoked": False}
 
 
+def _offline_reply(snap) -> str:
+    """An honest reading of the shared sight when no model is configured — never a fabrication."""
+    sights = snap.get("sights") or []
+    if sights:
+        return "Looking with you — I can make out " + describe_sight(sights[0]) + ". What stands out to you?"
+    return "Nothing is in view yet — add an image and we'll look at it together."
+
+
+def _safe_name(name) -> str:
+    """A safe stem for an uploaded file — alnum/._- only, no path traversal."""
+    base = re.sub(r"[^A-Za-z0-9._-]", "_", str(name or "image")).strip("._") or "image"
+    return base[:-4] if base.lower().endswith(".png") else base
+
+
 class World:
     """Process-wide shared world: one WorldSession + a pilot + its live subscribers (thread-safe)."""
 
@@ -45,10 +64,29 @@ class World:
         self._subs: list[queue.Queue] = []
         self._running = False
         self._goal = ""
+        self._chat: list = []   # the small conversation memory: what they said about what they see
 
     @property
     def goal(self) -> str:
         return self._goal
+
+    @property
+    def chat_history(self) -> list:
+        return self._chat
+
+    def chat(self, message) -> dict:
+        """One turn of the conversation about what they both see — grounded in the witnessed sight,
+        remembered. The pilot converses if it can; otherwise an honest reading of the sight."""
+        snap = self.snapshot()
+        prior = list(self._chat)
+        self._chat.append({"role": "user", "text": message})
+        if hasattr(self.pilot, "converse"):
+            reply = self.pilot.converse(snap, prior, message)
+        else:
+            reply = _offline_reply(snap)
+        self._chat.append({"role": "assistant", "text": reply})
+        del self._chat[:-40]   # bounded memory — the recent conversation
+        return {"reply": reply, "history": self._chat}
 
     def act(self, **kw) -> dict:
         with self._lock:
@@ -127,8 +165,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._stream()
         if path == "/reel":
             return self._send(200, _WORLD.session.reel or {"count": 0, "fps": 0, "frames": []})
+        if path == "/chat":
+            return self._send(200, {"history": _WORLD.chat_history})
         if path == "/watch":
             return self._static("watch.html")
+        if path == "/together":
+            return self._static("together.html")
         return self._static("index.html" if path == "/" else path.lstrip("/"))
 
     def do_POST(self):
@@ -154,6 +196,22 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/autopilot/stop":
             _WORLD.stop_autopilot()
             return self._send(200, {"running": False})
+        if path == "/upload":
+            name = _safe_name(body.get("name", "image")) + ".png"
+            try:
+                data = base64.b64decode(body.get("png_b64", ""), validate=True)
+            except Exception:
+                return self._send(400, {"error": "bad image data"})
+            if not is_png(data):
+                return self._send(400, {"error": "not a PNG image"})
+            fp = _WORLD.session.root / name
+            fp.write_bytes(data)        # the operator places their own media in their sandbox world
+            return self._send(200, {"ok": True, "name": name, "sight": sight_of(fp, cols=80)})
+        if path == "/chat":
+            message = str(body.get("message", "")).strip()
+            if not message:
+                return self._send(400, {"error": "empty message"})
+            return self._send(200, _WORLD.chat(message))
         return self._send(404, {"error": "not found"})
 
     def _stream(self):
