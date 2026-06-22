@@ -96,13 +96,70 @@ async function propose() {
   }
 }
 
+// ---- autopilot: a model drives the body, the surface keeps it honest ----
+let apStep = 0;
+
+function setRunning(running) {
+  $("ap-run").disabled = running;
+  $("ap-stop").disabled = !running;
+}
+
+// each autonomous step's reasoning is the mind's voice — shown beside the verdict the surface gave it
+function appendVoice(step) {
+  if (!step.reasoning) return;
+  apStep += 1;
+  $("transcript").hidden = false;
+  const v = step.certificate ? step.certificate.verdict : "";
+  const target = (step.target || "").split(/[\\/]/).pop();
+  const div = document.createElement("div");
+  div.className = "voice";
+  div.innerHTML = `<span class="vi">${apStep}</span>` +
+    `<span class="vt">${esc(step.reasoning)} <em>— ${esc(step.kind)} ${esc(target)}</em></span>` +
+    `<span class="vv"><span class="tag ${v}">${v}</span></span>`;
+  $("transcript").appendChild(div);
+  $("transcript").scrollTop = $("transcript").scrollHeight;
+}
+
+async function runAutopilot() {
+  apStep = 0; $("transcript").innerHTML = ""; $("transcript").hidden = false;
+  setRunning(true);
+  try {
+    const r = await fetch("./autopilot", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goal: $("ap-goal").value.trim(), max_steps: parseInt($("ap-steps").value) || 4 }),
+    });
+    const d = await r.json();
+    if (d.error) { announce("autopilot: " + d.error); setRunning(false); return; }
+    announce(`Autopilot running (${d.pilot}) toward: ${$("ap-goal").value.trim()}`);
+  } catch (e) {
+    announce("autopilot failed: " + e.message); setRunning(false);
+  }
+}
+
+async function stopAutopilot() {
+  try { await fetch("./autopilot/stop", { method: "POST" }); } catch (e) { /* ignore */ }
+  announce("Autopilot stop requested.");
+}
+
+async function initPilot() {
+  try {
+    const d = await (await fetch("./world")).json();
+    $("pilot-kind").textContent = d.pilot || "none";
+    setRunning(!!d.running);
+  } catch (e) { /* the stream will still drive the view */ }
+}
+
 function connect() {
   const es = new EventSource("./world/stream");
   es.addEventListener("world", e => renderWorld(JSON.parse(e.data)));
-  es.addEventListener("step", e => renderMove(JSON.parse(e.data)));
+  es.addEventListener("step", e => { const s = JSON.parse(e.data); renderMove(s); appendVoice(s); });
+  es.addEventListener("autopilot", () => { setRunning(false); announce("Autopilot finished."); });
   es.onerror = () => announce("stream disconnected — retrying…");
 }
 
 $("act-btn").addEventListener("click", propose);
 $("recheck-btn").addEventListener("click", recheck);
+$("ap-run").addEventListener("click", runAutopilot);
+$("ap-stop").addEventListener("click", stopAutopilot);
+initPilot();
 connect();

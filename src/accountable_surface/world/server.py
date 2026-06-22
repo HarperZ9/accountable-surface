@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .session import WorldSession
+from .pilot import autopilot, ClaudePilot, ScriptedPilot, Proposal
 
 _WEB = Path(__file__).resolve().parents[3] / "web"
 _CT = {".html": "text/html", ".js": "text/javascript", ".css": "text/css",
@@ -33,12 +34,15 @@ def _sandbox_grant(actions=("fs.write",)) -> dict:
 
 
 class World:
-    """Process-wide shared world: one WorldSession + its live subscribers (thread-safe)."""
+    """Process-wide shared world: one WorldSession + a pilot + its live subscribers (thread-safe)."""
 
-    def __init__(self, root, grant):
+    def __init__(self, root, grant, pilot=None, pilot_kind="none"):
         self.session = WorldSession(root, grant)
+        self.pilot = pilot
+        self.pilot_kind = pilot_kind
         self._lock = threading.Lock()
         self._subs: list[queue.Queue] = []
+        self._running = False
 
     def act(self, **kw) -> dict:
         with self._lock:
@@ -51,6 +55,26 @@ class World:
     def snapshot(self) -> dict:
         with self._lock:
             return self.session.snapshot()
+
+    @property
+    def running(self) -> bool:
+        return self._running
+
+    def run_autopilot(self, goal, max_steps=6) -> None:
+        """Let the pilot drive the body, streaming each witnessed step. Bounded + stoppable."""
+        if self.pilot is None or self._running:
+            return
+        self._running = True
+        try:
+            autopilot(self, self.pilot, goal=goal, max_steps=max_steps,
+                      should_continue=lambda: self._running)
+        finally:
+            self._running = False
+            for q in list(self._subs):
+                q.put(("autopilot", {"running": False}))
+
+    def stop_autopilot(self) -> None:
+        self._running = False
 
     def subscribe(self) -> queue.Queue:
         q: queue.Queue = queue.Queue()
@@ -87,26 +111,37 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
         if path == "/world":
-            return self._send(200, _WORLD.snapshot())
+            snap = _WORLD.snapshot()
+            snap["pilot"], snap["running"] = _WORLD.pilot_kind, _WORLD.running
+            return self._send(200, snap)
         if path == "/world/stream":
             return self._stream()
         return self._static("index.html" if path == "/" else path.lstrip("/"))
 
     def do_POST(self):
-        if self.path.split("?")[0] != "/act":
-            return self._send(404, {"error": "not found"})
+        path = self.path.split("?")[0]
         n = int(self.headers.get("Content-Length") or 0)
         try:
-            body = json.loads(self.rfile.read(n) or b"{}")
+            body = json.loads(self.rfile.read(n) or b"{}") if n else {}
         except json.JSONDecodeError:
             return self._send(400, {"error": "bad json"})
-        try:
-            step = _WORLD.act(kind=body.get("kind", "fs.write"), target=body.get("target", ""),
-                              content=body.get("content", ""),
-                              justification=body.get("justification", ""))
-        except ValueError as exc:
-            return self._send(400, {"error": str(exc)})
-        self._send(200, step)
+        if path == "/act":
+            try:
+                step = _WORLD.act(kind=body.get("kind", "fs.write"), target=body.get("target", ""),
+                                  content=body.get("content", ""), justification=body.get("justification", ""))
+            except ValueError as exc:
+                return self._send(400, {"error": str(exc)})
+            return self._send(200, step)
+        if path == "/autopilot":
+            if _WORLD.pilot is None:
+                return self._send(409, {"error": "no pilot configured"})
+            goal, steps = str(body.get("goal", "")), int(body.get("max_steps", 6))
+            threading.Thread(target=_WORLD.run_autopilot, args=(goal, steps), daemon=True).start()
+            return self._send(200, {"started": True, "pilot": _WORLD.pilot_kind, "running": True})
+        if path == "/autopilot/stop":
+            _WORLD.stop_autopilot()
+            return self._send(200, {"running": False})
+        return self._send(404, {"error": "not found"})
 
     def _stream(self):
         q = _WORLD.subscribe()
@@ -149,14 +184,38 @@ def _load_grant():
     return None
 
 
+def _demo_pilot():
+    """An offline stand-in for the real model — a fixed, honest two-step sequence. The real
+    ClaudePilot drives the moment ANTHROPIC_API_KEY is present."""
+    return ScriptedPilot([
+        Proposal(target="README.md", justification="document the world",
+                 reasoning="A world needs a front door — I'll write a README first.",
+                 content="# The Shared World\n\nA model and an operator co-inhabit one accountable "
+                         "surface.\nEvery action is gated, witnessed, and re-checkable.\n"),
+        Proposal(target="NOTES.md", justification="record the operating premises",
+                 reasoning="Now the premises, so the intent is on the record before going further.",
+                 content="- perceive the witnessed state, not memory\n- the gate decides every "
+                         "action\n- verify the work, then witness it\n"),
+    ])
+
+
+def _build_pilot():
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        return ClaudePilot(key, model=os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")), "claude"
+    return _demo_pilot(), "scripted-demo"
+
+
 def serve(host="127.0.0.1", port=8808, root=None, grant=None):
     global _WORLD
     root = root or os.environ.get("ACCOUNTABLE_WORLD_ROOT") or (Path.cwd() / "world-sandbox")
     grant = grant or _load_grant() or _sandbox_grant()
-    _WORLD = World(root, grant)
+    pilot, kind = _build_pilot()
+    _WORLD = World(root, grant, pilot, kind)
     httpd = ThreadingHTTPServer((host, port), Handler)
     actions = _WORLD.session.grant.get("scope", {}).get("allowed_actions", [])
-    print(f"shared world on http://{host}:{port}  root={_WORLD.session.root}  grant={actions}")
+    print(f"shared world on http://{host}:{port}  root={_WORLD.session.root}  "
+          f"grant={actions}  pilot={kind}")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

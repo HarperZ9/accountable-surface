@@ -41,6 +41,13 @@
   .btn{font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--ember);cursor:pointer;
     background:transparent;border:1px solid rgba(239,171,48,.4);border-radius:8px;padding:.62em 1.1em;transition:background .15s,border-color .15s;white-space:nowrap}
   .btn:hover,.btn:focus-visible{background:rgba(239,171,48,.1);border-color:var(--ember);outline:none}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .pilot-kind{color:var(--ember)}
+  .transcript{margin-top:.9rem;border-top:1px solid var(--hairline);padding-top:.7rem;max-height:260px;overflow:auto}
+  .voice{font-family:var(--serif);font-size:.88rem;color:#d7cfba;padding:.55rem .2rem;border-bottom:1px dotted rgba(138,155,146,.14);display:flex;gap:.7rem;align-items:baseline}
+  .voice .vi{font-family:var(--mono);font-size:.55rem;color:var(--prussian);flex:0 0 1.4rem}
+  .voice .vt{flex:1} .voice .vv{flex:0 0 auto}
+  .voice .vt em{color:var(--muted)}
 
   /* the world: three apertures */
   .world{display:grid;gap:clamp(.9rem,1.8vw,1.4rem);grid-template-columns:1fr minmax(250px,.95fr) 1fr;align-items:stretch}
@@ -118,6 +125,18 @@
       <label class="field"><span>justification</span><input id="act-justification" value="record a first note"></label>
       <button class="btn" id="act-btn" type="button">Propose &amp; act ▸</button>
     </div>
+  </section>
+
+  <section class="propose autopilot" aria-label="autonomous pilot">
+    <div class="label">let a model drive &middot; the mind proposes, the surface keeps it honest &middot;
+      pilot: <span id="pilot-kind" class="pilot-kind">…</span></div>
+    <div class="prow" style="grid-template-columns:3fr .8fr auto auto">
+      <label class="field"><span>goal</span><input id="ap-goal" value="set up a small project: a README and a NOTES file"></label>
+      <label class="field"><span>max steps</span><input id="ap-steps" value="4"></label>
+      <button class="btn" id="ap-run" type="button">Run autopilot ▸</button>
+      <button class="btn" id="ap-stop" type="button" disabled>Stop ◼</button>
+    </div>
+    <div class="transcript" id="transcript" hidden></div>
   </section>
 
   <main class="world">
