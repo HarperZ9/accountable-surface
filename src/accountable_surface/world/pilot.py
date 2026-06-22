@@ -62,8 +62,12 @@ def _world_brief(world_state, goal) -> str:
     journal = world_state.get("journal", [])
     recent = "; ".join(f'{e.get("kind")}: {e.get("summary", "")}' for e in journal[-4:]) or "(none yet)"
     grant = world_state.get("grant", {}).get("allowed_actions", [])
+    sight = ""
+    for s in world_state.get("sights", []):
+        sight += (f"\nWHAT YOU SEE — {s.get('name')} ({s.get('width')}x{s.get('height')}, "
+                  f"phash {s.get('phash')}), the witnessed glyph grid:\n" + "\n".join(s.get("ascii", [])) + "\n")
     return (f"GOAL: {goal}\nWORLD ROOT: {world_state.get('root', '')}\nFILES: {files}\n"
-            f"FOCUS: {focus.get('name', '(none)')}\n--- focus content ---\n{focus.get('content', '')}\n---\n"
+            f"FOCUS: {focus.get('name', '(none)')}\n--- focus content ---\n{focus.get('content', '')}\n---{sight}\n"
             f"RECENT WITNESSED JOURNAL: {recent}\nGRANTED ACTIONS: {grant}\n"
             "Propose the next action as one JSON object.")
 
