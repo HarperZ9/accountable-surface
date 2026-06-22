@@ -12,11 +12,12 @@ import json
 import os
 import queue
 import threading
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .session import WorldSession
-from .pilot import autopilot, ClaudePilot, ScriptedPilot, Proposal
+from .pilot import autopilot, ClaudePilot, OllamaPilot, SightfulPilot
 
 _WEB = Path(__file__).resolve().parents[3] / "web"
 _CT = {".html": "text/html", ".js": "text/javascript", ".css": "text/css",
@@ -194,30 +195,32 @@ def _load_grant():
     return None
 
 
-def _demo_pilot():
-    """An offline stand-in for the real model — a fixed, honest two-step sequence. The real
-    ClaudePilot drives the moment ANTHROPIC_API_KEY is present."""
-    return ScriptedPilot([
-        Proposal(target="README.md", justification="document the world",
-                 reasoning="A world needs a front door — I'll write a README first.",
-                 content="# The Shared World\n\nA model and an operator co-inhabit one accountable "
-                         "surface.\nEvery action is gated, witnessed, and re-checkable.\n"),
-        Proposal(target="NOTES.md", justification="record the operating premises",
-                 reasoning="Now the premises, so the intent is on the record before going further.",
-                 content="- perceive the witnessed state, not memory\n- the gate decides every "
-                         "action\n- verify the work, then witness it\n"),
-    ])
+def _ollama_models(host):
+    """The local Ollama models, or None if Ollama isn't reachable. Stdlib only, short timeout."""
+    try:
+        with urllib.request.urlopen(host.rstrip("/") + "/api/tags", timeout=2) as r:
+            return [m.get("name") for m in json.loads(r.read()).get("models", [])]
+    except Exception:
+        return None
 
 
 def _build_pilot():
+    """Pick the best available mind: a cloud key, else a local Ollama model, else the offline
+    sight-reacting demo. Every choice is bounded by the same gate + verify + witness."""
     key = os.environ.get("ANTHROPIC_API_KEY")
     if key:
         return ClaudePilot(key, model=os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")), "claude"
-    return _demo_pilot(), "scripted-demo"
+    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    models = _ollama_models(host)
+    if models:
+        model = os.environ.get("OLLAMA_MODEL") or models[0] or "llama3.2"
+        return OllamaPilot(model, host=host), f"ollama:{model}"
+    return SightfulPilot(), "sightful-demo"
 
 
-def serve(host="127.0.0.1", port=8808, root=None, grant=None):
+def serve(host=None, port=8808, root=None, grant=None):
     global _WORLD
+    host = host or os.environ.get("ACCOUNTABLE_WORLD_HOST", "127.0.0.1")  # 0.0.0.0 to host on a droplet
     root = root or os.environ.get("ACCOUNTABLE_WORLD_ROOT") or (Path.cwd() / "world-sandbox")
     grant = grant or _load_grant() or _sandbox_grant()
     pilot, kind = _build_pilot()

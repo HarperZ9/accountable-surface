@@ -29,6 +29,36 @@ def witness_image(payload: bytes, *, cols: int = 48) -> dict:
     }
 
 
+def describe_sight(sight) -> str:
+    """A coarse, honest reading of the witnessed glyph grid — only what the grid itself shows.
+
+    Not semantic understanding: brightness coverage + where the bright mass sits + a compact-vs-broad
+    guess, each re-derivable from the same grid the model and spectator both see. Cites the phash so
+    the reading is anchored to the witnessed image, not asserted out of thin air.
+    """
+    rows = sight.get("ascii", [])
+    bright = total = sx = sy = n = 0
+    for y, row in enumerate(rows):
+        for x, c in enumerate(row):
+            total += 1
+            if c not in " .:":              # space/dot/colon are the dark end of the ramp
+                bright += 1
+                sx += x; sy += y; n += 1
+    total = total or 1
+    coverage = bright / total
+    w = len(rows[0]) if rows else 1
+    h = len(rows) or 1
+    cx = (sx / n) / w if n else 0.5
+    cy = (sy / n) / h if n else 0.5
+    horiz = "left" if cx < 0.4 else "right" if cx > 0.6 else "centre"
+    vert = "top" if cy < 0.4 else "bottom" if cy > 0.6 else "middle"
+    where = "the centre" if (horiz == "centre" and vert == "middle") else f"the {vert}-{horiz}"
+    shape = "a mostly dark field" if bright == 0 else (
+        "a compact bright region" if coverage < 0.45 else "a broad bright field")
+    return (f"{shape}, about {int(round(coverage * 100))}% bright, toward {where}; "
+            f"{w}×{h} glyph grid, phash {sight.get('phash')}")
+
+
 def sight_of(path, *, cols: int = 48) -> dict | None:
     """Witness an image file as sight; None if it isn't a decodable image (can't see != lying)."""
     p = Path(path)

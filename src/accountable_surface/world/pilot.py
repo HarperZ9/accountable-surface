@@ -17,6 +17,8 @@ import json
 import urllib.request
 from dataclasses import dataclass
 
+from .sight import describe_sight
+
 
 @dataclass(frozen=True)
 class Proposal:
@@ -43,15 +45,42 @@ class ScriptedPilot:
         return self._q.pop(0) if self._q else Proposal.finished("nothing left to do")
 
 
+class SightfulPilot:
+    """Reacts to what it SEES — offline, deterministic. Reads the witnessed glyph grid, says what it
+    can honestly tell from it, and records that observation. Proves the loop RESPONDS to sight (not
+    canned text) without any model; a real model (ClaudePilot/OllamaPilot) does this far richer."""
+
+    def __init__(self):
+        self._seen = set()
+
+    def propose(self, world_state, goal) -> Proposal:
+        for s in world_state.get("sights", []):
+            if s.get("digest") in self._seen:
+                continue
+            self._seen.add(s.get("digest"))
+            name = s.get("name", "image")
+            stem = name.rsplit(".", 1)[0]
+            desc = describe_sight(s)
+            return Proposal(
+                target=f"observation-{stem}.md",
+                content=f"# What I see in {name}\n\n{desc}\n\nWitnessed digest: {s.get('digest')}\n",
+                justification=f"record what I perceive in {name}",
+                reasoning=f"Looking at {name}, I see {desc}. I'll write that observation down.")
+        return Proposal.finished("I've recorded what I can see in the world.")
+
+
 _SYSTEM = (
     "You operate a body in a shared, accountable world. You are shown the WITNESSED state (real "
     "files, real content, real digests, the journal) — trust it over any memory of yours. Propose "
-    "exactly ONE next action toward the goal as a single JSON object and nothing else: "
-    '{"reasoning": "...", "kind": "fs.write", "target": "<file under the world root>", '
-    '"content": "<full new file content>", "justification": "<crisp premise>"}. '
-    'When the goal is met, return {"done": true, "reasoning": "..."}. Every action is gated by an '
-    "operator grant and verified by the body; propose only what is within the sandbox. If a write "
-    "was refused or failed, read the witnessed result and adjust rather than repeating it."
+    "exactly ONE next action toward the goal as a single JSON object and nothing else, for example: "
+    '{"reasoning": "the world has an image; I will describe what I see", "kind": "fs.write", '
+    '"target": "notes.md", "content": "the full file content here", "justification": "record what I see"}. '
+    "Use a real, NEW filename ending in .md for your notes; never overwrite an existing file or an "
+    'image. When the goal is met, return {"done": true, "reasoning": "..."}. Every action is gated '
+    "by an operator grant and verified by the body; propose only what is within the sandbox. If a "
+    "write was refused or failed, read the witnessed result and adjust rather than repeating it. "
+    "If the world shows you WHAT YOU SEE (a glyph grid of an image), say plainly what you observe in "
+    "it as part of your reasoning before you act."
 )
 
 
@@ -102,15 +131,32 @@ def _extract_json(text):
     return None
 
 
-def _to_proposal(obj) -> Proposal:
+def _to_proposal(obj):
+    """A Proposal from a parsed object, or None if it didn't parse (so the caller can retry a flaky
+    model). A legit {"done": true} is a Proposal, not a parse failure."""
     if not isinstance(obj, dict):
-        return Proposal.finished("could not parse a proposal from the model")
+        return None
     if obj.get("done"):
         return Proposal.finished(str(obj.get("reasoning", "")))
     return Proposal(kind=str(obj.get("kind", "fs.write")), target=str(obj.get("target", "")),
                     content=str(obj.get("content", "")),
                     justification=str(obj.get("justification", "")),
                     reasoning=str(obj.get("reasoning", "")))
+
+
+def _drive(post, body, extract_text, attempts):
+    """Call a model, retrying on UNPARSEABLE output (small/local models are flaky) — the scaffolding
+    compensating for where models are weak. A transport error or a clean run of unusable output
+    fails closed to a witnessed `done`, never a crash."""
+    for _ in range(max(1, attempts)):
+        try:
+            raw = post(body)
+        except Exception as exc:
+            return Proposal.finished(f"pilot unavailable: {exc!r}")
+        prop = _to_proposal(_extract_json(extract_text(raw)))
+        if prop is not None:
+            return prop
+    return Proposal.finished("the model did not return a usable action after retries")
 
 
 class ClaudePilot:
@@ -121,23 +167,23 @@ class ClaudePilot:
     witnessed `done` rather than crashing the loop.
     """
 
-    def __init__(self, api_key, model="claude-sonnet-4-6", *, post=None, max_tokens=1024):
+    def __init__(self, api_key, model="claude-sonnet-4-6", *, post=None, max_tokens=1024, attempts=3):
         self.api_key = api_key
         self.model = model
         self.max_tokens = max_tokens
+        self.attempts = attempts
         self._post = post or self._http_post
 
     def request_body(self, world_state, goal) -> dict:
         return {"model": self.model, "max_tokens": self.max_tokens, "system": _SYSTEM,
                 "messages": [{"role": "user", "content": _world_brief(world_state, goal)}]}
 
+    @staticmethod
+    def _text(raw) -> str:
+        return "".join(b.get("text", "") for b in (raw or {}).get("content", []) if isinstance(b, dict))
+
     def propose(self, world_state, goal) -> Proposal:
-        try:
-            raw = self._post(self.request_body(world_state, goal))
-        except Exception as exc:  # network / auth / decode — never crash the loop
-            return Proposal.finished(f"pilot unavailable: {exc!r}")
-        text = "".join(b.get("text", "") for b in (raw or {}).get("content", []) if isinstance(b, dict))
-        return _to_proposal(_extract_json(text))
+        return _drive(self._post, self.request_body(world_state, goal), self._text, self.attempts)
 
     def _http_post(self, body) -> dict:
         req = urllib.request.Request(
@@ -145,6 +191,38 @@ class ClaudePilot:
             headers={"content-type": "application/json", "x-api-key": self.api_key,
                      "anthropic-version": "2023-06-01"})
         with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read())
+
+
+class OllamaPilot:
+    """A real LOCAL model driving the body via Ollama's HTTP API (stdlib urllib; no SDK, no key, no
+    cloud). Reasons over the WITNESSED state — including the glyph grid, the same shared sight the
+    spectator sees. Even a small local model is kept honest by the gate + verify + witness; this is
+    the thesis made cheap to run: scaffolding that makes a weak model safe and useful."""
+
+    def __init__(self, model="llama3.2", *, host="http://localhost:11434", post=None, attempts=3):
+        self.model = model
+        self.host = host.rstrip("/")
+        self.attempts = attempts
+        self._post = post or self._http_post
+
+    def request_body(self, world_state, goal) -> dict:
+        return {"model": self.model, "stream": False,
+                "messages": [{"role": "system", "content": _SYSTEM},
+                             {"role": "user", "content": _world_brief(world_state, goal)}],
+                "options": {"temperature": 0.4}}
+
+    @staticmethod
+    def _text(raw) -> str:
+        return ((raw or {}).get("message") or {}).get("content", "")
+
+    def propose(self, world_state, goal) -> Proposal:
+        return _drive(self._post, self.request_body(world_state, goal), self._text, self.attempts)
+
+    def _http_post(self, body) -> dict:
+        req = urllib.request.Request(self.host + "/api/chat", data=json.dumps(body).encode("utf-8"),
+                                     headers={"content-type": "application/json"})
+        with urllib.request.urlopen(req, timeout=120) as r:
             return json.loads(r.read())
 
 
