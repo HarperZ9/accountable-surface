@@ -73,9 +73,11 @@ class WorldSession:
         return str(p)
 
     def act(self, *, kind, target, content="", justification="", reasoning="") -> WorldStep:
-        """Run one proposed action through the body's loop and witness the result."""
+        """Run one proposed action through the body's loop and witness the result. Total: any
+        proposal the surface can't honour becomes a witnessed refusal, never a crash."""
         if kind != "fs.write":
-            raise ValueError(f"unsupported action kind {kind!r} (this surface speaks fs.write)")
+            return _refused(kind, target, justification,
+                            f"unsupported action kind {kind!r} — this surface speaks fs.write", reasoning)
         try:
             tpath = self._resolve(target)
         except RefusedActuation as exc:
@@ -93,7 +95,7 @@ class WorldSession:
 
     def snapshot(self) -> dict:
         """The shared world's current state: the material, what the model sees, and the journal."""
-        files, sights = [], []
+        files, sights, notes = [], [], {}
         if self.root.exists():
             for p in sorted(self.root.iterdir()):
                 if not p.is_file():
@@ -103,6 +105,8 @@ class WorldSession:
                     seen = sight_of(p, cols=64)   # witnessed sight: the glyph grid the model sees
                     if seen:
                         sights.append(seen)
+                elif p.suffix.lower() in (".md", ".txt") and len(notes) < 5:
+                    notes[p.name] = _read_text(str(p))[:800]   # its own notes, to build on
         focus = None
         if self._focus and Path(self._focus).is_file():
             focus = {"name": Path(self._focus).name, "content": _read_text(self._focus)}
@@ -111,6 +115,7 @@ class WorldSession:
             "root": str(self.root),
             "files": files,
             "sights": sights,
+            "notes": notes,
             "focus": focus,
             "journal": [e.to_dict() for e in self.surface.journal],
             "grant": {"allowed_actions": list(scope.get("allowed_actions", [])),
