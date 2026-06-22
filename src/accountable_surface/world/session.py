@@ -32,6 +32,7 @@ class WorldStep:
     reasons: list
     certificate: dict        # the composed Certificate (gate . effect . grounding)
     material: str            # the target's content AFTER the turn — what both now see
+    reasoning: str = ""      # the proposer's voice: why this move (a model's narration, or "")
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -44,12 +45,12 @@ def _read_text(path: str) -> str:
         return ""
 
 
-def _refused(kind: str, target: str, justification: str, reason: str) -> WorldStep:
+def _refused(kind: str, target: str, justification: str, reason: str, reasoning: str = "") -> WorldStep:
     """A witnessed refusal — a bad proposal becomes a recorded 'no', never a crash."""
     return WorldStep(kind, target, justification, "deny", False, False, "refused-by-effector",
                      "", None, False, [reason],
                      {"claim": f"action: {kind} {target}", "verdict": "refuted",
-                      "oracle": "composed-v1", "evidence": [["refused", reason]]}, "")
+                      "oracle": "composed-v1", "evidence": [["refused", reason]]}, "", reasoning)
 
 
 class WorldSession:
@@ -70,24 +71,24 @@ class WorldSession:
             raise RefusedActuation(f"target {target!r} escapes the world root")
         return str(p)
 
-    def act(self, *, kind, target, content="", justification="") -> WorldStep:
+    def act(self, *, kind, target, content="", justification="", reasoning="") -> WorldStep:
         """Run one proposed action through the body's loop and witness the result."""
         if kind != "fs.write":
             raise ValueError(f"unsupported action kind {kind!r} (this surface speaks fs.write)")
         try:
             tpath = self._resolve(target)
         except RefusedActuation as exc:
-            return _refused(kind, target, justification, str(exc))
+            return _refused(kind, target, justification, str(exc), reasoning)
         try:
             out = self.surface.actuate(self.fs, target=tpath, content=content.encode("utf-8"),
                                        authorization=self.grant, justification=justification or None)
         except RefusedActuation as exc:
-            return _refused(kind, tpath, justification, str(exc))
+            return _refused(kind, tpath, justification, str(exc), reasoning)
         if out.acted and out.verified:
             self._focus = tpath
         return WorldStep(kind, tpath, justification, out.decision, out.acted, out.verified,
                          out.verdict, out.before_digest, out.after_digest, out.rolled_back,
-                         list(out.reasons), out.certificate, _read_text(tpath))
+                         list(out.reasons), out.certificate, _read_text(tpath), reasoning)
 
     def snapshot(self) -> dict:
         """The shared world's current state: the material, the focus, the witnessed journal."""
