@@ -43,6 +43,11 @@ class World:
         self._lock = threading.Lock()
         self._subs: list[queue.Queue] = []
         self._running = False
+        self._goal = ""
+
+    @property
+    def goal(self) -> str:
+        return self._goal
 
     def act(self, **kw) -> dict:
         with self._lock:
@@ -65,6 +70,9 @@ class World:
         if self.pilot is None or self._running:
             return
         self._running = True
+        self._goal = goal
+        for q in list(self._subs):
+            q.put(("status", {"goal": goal, "running": True, "pilot": self.pilot_kind}))
         try:
             autopilot(self, self.pilot, goal=goal, max_steps=max_steps,
                       should_continue=lambda: self._running)
@@ -112,10 +120,12 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/world":
             snap = _WORLD.snapshot()
-            snap["pilot"], snap["running"] = _WORLD.pilot_kind, _WORLD.running
+            snap["pilot"], snap["running"], snap["goal"] = _WORLD.pilot_kind, _WORLD.running, _WORLD.goal
             return self._send(200, snap)
         if path == "/world/stream":
             return self._stream()
+        if path == "/watch":
+            return self._static("watch.html")
         return self._static("index.html" if path == "/" else path.lstrip("/"))
 
     def do_POST(self):

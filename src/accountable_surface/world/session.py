@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ..surface import AccountableSurface
 from ..effector import FilesystemEffector, RefusedActuation
+from .sight import sight_of
 
 
 @dataclass(frozen=True)
@@ -91,12 +92,17 @@ class WorldSession:
                          list(out.reasons), out.certificate, _read_text(tpath), reasoning)
 
     def snapshot(self) -> dict:
-        """The shared world's current state: the material, the focus, the witnessed journal."""
-        files = []
+        """The shared world's current state: the material, what the model sees, and the journal."""
+        files, sights = [], []
         if self.root.exists():
             for p in sorted(self.root.iterdir()):
-                if p.is_file():
-                    files.append({"name": p.name, "size": p.stat().st_size})
+                if not p.is_file():
+                    continue
+                files.append({"name": p.name, "size": p.stat().st_size})
+                if p.suffix.lower() == ".png":
+                    seen = sight_of(p, cols=64)   # witnessed sight: the glyph grid the model sees
+                    if seen:
+                        sights.append(seen)
         focus = None
         if self._focus and Path(self._focus).is_file():
             focus = {"name": Path(self._focus).name, "content": _read_text(self._focus)}
@@ -104,6 +110,7 @@ class WorldSession:
         return {
             "root": str(self.root),
             "files": files,
+            "sights": sights,
             "focus": focus,
             "journal": [e.to_dict() for e in self.surface.journal],
             "grant": {"allowed_actions": list(scope.get("allowed_actions", [])),
