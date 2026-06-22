@@ -31,6 +31,7 @@ from coherence_membrane.membrane import build_gate_request, decide
 from coherence_membrane.observation import Observation, Provenance, Status, sha256_hex
 from coherence_membrane.organs.web import WebDocumentOrgan
 
+from accountable_surface.certify import action_certificate
 from accountable_surface.effector import RefusedActuation
 
 
@@ -79,6 +80,7 @@ class ActuationOutcome:
     before_digest: str
     after_digest: str | None
     grounding: Any = None  # the Grounding that justified the action (its citation), or None
+    certificate: dict = field(default_factory=dict)  # the composed action Certificate (to_dict)
 
 
 @dataclass(frozen=True)
@@ -306,6 +308,12 @@ class AccountableSurface:
     ) -> ActuationOutcome:
         """Journal an actuation outcome (a witnessed before/after digest pair) and
         return it. The surface attests to what it did, not merely that it tried."""
+        cert = action_certificate(
+            decision=decision, verdict=verdict, acted=acted,
+            before_digest=before.provenance.digest,
+            after_digest=after.provenance.digest if after is not None else None,
+            grounding=grounding,
+        )
         state = "not-acted" if not acted else ("verified" if verified else "UNVERIFIED")
         self._record(
             JournalEntry(
@@ -322,6 +330,7 @@ class AccountableSurface:
                     "after_sha256": after.data.get("sha256") if after is not None else None,
                     "grounding": ({"confidence": grounding.confidence, "digest": grounding.digest}
                                   if grounding is not None else None),
+                    "certificate": cert.to_dict(),
                 },
             )
         )
@@ -335,6 +344,7 @@ class AccountableSurface:
             before_digest=before.provenance.digest,
             after_digest=after.provenance.digest if after is not None else None,
             grounding=grounding,
+            certificate=cert.to_dict(),
         )
 
     def pursue(
