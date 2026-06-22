@@ -53,6 +53,13 @@ def test_refused_by_effector_is_refuted():
     assert c.verdict is Verdict.REFUTED              # gate allowed, effector's bound refused
 
 
+def test_irreversible_escalation_is_unverifiable():
+    # needs-human gate + a grounded premise: the escalation (not the grounding) governs
+    c = action_certificate(decision="needs-human", verdict="irreversible-needs-human", acted=False,
+                           before_digest="b", after_digest=None, grounding=_g("grounded"))
+    assert c.verdict is Verdict.UNVERIFIABLE         # UNVERIFIABLE gate meets VERIFIED grounding
+
+
 def test_evidence_carries_step_oracles():
     c = action_certificate(decision="allow", verdict="pass", acted=True,
                            before_digest="b", after_digest="a", grounding=_g("grounded"))
