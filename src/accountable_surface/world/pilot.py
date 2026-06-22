@@ -144,13 +144,16 @@ class ClaudePilot:
             return json.loads(r.read())
 
 
-def autopilot(world, pilot, *, goal, max_steps=6):
+def autopilot(world, pilot, *, goal, max_steps=6, should_continue=None):
     """The mind drives the body: perceive witnessed state -> propose -> gate+act+verify+witness ->
-    feed the real outcome back -> repeat. Bounded by max_steps and the pilot's own `done`.
-    `world` is anything with .snapshot() -> dict and .act(**kw) -> dict | WorldStep.
+    feed the real outcome back -> repeat. Bounded by max_steps, the pilot's own `done`, and an
+    optional `should_continue()` predicate (the operator's stop). `world` is anything with
+    .snapshot() -> dict and .act(**kw) -> dict | WorldStep.
     """
     steps = []
     for _ in range(max(0, max_steps)):
+        if should_continue is not None and not should_continue():
+            break
         prop = pilot.propose(world.snapshot(), goal)
         if prop is None or prop.done:
             break

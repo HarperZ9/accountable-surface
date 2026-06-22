@@ -7,6 +7,7 @@ see the body act in real time), and the snapshot reflects the world. Offline, st
 from __future__ import annotations
 
 from accountable_surface.world.server import World, _sandbox_grant
+from accountable_surface.world.pilot import ScriptedPilot, Proposal
 
 
 def test_act_runs_the_loop_and_notifies_subscribers(tmp_path):
@@ -40,3 +41,17 @@ def test_snapshot_reflects_the_world(tmp_path):
     snap = w.snapshot()
     assert "y.txt" in [f["name"] for f in snap["files"]]
     assert snap["grant"]["allowed_actions"] == ["fs.write"]
+
+
+def test_run_autopilot_drives_the_body_and_streams_to_watchers(tmp_path):
+    pilot = ScriptedPilot([Proposal(target="a.txt", content="x", reasoning="first move"),
+                           Proposal(target="b.txt", content="y", reasoning="second move")])
+    w = World(tmp_path / "w", _sandbox_grant(), pilot, "scripted")
+    q = w.subscribe()
+    w.run_autopilot("write two notes", max_steps=5)
+    assert (tmp_path / "w" / "b.txt").read_text() == "y"   # the mind really drove the hands
+    assert w.running is False
+    kinds = []
+    while not q.empty():
+        kinds.append(q.get_nowait()[0])
+    assert kinds.count("step") == 2 and "autopilot" in kinds  # both steps + the finished signal streamed
