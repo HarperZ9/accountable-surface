@@ -77,3 +77,38 @@ def test_faulty_actuation_is_caught_and_rolled_back(tmp_path):
     assert out.verified is False  # the surface caught its own bad work
     assert out.rolled_back is True
     assert Path(target).read_bytes() == b"original"  # restored
+
+
+def test_verified_actuation_carries_composed_certificate(tmp_path):
+    s = AccountableSurface()
+    eff = FilesystemEffector(tmp_path)
+    target = str(tmp_path / "f.txt")
+    out = s.actuate(eff, target=target, content=b"hello", authorization=_grant(["fs.write"]))
+    assert out.verified is True
+    assert out.certificate["verdict"] == "verified"   # gate allow . effect pass -> VERIFIED
+    assert out.certificate["oracle"] == "composed-v1"
+    act = [e for e in s.journal if e.kind == "actuation"][-1]
+    assert act.detail["certificate"]["verdict"] == "verified"  # the witness IS the verdict
+
+
+def test_denied_actuation_certificate_is_refuted(tmp_path):
+    s = AccountableSurface()
+    eff = FilesystemEffector(tmp_path)
+    target = str(tmp_path / "f.txt")
+    out = s.actuate(eff, target=target, content=b"hello", authorization={})  # no grant -> deny
+    assert out.acted is False
+    assert out.certificate["verdict"] == "refuted"    # gate deny -> REFUTED
+
+
+def test_rolled_back_actuation_certificate_is_refuted(tmp_path):
+    # the faulty write fails re-perception -> effect REFUTED -> action REFUTED (honest)
+    class FaultyEffector(FilesystemEffector):
+        def _write(self, path, content):
+            path.write_bytes(b"CORRUPTED")
+
+    s = AccountableSurface()
+    eff = FaultyEffector(tmp_path)
+    target = str(tmp_path / "f.txt")
+    Path(target).write_bytes(b"original")
+    out = s.actuate(eff, target=target, content=b"hello", authorization=_grant(["fs.write"]))
+    assert out.certificate["verdict"] == "refuted"
