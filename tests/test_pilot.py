@@ -12,7 +12,7 @@ from pathlib import Path
 from accountable_surface.world.session import WorldSession
 from accountable_surface.world.server import _sandbox_grant
 from accountable_surface.world.pilot import (
-    Proposal, ScriptedPilot, ClaudePilot, autopilot, _extract_json,
+    Proposal, ScriptedPilot, ClaudePilot, OllamaPilot, SightfulPilot, autopilot, _extract_json,
 )
 
 
@@ -91,3 +91,38 @@ def test_extract_json_pulls_a_balanced_object_from_prose():
     obj = _extract_json('blah {"a": {"b": 1}, "c": "}"} trailing')
     assert obj == {"a": {"b": 1}, "c": "}"}
     assert _extract_json("no json here") is None
+
+
+def test_sightful_pilot_reacts_to_what_it_sees():
+    sight = {"name": "diagram.png", "kind": "image", "width": 40, "height": 40,
+             "ascii": ["   @@@   ", "  @@@@@  ", "   @@@   "], "phash": "00ff00ff00ff00ff",
+             "digest": "sha256:abc"}
+    p = SightfulPilot()
+    prop = p.propose({"sights": [sight]}, "observe the world")
+    assert prop.done is False
+    assert prop.kind == "fs.write" and prop.target.startswith("observation-diagram")
+    assert "diagram.png" in prop.content
+    assert "see" in prop.reasoning.lower()          # the mind's voice references what it sees
+    assert p.propose({"sights": [sight]}, "x").done is True  # doesn't re-observe the same image
+
+
+def test_sightful_pilot_done_when_nothing_to_see():
+    assert SightfulPilot().propose({"sights": []}, "g").done is True
+
+
+def test_ollama_pilot_builds_request_and_parses_response():
+    op = OllamaPilot("qwen2.5:0.5b", host="http://localhost:11434")
+    body = op.request_body({"files": [], "sights": []}, "do it")
+    assert body["model"] == "qwen2.5:0.5b" and body["stream"] is False
+    assert body["messages"][0]["role"] == "system"
+    assert "GOAL: do it" in body["messages"][1]["content"]
+    canned = {"message": {"content":
+              '{"reasoning":"a readme","kind":"fs.write","target":"R.md","content":"# Hi","justification":"doc"}'}}
+    prop = OllamaPilot("m", post=lambda b: canned).propose({}, "g")
+    assert prop.target == "R.md" and prop.reasoning == "a readme"
+
+
+def test_ollama_pilot_fails_closed_on_transport_error():
+    def boom(_):
+        raise RuntimeError("ollama down")
+    assert OllamaPilot("m", post=boom).propose({}, "g").done is True

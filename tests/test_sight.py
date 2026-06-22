@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from coherence_membrane.pngencode import encode_png
 
-from accountable_surface.world.sight import witness_image, sight_of
+from accountable_surface.world.sight import witness_image, sight_of, describe_sight
 
 
 def _gradient_png(w=16, h=8):
@@ -49,3 +49,23 @@ def test_sight_of_a_non_image_is_none(tmp_path):
     p = tmp_path / "note.txt"
     p.write_text("not an image", encoding="utf-8")
     assert sight_of(p) is None  # can't see it as an image != lying about it
+
+
+def _disc_png(w=40, h=40):
+    import math
+    px = bytearray()
+    cx, cy, r = w / 2, h / 2, min(w, h) * 0.35
+    for y in range(h):
+        for x in range(w):
+            v = 235 if math.hypot(x - cx, y - cy) < r else 22
+            px += bytes([v, v, v])
+    return encode_png(w, h, bytes(px), channels=3)
+
+
+def test_describe_sight_reads_the_glyph_grid_honestly():
+    sight = witness_image(_disc_png(), cols=32)
+    desc = describe_sight(sight)
+    assert isinstance(desc, str) and desc
+    assert "%" in desc                 # an honest coverage estimate
+    assert sight["phash"] in desc      # cites the witnessed phash (re-checkable)
+    assert any(w in desc.lower() for w in ("bright", "region", "field"))  # says what it sees
