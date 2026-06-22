@@ -6,8 +6,10 @@ see the body act in real time), and the snapshot reflects the world. Offline, st
 """
 from __future__ import annotations
 
+from coherence_membrane.pngencode import encode_png
+
 from accountable_surface.world.server import World, _sandbox_grant
-from accountable_surface.world.pilot import ScriptedPilot, Proposal
+from accountable_surface.world.pilot import ScriptedPilot, SightfulPilot, Proposal
 
 
 def test_act_runs_the_loop_and_notifies_subscribers(tmp_path):
@@ -41,6 +43,19 @@ def test_snapshot_reflects_the_world(tmp_path):
     snap = w.snapshot()
     assert "y.txt" in [f["name"] for f in snap["files"]]
     assert snap["grant"]["allowed_actions"] == ["fs.write"]
+
+
+def test_chat_grounds_in_the_sight_and_remembers(tmp_path):
+    root = tmp_path / "w"
+    root.mkdir()
+    (root / "pic.png").write_bytes(encode_png(8, 8, bytes([200] * 8 * 8 * 3), channels=3))
+    w = World(root, _sandbox_grant(), SightfulPilot(), "sightful")  # no converse -> offline reply
+    r1 = w.chat("what do you see?")
+    assert "make out" in r1["reply"].lower()    # an honest reading of the shared sight
+    assert len(r1["history"]) == 2              # user + assistant, remembered
+    r2 = w.chat("anything else?")
+    assert len(r2["history"]) == 4              # the conversation accumulates (small memory)
+    assert w.chat_history[-1]["role"] == "assistant"
 
 
 def test_run_autopilot_drives_the_body_and_streams_to_watchers(tmp_path):

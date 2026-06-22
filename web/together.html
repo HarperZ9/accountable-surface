@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Together · The Shared World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Schibsted+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0b1516; --void-2:#0f2122; --bone:#e9e2d0; --orange:#df5e00; --ember:#efab30;
+    --prussian:#476762; --muted:#8a9b92; --hairline:rgba(239,171,48,.16);
+    --serif:"EB Garamond",Georgia,serif; --disp:"Schibsted Grotesk",system-ui,sans-serif;
+    --mono:"Spline Sans Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(120% 90% at 50% -10%,var(--void-2),var(--void) 62%);
+    color:var(--bone);font-family:var(--serif);-webkit-font-smoothing:antialiased;padding:clamp(1rem,2.5vw,2rem)}
+  .wrap{max-width:1280px;margin:0 auto}
+  header.top{text-align:center;margin:.4rem auto 1.4rem;max-width:46rem}
+  .eyebrow{font-family:var(--mono);font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ember);margin-bottom:.7rem}
+  h1{font-family:var(--disp);font-weight:700;font-size:clamp(1.7rem,4vw,2.8rem);margin:.1rem 0 .5rem;letter-spacing:-.01em}
+  .lede{font-size:clamp(1rem,1.4vw,1.18rem);color:#d7cfba}
+  .lede em{color:var(--ember);font-style:italic}
+
+  .stage{display:grid;grid-template-columns:1.4fr 1fr;gap:clamp(1rem,2vw,1.6rem);align-items:start}
+  .panel{border:1px solid var(--hairline);border-radius:14px;background:rgba(15,33,34,.5);padding:1rem 1.1rem;min-width:0}
+  .panel h2{font-family:var(--disp);font-weight:600;font-size:.82rem;margin:0 0 .12rem}
+  .panel .sub{font-family:var(--mono);font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:.8rem}
+
+  /* the bring-your-own viewer + overlay wipe */
+  .drop{border:1.5px dashed rgba(239,171,48,.4);border-radius:12px;padding:2.4rem 1rem;text-align:center;cursor:pointer;
+    transition:background .15s,border-color .15s;color:var(--muted);font-family:var(--serif)}
+  .drop:hover,.drop.over{background:rgba(239,171,48,.07);border-color:var(--ember);color:var(--bone)}
+  .drop b{color:var(--ember);font-weight:500}
+  .drop small{display:block;margin-top:.5rem;font-family:var(--mono);font-size:.58rem;color:var(--prussian)}
+  .viewer{position:relative;width:100%;border-radius:10px;overflow:hidden;background:#000;display:none;border:1px solid rgba(0,0,0,.5)}
+  .viewer.on{display:block}
+  #photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  #ascii{position:absolute;inset:0;margin:0;overflow:hidden;white-space:pre;font-family:var(--mono);color:var(--ember);
+    text-shadow:0 0 10px rgba(239,171,48,.5);background:rgba(7,12,12,.62);clip-path:inset(0 0 0 var(--wipe,50%))}
+  .seam{position:absolute;top:0;bottom:0;left:var(--wipe,50%);width:1px;background:var(--ember);box-shadow:0 0 10px var(--ember);pointer-events:none}
+  .wipe-row{display:flex;align-items:center;gap:.7rem;margin-top:.7rem;font-family:var(--mono);font-size:.58rem;color:var(--muted);letter-spacing:.04em}
+  .wipe-row input[type=range]{flex:1;accent-color:var(--ember)}
+  .wipe-row b{color:var(--bone);font-weight:400}
+  .sight-meta{font-family:var(--mono);font-size:.54rem;color:var(--prussian);margin-top:.5rem;word-break:break-all}
+
+  /* the conversation + memory */
+  .chat{display:flex;flex-direction:column;height:100%}
+  .chat-log{flex:1;min-height:300px;max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:.6rem;padding:.2rem .1rem .6rem}
+  .msg{font-size:.95rem;line-height:1.5;padding:.55rem .8rem;border-radius:10px;max-width:92%;animation:rise .3s ease}
+  .msg.user{align-self:flex-end;background:rgba(239,171,48,.1);border:1px solid rgba(239,171,48,.22);color:var(--bone)}
+  .msg.assistant{align-self:flex-start;background:rgba(20,40,40,.6);border:1px solid var(--hairline);color:#dcd4c0}
+  .msg .who{display:block;font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--prussian);margin-bottom:.2rem}
+  @keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .chat-empty{color:var(--muted);font-style:italic;text-align:center;margin:auto;font-size:.95rem}
+  .compose{display:flex;gap:.5rem;margin-top:.6rem}
+  .compose input{flex:1;font-family:var(--serif);font-size:.95rem;color:var(--bone);background:rgba(0,0,0,.28);
+    border:1px solid var(--hairline);border-radius:9px;padding:.6em .8em}
+  .compose input:focus{outline:none;border-color:var(--ember)}
+  .btn{font-family:var(--mono);font-size:.64rem;letter-spacing:.04em;color:var(--ember);cursor:pointer;background:transparent;
+    border:1px solid rgba(239,171,48,.4);border-radius:9px;padding:.6em 1em;white-space:nowrap;transition:background .15s}
+  .btn:hover,.btn:focus-visible{background:rgba(239,171,48,.1);outline:none}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  .status{font-family:var(--mono);font-size:.56rem;color:var(--muted);text-align:center;margin-top:1rem}
+  .status .pk{color:var(--ember)}
+  footer{text-align:center;margin-top:1.6rem;font-family:var(--mono);font-size:.54rem;color:var(--muted)}
+  footer a{color:var(--prussian)}
+  @media (max-width:860px){.stage{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">bring your own &middot; observe it together</div>
+    <h1>Together</h1>
+    <p class="lede">Put something of <em>yours</em> in the world — a photo, anything. You'll see it;
+      the model sees the same thing, <em>witnessed</em>. Drag the seam to watch your image become
+      what it perceives — then talk about it together.</p>
+  </header>
+
+  <main class="stage">
+
+    <section class="panel" aria-labelledby="h-view">
+      <h2 id="h-view">What you both see</h2>
+      <div class="sub">your image &middot; drag the seam to reveal the model's sight</div>
+
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="add an image">
+        <b>Drop a photo here</b>, or click to choose one
+        <small>jpg · png · gif · webp — it never leaves your machine except as a witnessed grid</small>
+        <input type="file" id="file" accept="image/*" hidden>
+      </div>
+
+      <div class="viewer" id="viewer">
+        <img id="photo" alt="your image">
+        <pre id="ascii" aria-label="the witnessed glyph grid the model sees"></pre>
+        <span class="seam" id="seam"></span>
+      </div>
+      <div class="wipe-row" id="wipe-row" hidden>
+        <span>what you see</span>
+        <input type="range" id="wipe" min="0" max="100" value="50" aria-label="reveal the model's sight">
+        <span>what the model sees</span>
+      </div>
+      <div class="sight-meta" id="sight-meta"></div>
+    </section>
+
+    <section class="panel chat" aria-labelledby="h-chat">
+      <h2 id="h-chat">Talk about it</h2>
+      <div class="sub">a small conversation &middot; the model remembers</div>
+      <div class="chat-log" id="chat-log"><div class="chat-empty" id="chat-empty">add an image, then ask the model what it sees</div></div>
+      <div class="compose">
+        <input id="chat-input" placeholder="ask about what you both see…" autocomplete="off">
+        <button class="btn" id="chat-send" type="button">Send</button>
+      </div>
+    </section>
+
+  </main>
+
+  <p class="status" id="status">pilot: <span class="pk" id="pilot">…</span> · grounded in the witnessed sight · the model only knows what it can see</p>
+  <footer>your media, observed natively · the model sees a witnessed grid it can't fabricate · <a href="/watch">watch view</a> · <a href="/">operator view</a></footer>
+
+</div>
+<script type="module" src="./together.js"></script>
+</body>
+</html>

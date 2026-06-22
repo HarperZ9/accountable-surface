@@ -115,6 +115,40 @@ def _world_brief(world_state, goal) -> str:
             "Propose the next action as one JSON object.")
 
 
+_CHAT_SYSTEM = (
+    "You and the operator share a world and are looking at the SAME thing — a witnessed glyph grid "
+    "of their image (what you both see). Talk with them about what you observe in it: answer their "
+    "messages, grounded in the witnessed grid. Be brief and natural, and honest — if the grid is "
+    "coarse, say what you can and can't make out. You are not taking actions here, just discussing "
+    "what you both see."
+)
+
+
+def _chat_brief(world_state) -> str:
+    """What you both see, for the conversation — the witnessed grid(s), no action instructions."""
+    parts = ["You and the operator are looking at this together:"]
+    for s in world_state.get("sights", []) or []:
+        parts.append(f"\n{s.get('name')} ({s.get('width')}x{s.get('height')}), the witnessed glyph grid:\n"
+                     + "\n".join(s.get("ascii", [])))
+    reel = world_state.get("reel")
+    if reel:
+        parts.append(f"\nA {reel['count']}-frame reel is also playing; one frame:\n"
+                     + "\n".join((reel.get("sample") or {}).get("ascii", [])))
+    if len(parts) == 1:
+        parts.append(" (nothing is in view yet.)")
+    return "".join(parts)
+
+
+def _chat_messages(world_state, history, message):
+    """The shared-view brief, then the recent conversation, then the operator's message."""
+    msgs = [{"role": "user", "content": _chat_brief(world_state)}]
+    for h in (history or [])[-8:]:
+        msgs.append({"role": "assistant" if h.get("role") == "assistant" else "user",
+                     "content": h.get("text", "")})
+    msgs.append({"role": "user", "content": message})
+    return msgs
+
+
 def _extract_json(text):
     """Pull the first balanced {...} object out of the model's text (string-aware; it may wrap it)."""
     start = text.find("{")
@@ -199,6 +233,14 @@ class ClaudePilot:
     def propose(self, world_state, goal) -> Proposal:
         return _drive(self._post, self.request_body(world_state, goal), self._text, self.attempts)
 
+    def converse(self, world_state, history, message) -> str:
+        body = {"model": self.model, "max_tokens": self.max_tokens, "system": _CHAT_SYSTEM,
+                "messages": _chat_messages(world_state, history, message)}
+        try:
+            return (self._text(self._post(body)) or "").strip() or "(no reply)"
+        except Exception as exc:
+            return f"(unavailable: {exc})"
+
     def _http_post(self, body) -> dict:
         req = urllib.request.Request(
             "https://api.anthropic.com/v1/messages", data=json.dumps(body).encode("utf-8"),
@@ -232,6 +274,14 @@ class OllamaPilot:
 
     def propose(self, world_state, goal) -> Proposal:
         return _drive(self._post, self.request_body(world_state, goal), self._text, self.attempts)
+
+    def converse(self, world_state, history, message) -> str:
+        msgs = [{"role": "system", "content": _CHAT_SYSTEM}] + _chat_messages(world_state, history, message)
+        body = {"model": self.model, "stream": False, "messages": msgs, "options": {"temperature": 0.6}}
+        try:
+            return (self._text(self._post(body)) or "").strip() or "(no reply)"
+        except Exception as exc:
+            return f"(unavailable: {exc})"
 
     def _http_post(self, body) -> dict:
         req = urllib.request.Request(self.host + "/api/chat", data=json.dumps(body).encode("utf-8"),
