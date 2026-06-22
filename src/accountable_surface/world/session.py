@@ -15,6 +15,7 @@ from pathlib import Path
 from ..surface import AccountableSurface
 from ..effector import FilesystemEffector, RefusedActuation
 from .sight import sight_of
+from .reel import load_reel
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,7 @@ class WorldSession:
         self.surface = AccountableSurface(journal_path=journal_path)
         self.fs = FilesystemEffector(self.root)
         self._focus: str | None = None
+        self.reel = load_reel(self.root / "reel")   # moving material, if a reel/ of frames exists
 
     def _resolve(self, target: str) -> str:
         """Absolute path under root for `target`; refuse anything that escapes the world root."""
@@ -110,12 +112,17 @@ class WorldSession:
         focus = None
         if self._focus and Path(self._focus).is_file():
             focus = {"name": Path(self._focus).name, "content": _read_text(self._focus)}
+        reel = None
+        if self.reel:   # a light marker (count + one sampled frame); full frames served via /reel
+            reel = {"count": self.reel["count"], "fps": self.reel["fps"],
+                    "sample": self.reel["frames"][0]}
         scope = (self.grant or {}).get("scope", {})
         return {
             "root": str(self.root),
             "files": files,
             "sights": sights,
             "notes": notes,
+            "reel": reel,
             "focus": focus,
             "journal": [e.to_dict() for e in self.surface.journal],
             "grant": {"allowed_actions": list(scope.get("allowed_actions", [])),

@@ -14,7 +14,27 @@ function setNow(goal) {
   $("now").innerHTML = goal ? `now: ${esc(goal)}` : "<b>idle — waiting for a goal</b>";
 }
 
+// ---- the ASCII video player: moving material, played a witnessed frame at a time ----
+let reel = null, reelIdx = 0, reelTimer = null;
+
+function renderReelFrame() {
+  const f = reel.frames[reelIdx];
+  $("screen").innerHTML = `<pre class="sight">${esc(f.ascii.join("\n"))}</pre>`;
+  $("stage-cap").innerHTML = `the stage &middot; <b>moving material</b> &middot; ▶ frame ${reelIdx + 1}/${reel.count}`;
+  $("sightmeta").textContent = `${f.width}×${f.height} · phash ${f.phash} · ${reel.fps} fps · each frame witnessed`;
+}
+
+function playReel(r) {
+  if (reelTimer) clearInterval(reelTimer);
+  reel = r;
+  if (!reel || !reel.count) { reelTimer = null; return; }
+  reelIdx = 0;
+  renderReelFrame();
+  reelTimer = setInterval(() => { reelIdx = (reelIdx + 1) % reel.count; renderReelFrame(); }, 1000 / (reel.fps || 8));
+}
+
 function renderStage(snap) {
+  if (reelTimer) return;   // a reel is playing — it owns the stage (moving material is the headline)
   const screen = $("screen");
   const sights = snap.sights || [];
   if (sights.length) {                              // show what the model sees — the witnessed grid
@@ -68,6 +88,10 @@ async function init() {
     setNow(d.goal); setLive(!!d.running, d.running ? "live" : "idle");
     renderStage(d);
   } catch (e) { /* the stream will drive the view */ }
+  try {
+    const rl = await (await fetch("./reel")).json();
+    if (rl && rl.count) playReel(rl);   // moving material present — start the ASCII video player
+  } catch (e) { /* no reel */ }
 }
 
 function connect() {

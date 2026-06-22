@@ -125,6 +125,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, snap)
         if path == "/world/stream":
             return self._stream()
+        if path == "/reel":
+            return self._send(200, _WORLD.session.reel or {"count": 0, "fps": 0, "frames": []})
         if path == "/watch":
             return self._static("watch.html")
         return self._static("index.html" if path == "/" else path.lstrip("/"))
