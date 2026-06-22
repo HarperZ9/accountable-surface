@@ -51,6 +51,16 @@ def test_out_of_grant_action_is_denied_and_refuted(tmp_path):
     assert not (Path(tmp_path) / "world" / "note.txt").exists()  # no effect on the world
 
 
+def test_unsupported_action_kind_is_a_witnessed_refusal_not_a_crash(tmp_path):
+    # a model may propose anything (e.g. fs.append); the surface refuses + witnesses, never crashes
+    ws = WorldSession(tmp_path / "world", _grant(["fs.write"]))
+    step = ws.act(kind="fs.append", target="note.txt", content="x", justification="extend")
+    assert step.acted is False
+    assert step.decision == "deny"
+    assert step.certificate["verdict"] == "refuted"
+    assert "unsupported action kind" in step.reasons[0]
+
+
 def test_snapshot_reflects_world_root_and_journal(tmp_path):
     ws = WorldSession(tmp_path / "world", _grant(["fs.write"]))
     ws.act(kind="fs.write", target="a.txt", content="alpha", justification="first")

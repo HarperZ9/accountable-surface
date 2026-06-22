@@ -76,11 +76,15 @@ _SYSTEM = (
     '{"reasoning": "the world has an image; I will describe what I see", "kind": "fs.write", '
     '"target": "notes.md", "content": "the full file content here", "justification": "record what I see"}. '
     "Use a real, NEW filename ending in .md for your notes; never overwrite an existing file or an "
-    'image. When the goal is met, return {"done": true, "reasoning": "..."}. Every action is gated '
+    "image. The only action is fs.write — to extend a note, write its FULL new content (there is no "
+    'append). When the goal is met, return {"done": true, "reasoning": "..."}. Every action is gated '
     "by an operator grant and verified by the body; propose only what is within the sandbox. If a "
     "write was refused or failed, read the witnessed result and adjust rather than repeating it. "
     "If the world shows you WHAT YOU SEE (a glyph grid of an image), say plainly what you observe in "
-    "it as part of your reasoning before you act."
+    "it as part of your reasoning before you act. Make REAL progress each step: build on the files "
+    "you have already written (shown in FILES and their content) toward the goal — first record what "
+    "you observe, then in later steps extend or refine your own notes; never rewrite a file you just "
+    "wrote unchanged. Return done only when the goal is genuinely met."
 )
 
 
@@ -95,8 +99,12 @@ def _world_brief(world_state, goal) -> str:
     for s in world_state.get("sights", []):
         sight += (f"\nWHAT YOU SEE — {s.get('name')} ({s.get('width')}x{s.get('height')}, "
                   f"phash {s.get('phash')}), the witnessed glyph grid:\n" + "\n".join(s.get("ascii", [])) + "\n")
+    note_block = ""
+    for name, content in (world_state.get("notes") or {}).items():
+        note_block += f"\n--- your note {name} ---\n{content}\n"
     return (f"GOAL: {goal}\nWORLD ROOT: {world_state.get('root', '')}\nFILES: {files}\n"
-            f"FOCUS: {focus.get('name', '(none)')}\n--- focus content ---\n{focus.get('content', '')}\n---{sight}\n"
+            f"FOCUS: {focus.get('name', '(none)')}{sight}\n"
+            f"YOUR NOTES SO FAR:{note_block or ' (none yet)'}\n"
             f"RECENT WITNESSED JOURNAL: {recent}\nGRANTED ACTIONS: {grant}\n"
             "Propose the next action as one JSON object.")
 
@@ -239,7 +247,10 @@ def autopilot(world, pilot, *, goal, max_steps=6, should_continue=None):
         prop = pilot.propose(world.snapshot(), goal)
         if prop is None or prop.done:
             break
-        step = world.act(kind=prop.kind, target=prop.target, content=prop.content,
-                         justification=prop.justification, reasoning=prop.reasoning)
+        try:
+            step = world.act(kind=prop.kind, target=prop.target, content=prop.content,
+                             justification=prop.justification, reasoning=prop.reasoning)
+        except Exception:
+            break  # a proposal the surface can't even attempt ends the run safely
         steps.append(step if isinstance(step, dict) else step.to_dict())
     return steps
