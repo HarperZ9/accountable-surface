@@ -14,10 +14,18 @@ from pathlib import Path
 
 from ..surface import AccountableSurface
 from ..effector import FilesystemEffector, RefusedActuation
+from ..grant import action_authorization
 from .sight import sight_of
 from .reel import load_reel
 
 SIGHT_COLS = 96   # shared constant: columns used when rendering a PNG into the snapshot sight
+
+
+def screen_capture_allowed(grant) -> bool:
+    """True iff the grant authorizes 'screen' perception. Default-deny, total."""
+    scope = (grant or {}).get("scope", {})
+    return "screen" in (scope.get("allowed_perceptions") or [])
+
 
 
 @dataclass(frozen=True)
@@ -88,7 +96,7 @@ class WorldSession:
             return _refused(kind, target, justification, str(exc), reasoning)
         try:
             out = self.surface.actuate(self.fs, target=tpath, content=content.encode("utf-8"),
-                                       authorization=self.grant, justification=justification or None)
+                                       authorization=action_authorization(self.grant), justification=justification or None)
         except RefusedActuation as exc:
             return _refused(kind, tpath, justification, str(exc), reasoning)
         if out.acted and out.verified:
