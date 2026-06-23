@@ -57,7 +57,14 @@ function showOverlay(dataUrl, sight) {
   photo.onload = () => {
     $("viewer").style.aspectRatio = (photo.naturalWidth / photo.naturalHeight) || 1;
     fitAscii(sight);
+    const cv = $("overlay");
+    if (cv && window.drawContours) {
+      cv.width = photo.clientWidth; cv.height = photo.clientHeight;
+      const st = sight.structure || {};
+      window.drawContours(cv.getContext("2d"), st.coords || [], cv.width, cv.height);
+    }
   };
+  if (window.renderColorMap) window.renderColorMap($("color-map"), sight.color);
   photo.src = dataUrl;
   setWipe($("wipe").value);
   const empty = $("chat-empty"); if (empty) empty.remove();
