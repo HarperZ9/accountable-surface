@@ -92,18 +92,6 @@ def _granted_world(tmp_path):
     return World(tmp_path, grant)
 
 
-def _drain(world):
-    q = world.subscribe()
-    events = []
-    try:
-        while True:
-            events.append(q.get_nowait())
-    except Exception:
-        pass
-    finally:
-        world.unsubscribe(q)
-    return events
-
 
 def test_start_capture_refused_without_grant(tmp_path):
     world = World(tmp_path, _sandbox_grant())          # default: no 'screen'
@@ -144,3 +132,25 @@ def test_run_capture_refused_when_backend_unavailable(tmp_path):
     finally:
         world.unsubscribe(q)
     assert any(k == "capture" and "error" in d for (k, d) in events)
+
+
+def test_start_capture_refused_when_already_capturing(tmp_path):
+    world = _granted_world(tmp_path)
+    world._screen_source = lambda region: IterableFrameSource([_disc_png()])  # backend present
+    world._capturing = True                                                   # already running
+    res = world.start_capture()
+    assert "already running" in res["error"]
+
+
+def test_start_capture_refused_when_no_backend(tmp_path):
+    world = _granted_world(tmp_path)
+    world._screen_source = lambda region: None                                # simulate no backend
+    res = world.start_capture(region=[0, 0, 10, 10])
+    assert "backend" in res["error"]
+
+
+def test_stop_capture_clears_the_flag(tmp_path):
+    world = _granted_world(tmp_path)
+    world._capturing = True
+    world.stop_capture()
+    assert world._capturing is False
