@@ -38,7 +38,7 @@ def _luma_field(img, target_w: int = _TARGET_W) -> Field:
                 for xx in range(x0, x1):
                     i = (base + xx) * ch
                     if ch >= 3:
-                        r, g, b = px[i], px[i + 1], px[i + 2]
+                        r, g, b = px[i], px[i + 1], px[i + 2]   # alpha (ch==4) ignored: luma only
                     else:
                         r = g = b = px[i]
                     s += 0.299 * r + 0.587 * g + 0.114 * b
@@ -57,7 +57,7 @@ def _outline(n_contours: int, bbox, fw: int, fh: int) -> str:
     horiz = "left" if cx < 0.4 else "right" if cx > 0.6 else "centre"
     vert = "top" if cy < 0.4 else "bottom" if cy > 0.6 else "middle"
     where = "centred" if (horiz == "centre" and vert == "middle") else f"toward the {vert}-{horiz}"
-    form = "a single closed form" if n_contours == 1 else f"{n_contours} distinct contours"
+    form = "a single traced contour" if n_contours == 1 else f"{n_contours} distinct contours"
     return f"{form}, {where}"
 
 
