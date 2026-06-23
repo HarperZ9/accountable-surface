@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ..surface import AccountableSurface
 from ..effector import FilesystemEffector, RefusedActuation
+from ..grant import action_authorization
 from .sight import sight_of
 from .reel import load_reel
 
@@ -21,23 +22,10 @@ SIGHT_COLS = 96   # shared constant: columns used when rendering a PNG into the 
 
 
 def screen_capture_allowed(grant) -> bool:
-	"""True iff the grant authorizes 'screen' perception. Default-deny, total."""
-	scope = (grant or {}).get("scope", {})
-	return "screen" in (scope.get("allowed_perceptions") or [])
+    """True iff the grant authorizes 'screen' perception. Default-deny, total."""
+    scope = (grant or {}).get("scope", {})
+    return "screen" in (scope.get("allowed_perceptions") or [])
 
-
-def _action_authorization(grant):
-    """The proof-surface action receipt embedded in our grant, minus accountable-surface's
-    own non-action fields (allowed_perceptions) — proof-surface's closed schema rejects any
-    unexpected scope field, so we hand it only the fields it validates."""
-    if not isinstance(grant, dict):
-        return grant
-    scope = grant.get("scope")
-    if not (isinstance(scope, dict) and "allowed_perceptions" in scope):
-        return grant
-    auth = dict(grant)
-    auth["scope"] = {k: v for k, v in scope.items() if k != "allowed_perceptions"}
-    return auth
 
 
 @dataclass(frozen=True)
@@ -108,7 +96,7 @@ class WorldSession:
             return _refused(kind, target, justification, str(exc), reasoning)
         try:
             out = self.surface.actuate(self.fs, target=tpath, content=content.encode("utf-8"),
-                                       authorization=_action_authorization(self.grant), justification=justification or None)
+                                       authorization=action_authorization(self.grant), justification=justification or None)
         except RefusedActuation as exc:
             return _refused(kind, tpath, justification, str(exc), reasoning)
         if out.acted and out.verified:

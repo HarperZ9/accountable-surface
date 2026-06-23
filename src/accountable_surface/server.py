@@ -33,6 +33,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from accountable_surface.grant import action_authorization
 from accountable_surface.surface import AccountableSurface
 
 
@@ -98,7 +99,7 @@ def propose_impl(
         surface.propose(
             action_kind=action_kind,
             target=target,
-            authorization=grant,
+            authorization=action_authorization(grant),
             observation=observation,
             expected_digest=expected_digest,
         )
