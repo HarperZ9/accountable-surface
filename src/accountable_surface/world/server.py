@@ -159,14 +159,16 @@ class World:
 
     def start_capture(self, region=None, max_frames=120, interval=1.0) -> dict:
         """Gate, then start a bounded witnessed capture in a daemon thread (mirrors autopilot).
-        Two locks: the grant must allow 'screen' AND no capture may already be running."""
+        Three checks in order: grant, backend available, no capture already running."""
         if not screen_capture_allowed(self.session.grant):
             return {"error": "perception 'screen' not granted (default-deny)"}
+        region_t = tuple(region) if region else None
+        if self._screen_source(region_t) is None:        # no native backend → clean refusal
+            return {"error": "no native capture backend for this platform"}
         with self._lock:
             if self._capturing:
                 return {"error": "a capture is already running"}
             self._capturing = True
-        region_t = tuple(region) if region else None
         threading.Thread(target=self.run_capture, args=(region_t, max_frames, interval),
                          daemon=True).start()
         return {"started": True, "region": list(region_t) if region_t else "full-primary"}
