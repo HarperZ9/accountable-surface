@@ -20,6 +20,12 @@ from .reel import load_reel
 SIGHT_COLS = 96   # shared constant: columns used when rendering a PNG into the snapshot sight
 
 
+def screen_capture_allowed(grant) -> bool:
+	"""True iff the grant authorizes 'screen' perception. Default-deny, total."""
+	scope = (grant or {}).get("scope", {})
+	return "screen" in (scope.get("allowed_perceptions") or [])
+
+
 @dataclass(frozen=True)
 class WorldStep:
     """One witnessed turn of the loop — what the model proposed and what the body did about it."""

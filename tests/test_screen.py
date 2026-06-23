@@ -64,3 +64,22 @@ def test_witness_capture_stops_on_should_stop():
                            sleep=lambda _t: None, should_stop=stop)
     assert rcpt["stopped"] is True and len(seen) == 1
     assert seen == [0]
+
+
+from accountable_surface.world.session import screen_capture_allowed
+
+
+def test_screen_capture_default_deny():
+    assert screen_capture_allowed({"scope": {"allowed_perceptions": []}}) is False
+    assert screen_capture_allowed({"scope": {}}) is False
+    assert screen_capture_allowed({}) is False
+    assert screen_capture_allowed(None) is False
+
+
+def test_screen_capture_allowed_when_granted():
+    assert screen_capture_allowed({"scope": {"allowed_perceptions": ["screen"]}}) is True
+
+
+def test_sandbox_grant_defaults_to_no_perceptions():
+    from accountable_surface.world.server import _sandbox_grant
+    assert _sandbox_grant()["scope"]["allowed_perceptions"] == []
