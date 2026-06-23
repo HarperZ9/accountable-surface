@@ -25,6 +25,8 @@ from .structure import witness_structure
 _LEGEND = {"k": "dark", "w": "light", "n": "grey", "r": "red", "o": "orange",
            "y": "yellow", "g": "green", "c": "cyan", "b": "blue", "m": "purple"}
 
+_BUSY_INK = 4.0   # "busy" vs "clean" edges: total contour length in normalized [0,1] frame units
+
 
 # Seven chromatic anchors in OKLab (achromatic handled separately by L + chroma).
 _ANCHORS = {ltr: srgb_to_oklab(rgb) for ltr, rgb in (
@@ -139,7 +141,7 @@ def describe_sight(sight) -> str:
     colour = ("; colours: " + ", ".join(f"{p['name']} {p['pct']}%" for p in pal[:3])) if pal else ""
     st = sight.get("structure") or {}
     nc = st.get("contours", 0)
-    busy = "clean edges" if st.get("edge_ink", 0.0) < 4.0 else "busy edges"
+    busy = "clean edges" if st.get("edge_ink", 0.0) < _BUSY_INK else "busy edges"
     structure = f"; {nc} contour{'s' if nc != 1 else ''}, {busy}" if st else ""
     return (f"{shape}, about {int(round(coverage * 100))}% bright, toward {where}{colour}"
             f"{structure}; {w}×{h} glyph grid, phash {sight.get('phash')}")
