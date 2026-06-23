@@ -98,17 +98,20 @@ class WorldSession:
     def snapshot(self) -> dict:
         """The shared world's current state: the material, what the model sees, and the journal."""
         files, sights, notes = [], [], {}
-        if self.root.exists():
-            for p in sorted(self.root.iterdir()):
-                if not p.is_file():
-                    continue
-                files.append({"name": p.name, "size": p.stat().st_size})
-                if p.suffix.lower() == ".png":
-                    seen = sight_of(p, cols=96)   # witnessed sight: shape + colour the model sees
-                    if seen:
-                        sights.append(seen)
-                elif p.suffix.lower() in (".md", ".txt") and len(notes) < 5:
-                    notes[p.name] = _read_text(str(p))[:800]   # its own notes, to build on
+        try:
+            if self.root.exists():
+                for p in sorted(self.root.iterdir()):
+                    if not p.is_file():
+                        continue
+                    files.append({"name": p.name, "size": p.stat().st_size})
+                    if p.suffix.lower() == ".png":
+                        seen = sight_of(p, cols=96)   # witnessed sight: shape + colour the model sees
+                        if seen:
+                            sights.append(seen)
+                    elif p.suffix.lower() in (".md", ".txt") and len(notes) < 5:
+                        notes[p.name] = _read_text(str(p))[:800]   # its own notes, to build on
+        except OSError:
+            files, sights, notes = [], [], {}   # a permission error -> an empty (not crashed) view
         focus = None
         if self._focus and Path(self._focus).is_file():
             focus = {"name": Path(self._focus).name, "content": _read_text(self._focus)}

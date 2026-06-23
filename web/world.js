@@ -30,7 +30,7 @@ function renderJournal(journal) {
   $("journal").innerHTML = journal.map(e => {
     const v = (e.detail && e.detail.certificate && e.detail.certificate.verdict) || "";
     return `<div class="je"><span class="jk">${esc(e.kind)}</span><span>${esc(e.summary || "")}</span>` +
-      `<span class="jt">${v ? `<span class="tag ${v}">${v}</span>` : ""}</span></div>`;
+      `<span class="jt">${v ? `<span class="tag ${esc(v)}">${esc(v)}</span>` : ""}</span></div>`;
   }).join("");
   const j = $("journal"); j.scrollTop = j.scrollHeight;
 }
@@ -43,7 +43,7 @@ function renderCertificate(cert) {
   const v = $("cert-verdict"); v.textContent = cert.verdict || "—"; v.className = "tag " + (cert.verdict || "unverifiable");
   $("cert-oracle").textContent = cert.oracle || "—";
   $("cert-evidence").innerHTML = (cert.evidence || []).map(([k, val]) =>
-    `<div class="ev"><span class="ek">${esc(k)}</span><span class="evv"><span class="tag ${val}">${val}</span></span></div>`).join("");
+    `<div class="ev"><span class="ek">${esc(k)}</span><span class="evv"><span class="tag ${esc(val)}">${esc(val)}</span></span></div>`).join("");
 }
 
 function renderMove(step) {
@@ -66,8 +66,8 @@ function recheck() {
   const out = $("recheck-out"); out.hidden = false;
   out.innerHTML =
     `<div class="rc-line">re-derived in your browser — the meet of [` +
-    r.subs.map(s => `<span class="tag ${s.verdict}">${s.verdict}</span>`).join(" · ") +
-    `] → <span class="tag ${r.verdict}">${r.verdict}</span></div>` +
+    r.subs.map(s => `<span class="tag ${esc(s.verdict)}">${esc(s.verdict)}</span>`).join(" · ") +
+    `] → <span class="tag ${esc(r.verdict)}">${esc(r.verdict)}</span></div>` +
     `<div class="rc-match ${r.matches ? "ok" : "bad"}">` +
     (r.matches ? "✓ reproduces the receipt — you didn't have to trust it"
                : "✗ does not match the receipt") + `</div>`;
@@ -115,7 +115,7 @@ function appendVoice(step) {
   div.className = "voice";
   div.innerHTML = `<span class="vi">${apStep}</span>` +
     `<span class="vt">${esc(step.reasoning)} <em>— ${esc(step.kind)} ${esc(target)}</em></span>` +
-    `<span class="vv"><span class="tag ${v}">${v}</span></span>`;
+    `<span class="vv"><span class="tag ${esc(v)}">${esc(v)}</span></span>`;
   $("transcript").appendChild(div);
   $("transcript").scrollTop = $("transcript").scrollHeight;
 }
