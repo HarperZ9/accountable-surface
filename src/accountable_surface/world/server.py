@@ -34,7 +34,8 @@ def _sandbox_grant(actions=("fs.write",)) -> dict:
     return {"authorization_version": "0.1", "receipt_id": "rcpt-world-sandbox",
             "kind": "authorization-grant", "principal": {"id": "operator", "role": "operator"},
             "agent": {"id": "world-agent"}, "intent": "operate in the local sandbox world",
-            "scope": {"allowed_actions": list(actions), "allowed_targets": []},
+            "scope": {"allowed_actions": list(actions), "allowed_targets": [],
+                      "allowed_perceptions": []},
             "granted_at": "2026-06-19T00:00:00+00:00", "expires_at": "2030-01-01T00:00:00+00:00",
             "revoked": False}
 
