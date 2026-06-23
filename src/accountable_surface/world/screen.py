@@ -33,7 +33,7 @@ def witness_capture(
     witnessed (undecodable grab) is skipped, never faked.
     """
     emitted = 0
-    last_phash = None
+    last_digest = None
     stopped = False
     for frame in source.frames():
         if should_stop():
@@ -45,10 +45,10 @@ def witness_capture(
             sight = witness_image(frame.read(), cols=cols)
         except Exception:
             continue  # an undecodable grab: we honestly can't see it, we don't pretend to
-        if sight["digest"] == last_phash:
+        if sight["digest"] == last_digest:  # byte-identical: skip only truly-unchanged frames (never over-skip a real change)
             sleep(interval)
             continue  # change-proportional: nothing new to witness
-        last_phash = sight["digest"]
+        last_digest = sight["digest"]
         on_frame(frame.descriptor.frame_index, sight)
         emitted += 1
         sleep(interval)
