@@ -19,8 +19,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from coherence_membrane.pngview import is_png
+from coherence_membrane.native_capture import ScreenCaptureSource, capture_available
 
-from .session import WorldSession
+from .screen import witness_capture
+from .session import WorldSession, screen_capture_allowed
 from .sight import sight_of, describe_sight
 from .pilot import autopilot, ClaudePilot, OllamaPilot, SightfulPilot
 
@@ -64,6 +66,7 @@ class World:
         self._lock = threading.Lock()
         self._subs: list[queue.Queue] = []
         self._running = False
+        self._capturing = False
         self._goal = ""
         self._chat: list = []   # the small conversation memory: what they said about what they see
 
@@ -140,6 +143,63 @@ class World:
     def stop_autopilot(self) -> None:
         with self._lock:
             self._running = False
+
+    def _screen_source(self, region):
+        """The real capture source, or None if no native backend is available here.
+        Tests override this attribute to inject a fake CaptureSource (no real grab)."""
+        if not capture_available():
+            return None
+        return ScreenCaptureSource(region)
+
+    def _emit(self, event, data):
+        with self._lock:
+            subs = list(self._subs)
+        for q in subs:
+            q.put((event, data))
+
+    def start_capture(self, region=None, max_frames=120, interval=1.0) -> dict:
+        """Gate, then start a bounded witnessed capture in a daemon thread (mirrors autopilot).
+        Two locks: the grant must allow 'screen' AND no capture may already be running."""
+        if not screen_capture_allowed(self.session.grant):
+            return {"error": "perception 'screen' not granted (default-deny)"}
+        with self._lock:
+            if self._capturing:
+                return {"error": "a capture is already running"}
+            self._capturing = True
+        region_t = tuple(region) if region else None
+        threading.Thread(target=self.run_capture, args=(region_t, max_frames, interval),
+                         daemon=True).start()
+        return {"started": True, "region": list(region_t) if region_t else "full-primary"}
+
+    def run_capture(self, region, max_frames=120, interval=1.0) -> None:
+        """Thread body: witness frames from the source and stream each changed sight.
+        Fail-closed: re-check the gate; refuse (witnessed) if not granted or no backend."""
+        with self._lock:
+            self._capturing = True
+        try:
+            if not screen_capture_allowed(self.session.grant):
+                self._emit("capture", {"error": "perception 'screen' not granted"})
+                return
+            source = self._screen_source(region)
+            if source is None:
+                self._emit("capture", {"error": "no native capture backend for this platform"})
+                return
+            self._emit("capture", {"started": True,
+                                   "region": list(region) if region else "full-primary"})
+            receipt = witness_capture(
+                source, max_frames=max_frames, interval=interval,
+                should_stop=lambda: not self._capturing,
+                on_frame=lambda i, sight: self._emit("capture", {"frame_index": i, "sight": sight}),
+            )
+            receipt["region"] = list(region) if region else "full-primary"
+            self._emit("capture", {"receipt": receipt})
+        finally:
+            with self._lock:
+                self._capturing = False
+
+    def stop_capture(self) -> None:
+        with self._lock:
+            self._capturing = False
 
     def subscribe(self) -> queue.Queue:
         q: queue.Queue = queue.Queue()
