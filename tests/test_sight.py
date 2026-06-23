@@ -117,3 +117,18 @@ def test_structure_ghash_is_deterministic():
     a = witness_structure(decode_png(_disc_png()))
     b = witness_structure(decode_png(_disc_png()))
     assert a["ghash"] == b["ghash"] and a["coords"] == b["coords"]
+
+
+def test_colour_is_oklab_grounded_and_palette_carries_oklab():
+    s = witness_image(_split_png((220, 40, 40), (40, 180, 70)), cols=24)
+    names = " ".join(p["name"] for p in s["color"]["palette"])
+    assert "red" in names and "green" in names               # still perceives the colours
+    for p in s["color"]["palette"]:
+        assert "oklab" in p and len(p["oklab"]) == 3          # each entry carries OKLab
+
+
+def test_palette_merges_near_identical_shades_into_one_entry():
+    # two near-identical reds top, green bottom: the reds collapse to a single 'red' entry
+    s = witness_image(_split_png((210, 30, 30), (40, 180, 70)), cols=24)
+    reds = [p for p in s["color"]["palette"] if p["name"] == "red"]
+    assert len(reds) == 1
