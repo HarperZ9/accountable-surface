@@ -88,3 +88,32 @@ def test_describe_sight_reads_the_glyph_grid_honestly():
     assert "%" in desc                 # an honest coverage estimate
     assert sight["phash"] in desc      # cites the witnessed phash (re-checkable)
     assert any(w in desc.lower() for w in ("bright", "region", "field"))  # says what it sees
+
+
+from coherence_membrane.pngview import decode_png
+from accountable_surface.world.structure import witness_structure
+
+
+def test_structure_traces_a_disc_outline():
+    st = witness_structure(decode_png(_disc_png()))
+    assert st["contours"] >= 1                       # the disc has an edge
+    assert "centred" in st["outline"]                # and it sits in the centre
+    assert st["coords"] and all(                      # coords normalized to [0,1]
+        0.0 <= x <= 1.0 and 0.0 <= y <= 1.0
+        for path in st["coords"] for x, y in path)
+    assert len(st["ghash"]) == 16
+
+
+def test_structure_of_a_flat_image_is_honestly_empty():
+    flat = encode_png(16, 16, bytes([128, 128, 128]) * (16 * 16), channels=3)
+    st = witness_structure(decode_png(flat))
+    assert st["contours"] == 0                        # no edges — and we say so
+    assert st["outline"] == "no distinct edges"
+    assert st["coords"] == []
+    assert len(st["ghash"]) == 16                     # key present, never omitted
+
+
+def test_structure_ghash_is_deterministic():
+    a = witness_structure(decode_png(_disc_png()))
+    b = witness_structure(decode_png(_disc_png()))
+    assert a["ghash"] == b["ghash"] and a["coords"] == b["coords"]
