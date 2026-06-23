@@ -253,6 +253,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._static("watch.html")
         if path == "/together":
             return self._static("together.html")
+        if path == "/screen":
+            return self._static("screen.html")
         return self._static("index.html" if path == "/" else path.lstrip("/"))
 
     def do_POST(self):
