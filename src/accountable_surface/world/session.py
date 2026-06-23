@@ -26,6 +26,20 @@ def screen_capture_allowed(grant) -> bool:
 	return "screen" in (scope.get("allowed_perceptions") or [])
 
 
+def _action_authorization(grant):
+    """The proof-surface action receipt embedded in our grant, minus accountable-surface's
+    own non-action fields (allowed_perceptions) — proof-surface's closed schema rejects any
+    unexpected scope field, so we hand it only the fields it validates."""
+    if not isinstance(grant, dict):
+        return grant
+    scope = grant.get("scope")
+    if not (isinstance(scope, dict) and "allowed_perceptions" in scope):
+        return grant
+    auth = dict(grant)
+    auth["scope"] = {k: v for k, v in scope.items() if k != "allowed_perceptions"}
+    return auth
+
+
 @dataclass(frozen=True)
 class WorldStep:
     """One witnessed turn of the loop — what the model proposed and what the body did about it."""
@@ -94,7 +108,7 @@ class WorldSession:
             return _refused(kind, target, justification, str(exc), reasoning)
         try:
             out = self.surface.actuate(self.fs, target=tpath, content=content.encode("utf-8"),
-                                       authorization=self.grant, justification=justification or None)
+                                       authorization=_action_authorization(self.grant), justification=justification or None)
         except RefusedActuation as exc:
             return _refused(kind, tpath, justification, str(exc), reasoning)
         if out.acted and out.verified:

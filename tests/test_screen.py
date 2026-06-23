@@ -165,3 +165,12 @@ def test_start_capture_returns_witnessed_refusal_dict_without_grant(tmp_path):
     # stop is always safe / idempotent
     world.stop_capture()
     assert world._capturing is False
+
+
+def test_granted_perception_does_not_break_actions(tmp_path):
+    g = _sandbox_grant()
+    g["scope"]["allowed_perceptions"] = ["screen"]
+    w = World(tmp_path / "w", g)
+    step = w.act(kind="fs.write", target="y.txt", content="yo")
+    assert step["decision"] == "allow" and step["acted"]
+    assert "y.txt" in [f["name"] for f in w.snapshot()["files"]]
