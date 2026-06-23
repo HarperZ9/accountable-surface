@@ -11,6 +11,7 @@ from coherence_membrane.pngencode import encode_png
 from accountable_surface.world.server import World, _sandbox_grant
 from accountable_surface.world.pilot import ScriptedPilot, SightfulPilot, Proposal
 from accountable_surface.world.sight import sight_of
+from accountable_surface.world.session import SIGHT_COLS
 
 
 def test_act_runs_the_loop_and_notifies_subscribers(tmp_path):
@@ -72,7 +73,7 @@ def test_spectator_sees_the_same_structure_and_colour_the_model_reads(tmp_path):
     assert snap["sights"], "snapshot produced no sights — PNG was not witnessed"
     snap_sight = snap["sights"][0]
     # model-side: call sight_of directly on the same file (independent path through the code)
-    model_sight = sight_of(png_path, cols=96)
+    model_sight = sight_of(png_path, cols=SIGHT_COLS)
     assert model_sight is not None, "sight_of returned None for a valid PNG"
     # parity assertions — one frame, not two
     assert snap_sight["structure"]["ghash"] == model_sight["structure"]["ghash"]

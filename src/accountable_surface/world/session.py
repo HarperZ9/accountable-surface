@@ -17,6 +17,8 @@ from ..effector import FilesystemEffector, RefusedActuation
 from .sight import sight_of
 from .reel import load_reel
 
+SIGHT_COLS = 96   # shared constant: columns used when rendering a PNG into the snapshot sight
+
 
 @dataclass(frozen=True)
 class WorldStep:
@@ -105,7 +107,7 @@ class WorldSession:
                         continue
                     files.append({"name": p.name, "size": p.stat().st_size})
                     if p.suffix.lower() == ".png":
-                        seen = sight_of(p, cols=96)   # witnessed sight: shape + colour the model sees
+                        seen = sight_of(p, cols=SIGHT_COLS)   # witnessed sight: shape + colour the model sees
                         if seen:
                             sights.append(seen)
                     elif p.suffix.lower() in (".md", ".txt") and len(notes) < 5:
