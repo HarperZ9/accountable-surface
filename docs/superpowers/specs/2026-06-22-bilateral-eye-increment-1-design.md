@@ -15,6 +15,11 @@ This increment builds the eye's first full composition: a witnessed sight that c
 and color the model reads — so what the AI perceives and what the human verifies are
 provably one frame.
 
+The eye is **domain-neutral**: the same witnessed surface serves whatever launches from
+it — perception, creativity, invention, security alike — not security alone. Accountability
+is the runway, not a guardrail bolted onto a security tool (superproject VISION
+§"Accountability as the runway — a launch surface, not only a guardrail").
+
 Scope decision (confirmed): **data layer + web overlay together** — the bilateral "same
 frame" lands in one increment, not split.
 
