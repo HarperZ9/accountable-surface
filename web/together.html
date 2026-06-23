@@ -96,6 +96,7 @@
 
       <div class="viewer" id="viewer">
         <img id="photo" alt="your image">
+        <canvas id="overlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
         <pre id="ascii" aria-label="the witnessed glyph grid the model sees"></pre>
         <span class="seam" id="seam"></span>
       </div>
@@ -105,6 +106,7 @@
         <span>what the model sees</span>
       </div>
       <div class="sight-meta" id="sight-meta"></div>
+      <div class="color-map" id="color-map" aria-label="the witnessed colour map"></div>
     </section>
 
     <section class="panel chat" aria-labelledby="h-chat">
@@ -123,6 +125,7 @@
   <footer>your media, observed natively · the model sees a witnessed grid it can't fabricate · <a href="/watch">watch view</a> · <a href="/">operator view</a></footer>
 
 </div>
+    <script type="module" src="overlay.js"></script>
 <script type="module" src="./together.js"></script>
 </body>
 </html>
