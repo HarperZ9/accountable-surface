@@ -1,0 +1,30 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Screen · The Engine-Agnostic Eye</title>
+<style>
+  body{margin:0;background:#0b0d10;color:#e8e3d8;font-family:ui-monospace,monospace}
+  header{padding:.6rem 1rem;border-bottom:1px solid #222;display:flex;gap:.6rem;align-items:center}
+  button{font:inherit;background:#1a1f25;color:#e8e3d8;border:1px solid #333;padding:.3rem .7rem;cursor:pointer}
+  input{font:inherit;background:#11151a;color:#e8e3d8;border:1px solid #333;width:4rem}
+  #stage{display:grid;grid-template-columns:1fr 1fr;gap:1rem;padding:1rem}
+  #ascii{white-space:pre;font-size:7px;line-height:7px;margin:0}
+  #frame{position:relative}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #color-map{display:grid;gap:0;margin-top:.5rem;height:48px}
+  #color-map span{display:block}
+  #meta{padding:0 1rem;color:#9aa;font-size:.8rem}
+</style>
+<header>
+  region <input id="x" placeholder="x"><input id="y" placeholder="y">
+  <input id="w" placeholder="w"><input id="h" placeholder="h">
+  <button id="start">Start</button><button id="stop">Stop</button>
+  <span id="status">idle · capture is OFF by default</span>
+</header>
+<div id="stage">
+  <div id="frame"><pre id="ascii" aria-label="the witnessed glyph grid the model sees"></pre>
+    <canvas id="overlay"></canvas></div>
+  <div><div id="color-map" aria-label="the witnessed colour map"></div></div>
+</div>
+<div id="meta"></div>
+<script type="module" src="overlay.js"></script>
+<script type="module" src="./screen.js"></script>
