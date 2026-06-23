@@ -67,6 +67,8 @@ def test_witness_capture_stops_on_should_stop():
 
 
 from accountable_surface.world.session import screen_capture_allowed
+from accountable_surface.world.server import World, _sandbox_grant
+from coherence_membrane.capture import IterableFrameSource
 
 
 def test_screen_capture_default_deny():
@@ -81,5 +83,64 @@ def test_screen_capture_allowed_when_granted():
 
 
 def test_sandbox_grant_defaults_to_no_perceptions():
-    from accountable_surface.world.server import _sandbox_grant
     assert _sandbox_grant()["scope"]["allowed_perceptions"] == []
+
+
+def _granted_world(tmp_path):
+    grant = _sandbox_grant()
+    grant["scope"]["allowed_perceptions"] = ["screen"]
+    return World(tmp_path, grant)
+
+
+def _drain(world):
+    q = world.subscribe()
+    events = []
+    try:
+        while True:
+            events.append(q.get_nowait())
+    except Exception:
+        pass
+    finally:
+        world.unsubscribe(q)
+    return events
+
+
+def test_start_capture_refused_without_grant(tmp_path):
+    world = World(tmp_path, _sandbox_grant())          # default: no 'screen'
+    res = world.start_capture()
+    assert "error" in res and "screen" in res["error"]
+
+
+def test_run_capture_streams_witnessed_frames(tmp_path):
+    world = _granted_world(tmp_path)
+    world._screen_source = lambda region: IterableFrameSource([_disc_png(), _disc_png(120)])
+    q = world.subscribe()
+    world.run_capture(None, max_frames=10, interval=0.0)   # synchronous: run the thread body directly
+    events = []
+    try:
+        while True:
+            events.append(q.get_nowait())
+    except Exception:
+        pass
+    finally:
+        world.unsubscribe(q)
+    caps = [d for (k, d) in events if k == "capture" and "sight" in d]
+    assert len(caps) == 2
+    assert "structure" in caps[0]["sight"] and "color" in caps[0]["sight"]
+    assert any(k == "capture" and "receipt" in d for (k, d) in events)   # stop receipt emitted
+
+
+def test_run_capture_refused_when_backend_unavailable(tmp_path):
+    world = _granted_world(tmp_path)
+    world._screen_source = lambda region: None         # simulate capture_available() False
+    q = world.subscribe()
+    world.run_capture(None, max_frames=10, interval=0.0)
+    events = []
+    try:
+        while True:
+            events.append(q.get_nowait())
+    except Exception:
+        pass
+    finally:
+        world.unsubscribe(q)
+    assert any(k == "capture" and "error" in d for (k, d) in events)
