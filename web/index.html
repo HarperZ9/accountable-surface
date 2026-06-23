@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Shared World — a live, accountable surface the operator and a model co-inhabit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Schibsted+Grotesk:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0d1b1c; --void-2:#0f2122; --bone:#e9e2d0; --orange:#df5e00; --ember:#efab30;
+    --prussian:#476762; --muted:#8a9b92; --hairline:rgba(239,171,48,.15);
+    --verified:#7fcf9b; --refuted:#df5e00; --unverifiable:#8a9b92; --needs-human:#efab30;
+    --serif:"EB Garamond",Georgia,serif; --disp:"Schibsted Grotesk",system-ui,sans-serif;
+    --mono:"Spline Sans Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 90% at 50% -10%,var(--void-2),var(--void) 60%);
+    color:var(--bone);font-family:var(--serif);line-height:1.6;-webkit-font-smoothing:antialiased;
+    padding:clamp(1.2rem,3vw,2.4rem)}
+  .wrap{max-width:1320px;margin:0 auto}
+  header.top{text-align:center;margin:.5rem auto 1.6rem;max-width:50rem}
+  .eyebrow{font-family:var(--mono);font-size:.6rem;letter-spacing:.32em;text-transform:uppercase;color:var(--ember);opacity:.85;margin-bottom:.8rem}
+  h1{font-family:var(--disp);font-weight:700;letter-spacing:-.01em;font-size:clamp(1.9rem,4.4vw,3.1rem);line-height:1.05;margin:.2rem 0 .6rem}
+  .lede{font-size:clamp(1.02rem,1.4vw,1.2rem);color:#d7cfba}
+  .lede em{color:var(--ember);font-style:italic}
+  .scope{font-family:var(--mono);font-size:.58rem;color:var(--muted);margin-top:.8rem;letter-spacing:.02em}
+  .scope b{color:var(--prussian);font-weight:500}
+
+  /* propose control */
+  .propose{border:1px solid var(--hairline);border-radius:12px;background:rgba(15,33,34,.5);padding:1rem 1.1rem;margin:0 auto 1.4rem;max-width:1320px}
+  .propose .label{font-family:var(--mono);font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--prussian);margin-bottom:.5rem}
+  .prow{display:grid;grid-template-columns:1.4fr 2.4fr 1.4fr auto;gap:.6rem;align-items:end}
+  .field{display:flex;flex-direction:column;gap:.25rem}
+  .field span{font-family:var(--mono);font-size:.56rem;color:var(--muted)}
+  input,textarea{font-family:var(--mono);font-size:.72rem;color:var(--bone);background:rgba(0,0,0,.25);
+    border:1px solid var(--hairline);border-radius:7px;padding:.5em .6em;resize:vertical}
+  input:focus,textarea:focus{outline:none;border-color:var(--ember)}
+  textarea{min-height:2.4em}
+  .btn{font-family:var(--mono);font-size:.66rem;letter-spacing:.04em;color:var(--ember);cursor:pointer;
+    background:transparent;border:1px solid rgba(239,171,48,.4);border-radius:8px;padding:.62em 1.1em;transition:background .15s,border-color .15s;white-space:nowrap}
+  .btn:hover,.btn:focus-visible{background:rgba(239,171,48,.1);border-color:var(--ember);outline:none}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .pilot-kind{color:var(--ember)}
+  .transcript{margin-top:.9rem;border-top:1px solid var(--hairline);padding-top:.7rem;max-height:260px;overflow:auto}
+  .voice{font-family:var(--serif);font-size:.88rem;color:#d7cfba;padding:.55rem .2rem;border-bottom:1px dotted rgba(138,155,146,.14);display:flex;gap:.7rem;align-items:baseline}
+  .voice .vi{font-family:var(--mono);font-size:.55rem;color:var(--prussian);flex:0 0 1.4rem}
+  .voice .vt{flex:1} .voice .vv{flex:0 0 auto}
+  .voice .vt em{color:var(--muted)}
+
+  /* the world: three apertures */
+  .world{display:grid;gap:clamp(.9rem,1.8vw,1.4rem);grid-template-columns:1fr minmax(250px,.95fr) 1fr;align-items:stretch}
+  .panel{border:1px solid var(--hairline);border-radius:14px;background:rgba(15,33,34,.55);padding:1.05rem 1.1rem;min-width:0}
+  .panel h2{font-family:var(--disp);font-weight:600;font-size:.82rem;margin:0 0 .12rem}
+  .panel .sub{font-family:var(--mono);font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:.8rem}
+
+  .files{list-style:none;margin:0 0 .7rem;padding:0;font-family:var(--mono);font-size:.62rem}
+  .files li{display:flex;justify-content:space-between;padding:.18rem 0;border-bottom:1px dotted rgba(138,155,146,.14);color:var(--muted)}
+  .files li.focus{color:var(--ember)}
+  .root{font-family:var(--mono);font-size:.54rem;color:var(--prussian);word-break:break-all;margin-bottom:.6rem}
+  .focus-name{font-family:var(--mono);font-size:.6rem;color:var(--bone);margin:.3rem 0}
+  pre.material{font-family:var(--mono);font-size:.64rem;line-height:1.55;color:var(--bone);background:rgba(0,0,0,.22);
+    border:1px solid var(--hairline);border-radius:8px;padding:.6rem .7rem;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:0}
+
+  /* the binding (certificate) */
+  .binding .panel{border-color:rgba(239,171,48,.32);background:linear-gradient(180deg,rgba(20,40,40,.7),rgba(15,33,34,.5));
+    box-shadow:0 18px 50px -28px rgba(223,94,0,.5)}
+  .ctitle{font-family:var(--mono);font-weight:500;font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ember);margin:.1rem 0 .5rem}
+  .claim{font-size:.92rem;color:var(--bone);margin:.1rem 0 .8rem}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;font-family:var(--mono);font-size:.62rem;padding:.3rem 0;border-top:1px solid rgba(239,171,48,.12)}
+  .row .rk{color:var(--muted)} .row .rv{color:var(--bone);text-align:right;word-break:break-all}
+  .tag{display:inline-block;font-family:var(--mono);font-size:.6rem;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:.16em .58em;border-radius:999px;border:1px solid currentColor}
+  .tag.verified{color:var(--verified)} .tag.refuted{color:var(--refuted)} .tag.unverifiable{color:var(--unverifiable)} .tag.needs-human{color:var(--needs-human)}
+  .evidence{margin-top:.5rem}
+  .ev{display:flex;justify-content:space-between;gap:.6rem;font-family:var(--mono);font-size:.56rem;color:var(--muted);padding:.16rem 0}
+  .ev .ek{color:var(--prussian);word-break:break-all} .ev .evv{color:var(--bone)}
+  .recheck{margin-top:.85rem}
+  .recheck-out{margin-top:.7rem;font-family:var(--mono);font-size:.6rem;line-height:1.6;border-top:1px solid rgba(239,171,48,.12);padding-top:.6rem;animation:fade .35s ease}
+  .recheck-out .rc-line{color:var(--muted)} .recheck-out .rc-match{margin-top:.4rem}
+  .recheck-out .rc-match.ok{color:var(--verified)} .recheck-out .rc-match.bad{color:var(--refuted)}
+  @keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  /* the body's move */
+  .decision{font-family:var(--mono);font-size:.66rem;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem}
+  .flags{display:flex;gap:.4rem;flex-wrap:wrap;margin:.5rem 0}
+  .flag{font-family:var(--mono);font-size:.55rem;letter-spacing:.05em;padding:.2em .55em;border-radius:6px;border:1px solid var(--hairline);color:var(--muted)}
+  .flag.on{color:var(--verified);border-color:rgba(127,207,155,.4)} .flag.off{color:var(--muted)}
+  .digest{font-family:var(--mono);font-size:.55rem;color:var(--muted);word-break:break-all;padding:.2rem 0}
+  .digest b{color:var(--prussian);font-weight:500}
+  .reasons{font-family:var(--mono);font-size:.56rem;color:var(--muted);margin-top:.4rem}
+  .reasons li{padding:.1rem 0}
+
+  /* journal */
+  .journal-wrap{margin-top:1.5rem}
+  .journal{font-family:var(--mono);font-size:.56rem;max-height:200px;overflow:auto;border:1px solid var(--hairline);border-radius:10px;background:rgba(0,0,0,.2);padding:.6rem .8rem}
+  .je{display:grid;grid-template-columns:5.5rem 1fr 5rem;gap:.6rem;padding:.16rem 0;border-bottom:1px dotted rgba(138,155,146,.12);color:var(--muted)}
+  .je .jk{color:var(--prussian)} .je .jt{text-align:right}
+  .conn{font-family:var(--mono);font-size:.5rem;letter-spacing:.16em;text-transform:uppercase;color:var(--prussian);text-align:center;margin-top:.6rem}
+  .status{position:fixed;left:-9999px}
+  footer{text-align:center;margin-top:2.4rem;font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;color:var(--muted)}
+  footer a{color:var(--prussian)}
+  @media (max-width:900px){.world{grid-template-columns:1fr}.binding{order:3}.prow{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">a live demonstration · accountable-surface</div>
+    <h1>The Shared World</h1>
+    <p class="lede">A world the operator and a model co-inhabit. The model <em>proposes</em>, the gate
+      <em>decides</em>, the body's own hands <em>act</em> on real material — and every move is
+      <em>witnessed with a receipt you can re-check.</em></p>
+    <p class="scope">honest scope — the hands here are <b>fs/os</b>: real files under a sandbox root,
+      every action default-denied unless an operator grant allows it. full GUI motor control
+      (cursor, screen) is the next limb, not yet shipped.</p>
+  </header>
+
+  <section class="propose" aria-label="propose an action">
+    <div class="label">propose an action · the model's move (you can drive it too)</div>
+    <div class="prow">
+      <label class="field"><span>file (under the world root)</span><input id="act-target" value="note.txt"></label>
+      <label class="field"><span>content to write</span><textarea id="act-content">Hello from the shared world.</textarea></label>
+      <label class="field"><span>justification</span><input id="act-justification" value="record a first note"></label>
+      <button class="btn" id="act-btn" type="button">Propose &amp; act ▸</button>
+    </div>
+  </section>
+
+  <section class="propose autopilot" aria-label="autonomous pilot">
+    <div class="label">let a model drive &middot; the mind proposes, the surface keeps it honest &middot;
+      pilot: <span id="pilot-kind" class="pilot-kind">…</span></div>
+    <div class="prow" style="grid-template-columns:3fr .8fr auto auto">
+      <label class="field"><span>goal</span><input id="ap-goal" value="set up a small project: a README and a NOTES file"></label>
+      <label class="field"><span>max steps</span><input id="ap-steps" value="4"></label>
+      <button class="btn" id="ap-run" type="button">Run autopilot ▸</button>
+      <button class="btn" id="ap-stop" type="button" disabled>Stop ◼</button>
+    </div>
+    <div class="transcript" id="transcript" hidden></div>
+  </section>
+
+  <main class="world">
+
+    <!-- THE MATERIAL -->
+    <section class="panel material-panel" aria-labelledby="h-mat">
+      <h2 id="h-mat">The material</h2>
+      <div class="sub">what you both see · real files</div>
+      <div class="root" id="world-root">—</div>
+      <ul class="files" id="files"></ul>
+      <div class="focus-name" id="focus-name"></div>
+      <pre class="material" id="focus-content">(no file in focus yet)</pre>
+    </section>
+
+    <!-- THE BINDING -->
+    <section class="binding" aria-labelledby="h-bind">
+      <div class="panel">
+        <h2 class="ctitle" id="h-bind">The binding · receipt</h2>
+        <p class="claim" id="cert-claim">propose an action to mint the first receipt</p>
+        <div class="row"><span class="rk">verdict</span><span class="rv"><span class="tag unverifiable" id="cert-verdict">—</span></span></div>
+        <div class="row"><span class="rk">oracle</span><span class="rv" id="cert-oracle">—</span></div>
+        <div class="row"><span class="rk">evidence · sub-verdicts</span><span class="rv"></span></div>
+        <div class="evidence" id="cert-evidence"></div>
+        <div class="recheck">
+          <button class="btn" id="recheck-btn" type="button" style="width:100%">Re-check this receipt yourself</button>
+          <div class="recheck-out" id="recheck-out" hidden></div>
+        </div>
+        <div class="conn">↞ perception · gate · hands all witnessed here ↠</div>
+      </div>
+    </section>
+
+    <!-- THE BODY'S MOVE -->
+    <section class="panel move-panel" aria-labelledby="h-move">
+      <h2 id="h-move">The body's move</h2>
+      <div class="sub">perceive · gate · act · verify</div>
+      <div class="decision">gate: <span class="tag unverifiable" id="move-decision">—</span></div>
+      <div class="flags" id="move-flags"></div>
+      <div class="digest" id="digest-before"><b>saw before</b> —</div>
+      <div class="digest" id="digest-after"><b>saw after</b> —</div>
+      <ul class="reasons" id="move-reasons"></ul>
+    </section>
+
+  </main>
+
+  <div class="journal-wrap">
+    <div class="label" style="font-family:var(--mono);font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--prussian);margin-bottom:.5rem">the witnessed journal · append-only, streaming live</div>
+    <div class="journal" id="journal"></div>
+  </div>
+
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+
+  <footer>
+    perceived + acted by accountable-surface · gated by the operator grant · witnessed by the Certificate ·
+    re-checkable by you · <a href="https://github.com/HarperZ9/accountable-surface">source</a>
+  </footer>
+
+</div>
+<script type="module" src="./world.js"></script>
+</body>
+</html>
