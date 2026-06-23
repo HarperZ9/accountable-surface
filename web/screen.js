@@ -5,7 +5,6 @@
 // No raw screen pixels cross the wire; the witnessed sight is the shared medium.
 
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 
 function render(sight) {
   $("ascii").textContent = (sight.ascii || []).join("\n");

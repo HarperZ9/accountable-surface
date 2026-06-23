@@ -11,7 +11,11 @@ import math
 from coherence_membrane.pngencode import encode_png
 from coherence_membrane.capture import IterableFrameSource
 
+from accountable_surface.grant import action_authorization
+from accountable_surface.surface import AccountableSurface
 from accountable_surface.world.screen import witness_capture
+from accountable_surface.world.server import World, _sandbox_grant
+from accountable_surface.world.session import screen_capture_allowed
 
 
 def _disc_png(shade=235, w=40, h=40):
@@ -66,11 +70,6 @@ def test_witness_capture_stops_on_should_stop():
     assert seen == [0]
 
 
-from accountable_surface.world.session import screen_capture_allowed
-from accountable_surface.world.server import World, _sandbox_grant
-from coherence_membrane.capture import IterableFrameSource
-
-
 def test_screen_capture_default_deny():
     assert screen_capture_allowed({"scope": {"allowed_perceptions": []}}) is False
     assert screen_capture_allowed({"scope": {}}) is False
@@ -90,7 +89,6 @@ def _granted_world(tmp_path):
     grant = _sandbox_grant()
     grant["scope"]["allowed_perceptions"] = ["screen"]
     return World(tmp_path, grant)
-
 
 
 def test_start_capture_refused_without_grant(tmp_path):
@@ -174,3 +172,66 @@ def test_granted_perception_does_not_break_actions(tmp_path):
     step = w.act(kind="fs.write", target="y.txt", content="yo")
     assert step["decision"] == "allow" and step["acted"]
     assert "y.txt" in [f["name"] for f in w.snapshot()["files"]]
+
+
+# --- Regression: action_authorization strips allowed_perceptions at MCP boundary ---
+
+def _grant_with_perceptions(actions=("summarize",), targets=()):
+    """A grant that carries allowed_perceptions — the shape operators use for screen access."""
+    return {
+        "authorization_version": "0.1",
+        "receipt_id": "rcpt-reg-1",
+        "kind": "authorization-grant",
+        "principal": {"id": "operator-1", "role": "operator"},
+        "agent": {"id": "reg-agent"},
+        "intent": "regression test — allowed_perceptions must not reach proof-surface schema",
+        "scope": {
+            "allowed_actions": list(actions),
+            "allowed_targets": list(targets),
+            "allowed_perceptions": ["screen"],
+        },
+        "granted_at": "2026-06-19T00:00:00+00:00",
+        "expires_at": "2030-01-01T00:00:00+00:00",
+        "revoked": False,
+    }
+
+
+def test_action_authorization_strips_allowed_perceptions():
+    """action_authorization removes allowed_perceptions so proof-surface sees a clean scope."""
+    grant = _grant_with_perceptions()
+    stripped = action_authorization(grant)
+    assert "allowed_perceptions" not in stripped["scope"]
+    assert stripped["scope"]["allowed_actions"] == ["summarize"]
+    # original must be untouched
+    assert "allowed_perceptions" in grant["scope"]
+
+
+def test_action_authorization_is_noop_when_no_perceptions():
+    """action_authorization returns the original when there's nothing to strip."""
+    grant = {
+        "scope": {"allowed_actions": ["summarize"]},
+    }
+    assert action_authorization(grant) is grant
+
+
+def test_action_authorization_is_noop_on_non_dict():
+    """action_authorization is total: non-dict passes through unchanged."""
+    assert action_authorization(None) is None
+    assert action_authorization("raw") == "raw"
+
+
+def test_mcp_propose_with_allowed_perceptions_not_schema_rejected():
+    """A grant carrying allowed_perceptions must NOT be rejected by proof-surface's
+    closed schema when routed through the MCP propose path. The decision should be
+    allow (for an authorised action) — NOT a deny caused by an unexpected scope field."""
+    from accountable_surface.server import propose_impl
+
+    grant = _grant_with_perceptions(actions=["summarize"])
+    surface = AccountableSurface()
+    # propose_impl applies action_authorization internally; result must be allow, not an
+    # authorization-schema-triggered deny.
+    out = propose_impl(surface, [grant], "summarize", "page")
+    assert out["decision"] == "allow", (
+        f"Expected allow but got {out['decision']!r}; reasons: {out.get('reasons')}"
+    )
+    assert out["executed"] is False
