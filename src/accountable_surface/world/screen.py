@@ -5,7 +5,7 @@ production, a fake in tests), witnesses each via the increment-1 eye
 (witness_image: shape + structure + OKLab colour + provenance), and hands each
 *changed* frame to a callback. Source-agnostic by construction (never imports a
 graphics API), deterministic (sleep + should_stop are injected), bounded, and
-change-proportional (an unchanged frame — same perceptual hash — is skipped, not
+change-proportional (an unchanged frame — byte-identical digest — is skipped, not
 re-witnessed downstream). Stdlib + coherence-membrane only.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ def witness_capture(
 ) -> dict:
     """Witness frames from `source` until stopped, bounded, or exhausted.
 
-    Calls on_frame(frame_index, sight) per CHANGED frame (phash != previous).
+    Calls on_frame(frame_index, sight) per CHANGED frame (digest != previous).
     Returns a receipt {"frames": emitted, "stopped": bool}. A frame that can't be
     witnessed (undecodable grab) is skipped, never faked.
     """

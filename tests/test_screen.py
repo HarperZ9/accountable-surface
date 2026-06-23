@@ -37,13 +37,14 @@ def test_witness_capture_witnesses_each_frame_with_structure_and_colour():
     assert rcpt["frames"] == 2 and len(seen) == 2
     for _i, sight in seen:
         assert "structure" in sight and "color" in sight and sight["phash"]
+        assert sight["digest"]
 
 
 def test_witness_capture_is_change_proportional():
     a = _disc_png()
     src = IterableFrameSource([a, a, a])           # three IDENTICAL frames
     seen, rcpt = _collect(src)
-    assert rcpt["frames"] == 1 and len(seen) == 1  # duplicates skipped by phash
+    assert rcpt["frames"] == 1 and len(seen) == 1  # duplicates skipped by digest (byte-identical)
 
 
 def test_witness_capture_honours_max_frames():
@@ -62,3 +63,4 @@ def test_witness_capture_stops_on_should_stop():
     rcpt = witness_capture(src, on_frame=lambda i, s: seen.append(i),
                            sleep=lambda _t: None, should_stop=stop)
     assert rcpt["stopped"] is True and len(seen) == 1
+    assert seen == [0]
