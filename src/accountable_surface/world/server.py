@@ -68,31 +68,42 @@ class World:
 
     @property
     def goal(self) -> str:
-        return self._goal
+        with self._lock:
+            return self._goal
 
     @property
     def chat_history(self) -> list:
-        return self._chat
+        with self._lock:
+            return list(self._chat)   # a copy — never hand out the live list
+
+    def status(self) -> dict:
+        """The pilot/run status, read atomically — folded into GET /world alongside the snapshot."""
+        with self._lock:
+            return {"pilot": self.pilot_kind, "running": self._running, "goal": self._goal}
 
     def chat(self, message) -> dict:
         """One turn of the conversation about what they both see — grounded in the witnessed sight,
         remembered. The pilot converses if it can; otherwise an honest reading of the sight."""
-        snap = self.snapshot()
-        prior = list(self._chat)
-        self._chat.append({"role": "user", "text": message})
-        if hasattr(self.pilot, "converse"):
+        snap = self.snapshot()                       # locks internally; take it before our own lock
+        with self._lock:
+            prior = list(self._chat)
+            self._chat.append({"role": "user", "text": message})
+        if hasattr(self.pilot, "converse"):          # the model call is OUTSIDE the lock (network)
             reply = self.pilot.converse(snap, prior, message)
         else:
             reply = _offline_reply(snap)
-        self._chat.append({"role": "assistant", "text": reply})
-        del self._chat[:-40]   # bounded memory — the recent conversation
-        return {"reply": reply, "history": self._chat}
+        with self._lock:
+            self._chat.append({"role": "assistant", "text": reply})
+            del self._chat[:-40]   # bounded memory — the recent conversation
+            history = list(self._chat)
+        return {"reply": reply, "history": history}   # return the copy, never the live list
 
     def act(self, **kw) -> dict:
         with self._lock:
             step = self.session.act(**kw).to_dict()
             snap = self.session.snapshot()
-        for q in list(self._subs):
+            subs = list(self._subs)
+        for q in subs:                               # push AFTER releasing the lock (q.put can block)
             q.put(("step", step)); q.put(("world", snap))
         return step
 
@@ -102,37 +113,45 @@ class World:
 
     @property
     def running(self) -> bool:
-        return self._running
+        with self._lock:
+            return self._running
 
     def run_autopilot(self, goal, max_steps=6) -> None:
         """Let the pilot drive the body, streaming each witnessed step. Bounded + stoppable."""
-        if self.pilot is None or self._running:
-            return
-        self._running = True
-        self._goal = goal
-        for q in list(self._subs):
+        with self._lock:                             # atomic check-and-set: no two autopilots race
+            if self.pilot is None or self._running:
+                return
+            self._running = True
+            self._goal = goal
+            subs = list(self._subs)
+        for q in subs:                               # status pushed OUTSIDE the lock (q.put)
             q.put(("status", {"goal": goal, "running": True, "pilot": self.pilot_kind}))
         try:
             autopilot(self, self.pilot, goal=goal, max_steps=max_steps,
-                      should_continue=lambda: self._running)
+                      should_continue=lambda: self.running)   # .running reads under the lock itself
         finally:
-            self._running = False
-            for q in list(self._subs):
+            with self._lock:
+                self._running = False
+                subs = list(self._subs)
+            for q in subs:                           # finished signal pushed OUTSIDE the lock
                 q.put(("autopilot", {"running": False}))
 
     def stop_autopilot(self) -> None:
-        self._running = False
+        with self._lock:
+            self._running = False
 
     def subscribe(self) -> queue.Queue:
         q: queue.Queue = queue.Queue()
-        self._subs.append(q)
+        with self._lock:
+            self._subs.append(q)
         return q
 
     def unsubscribe(self, q) -> None:
-        try:
-            self._subs.remove(q)
-        except ValueError:
-            pass
+        with self._lock:
+            try:
+                self._subs.remove(q)
+            except ValueError:
+                pass
 
 
 _WORLD: World | None = None
@@ -159,7 +178,7 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/world":
             snap = _WORLD.snapshot()
-            snap["pilot"], snap["running"], snap["goal"] = _WORLD.pilot_kind, _WORLD.running, _WORLD.goal
+            snap.update(_WORLD.status())   # pilot/running/goal read atomically, folded into the snap
             return self._send(200, snap)
         if path == "/world/stream":
             return self._stream()
@@ -175,7 +194,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0]
-        n = int(self.headers.get("Content-Length") or 0)
+        n = min(int(self.headers.get("Content-Length") or 0), 32 * 1024 * 1024)  # cap the body (32 MiB)
         try:
             body = json.loads(self.rfile.read(n) or b"{}") if n else {}
         except json.JSONDecodeError:
@@ -190,7 +209,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/autopilot":
             if _WORLD.pilot is None:
                 return self._send(409, {"error": "no pilot configured"})
-            goal, steps = str(body.get("goal", "")), int(body.get("max_steps", 6))
+            try:
+                steps = max(1, min(int(body.get("max_steps", 6) or 6), 24))  # bound the run
+            except (ValueError, TypeError):
+                return self._send(400, {"error": "max_steps must be an integer"})
+            goal = str(body.get("goal", ""))
             threading.Thread(target=_WORLD.run_autopilot, args=(goal, steps), daemon=True).start()
             return self._send(200, {"started": True, "pilot": _WORLD.pilot_kind, "running": True})
         if path == "/autopilot/stop":
@@ -208,7 +231,7 @@ class Handler(BaseHTTPRequestHandler):
             fp.write_bytes(data)        # the operator places their own media in their sandbox world
             return self._send(200, {"ok": True, "name": name, "sight": sight_of(fp, cols=96)})
         if path == "/chat":
-            message = str(body.get("message", "")).strip()
+            message = str(body.get("message", "")).strip()[:4000]   # bound the message length
             if not message:
                 return self._send(400, {"error": "empty message"})
             return self._send(200, _WORLD.chat(message))
@@ -285,6 +308,10 @@ def serve(host=None, port=8808, root=None, grant=None):
     grant = grant or _load_grant() or _sandbox_grant()
     pilot, kind = _build_pilot()
     _WORLD = World(root, grant, pilot, kind)
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        print(f"!! WARNING: binding {host} exposes this surface PUBLICLY with NO authentication — "
+              "anyone who can reach this port can drive the body and read the sandbox. "
+              "Only do this behind your own auth/firewall.")
     httpd = ThreadingHTTPServer((host, port), Handler)
     actions = _WORLD.session.grant.get("scope", {}).get("allowed_actions", [])
     print(f"shared world on http://{host}:{port}  root={_WORLD.session.root}  "

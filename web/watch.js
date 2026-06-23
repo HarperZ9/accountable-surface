@@ -46,8 +46,9 @@ function renderStage(snap) {
   }
   const focus = snap.focus;
   if (focus && focus.content !== undefined) {
-    screen.innerHTML = `<pre class="text">${esc(focus.content)}</pre>` ||
-      `<span class="empty">(empty file)</span>`;
+    screen.innerHTML = focus.content
+      ? `<pre class="text">${esc(focus.content)}</pre>`
+      : `<span class="empty">(empty file)</span>`;
     $("stage-cap").innerHTML = `the stage &middot; <b>in focus</b> &middot; ${esc(focus.name)}`;
     $("sightmeta").textContent = "";
     return;

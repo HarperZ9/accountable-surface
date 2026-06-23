@@ -15,7 +15,7 @@ import hashlib
 from collections import Counter
 from pathlib import Path
 
-from coherence_membrane.pngview import decode_png, is_png
+from coherence_membrane.pngview import decode_png, is_png, read_ihdr
 from coherence_membrane.ascii_view import ascii_view
 from coherence_membrane.phash import perceptual_hash
 
@@ -80,6 +80,9 @@ def _color_view(img, gc: int = 32, gr: int = 16) -> dict:
 
 def witness_image(payload: bytes, *, cols: int = 96) -> dict:
     """A witnessed sight of a PNG: shape (glyph grid) + colour (spatial map + palette) + provenance."""
+    w, h = read_ihdr(payload)[:2]   # cheap header read — refuse a decompression bomb before decode
+    if w * h > 4_000_000:
+        raise ValueError("image too large to witness")
     img = decode_png(payload)
     return {
         "kind": "image",
@@ -148,6 +151,6 @@ def sight_of(path, *, cols: int = 96) -> dict | None:
     except Exception:
         return None  # an undecodable/oddball PNG: we honestly can't see it, we don't pretend to
     if len(_CACHE) > 64:
-        _CACHE.clear()
+        _CACHE.pop(next(iter(_CACHE)))   # evict the oldest one, not the whole cache
     _CACHE[key] = sight
     return sight
