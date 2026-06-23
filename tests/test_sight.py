@@ -132,3 +132,16 @@ def test_palette_merges_near_identical_shades_into_one_entry():
     s = witness_image(_split_png((210, 30, 30), (40, 180, 70)), cols=24)
     reds = [p for p in s["color"]["palette"] if p["name"] == "red"]
     assert len(reds) == 1
+
+
+def test_witnessed_sight_includes_the_structure_channel():
+    s = witness_image(_disc_png(), cols=32)
+    assert "structure" in s
+    assert s["structure"]["contours"] >= 1
+    assert "coords" in s["structure"] and "ghash" in s["structure"]
+
+
+def test_describe_sight_reads_structure():
+    desc = describe_sight(witness_image(_disc_png(), cols=32))
+    assert "contour" in desc.lower()     # it names the structure it traced
+    assert "phash" in desc               # still anchored to the witnessed phash
