@@ -88,3 +88,60 @@ def test_describe_sight_reads_the_glyph_grid_honestly():
     assert "%" in desc                 # an honest coverage estimate
     assert sight["phash"] in desc      # cites the witnessed phash (re-checkable)
     assert any(w in desc.lower() for w in ("bright", "region", "field"))  # says what it sees
+
+
+from coherence_membrane.pngview import decode_png
+from accountable_surface.world.structure import witness_structure
+
+
+def test_structure_traces_a_disc_outline():
+    st = witness_structure(decode_png(_disc_png()))
+    assert st["contours"] >= 1                       # the disc has an edge
+    assert "centred" in st["outline"]                # and it sits in the centre
+    assert st["coords"] and all(                      # coords normalized to [0,1]
+        0.0 <= x <= 1.0 and 0.0 <= y <= 1.0
+        for path in st["coords"] for x, y in path)
+    assert len(st["ghash"]) == 16
+
+
+def test_structure_of_a_flat_image_is_honestly_empty():
+    flat = encode_png(16, 16, bytes([128, 128, 128]) * (16 * 16), channels=3)
+    st = witness_structure(decode_png(flat))
+    assert st["contours"] == 0                        # no edges — and we say so
+    assert st["outline"] == "no distinct edges"
+    assert st["coords"] == []
+    assert len(st["ghash"]) == 16                     # key present, never omitted
+
+
+def test_structure_ghash_is_deterministic():
+    a = witness_structure(decode_png(_disc_png()))
+    b = witness_structure(decode_png(_disc_png()))
+    assert a["ghash"] == b["ghash"] and a["coords"] == b["coords"]
+
+
+def test_colour_is_oklab_grounded_and_palette_carries_oklab():
+    s = witness_image(_split_png((220, 40, 40), (40, 180, 70)), cols=24)
+    names = " ".join(p["name"] for p in s["color"]["palette"])
+    assert "red" in names and "green" in names               # still perceives the colours
+    for p in s["color"]["palette"]:
+        assert "oklab" in p and len(p["oklab"]) == 3          # each entry carries OKLab
+
+
+def test_palette_merges_near_identical_shades_into_one_entry():
+    # two near-identical reds top, green bottom: the reds collapse to a single 'red' entry
+    s = witness_image(_split_png((210, 30, 30), (40, 180, 70)), cols=24)
+    reds = [p for p in s["color"]["palette"] if p["name"] == "red"]
+    assert len(reds) == 1
+
+
+def test_witnessed_sight_includes_the_structure_channel():
+    s = witness_image(_disc_png(), cols=32)
+    assert "structure" in s
+    assert s["structure"]["contours"] >= 1
+    assert "coords" in s["structure"] and "ghash" in s["structure"]
+
+
+def test_describe_sight_reads_structure():
+    desc = describe_sight(witness_image(_disc_png(), cols=32))
+    assert "contour" in desc.lower()     # it names the structure it traced
+    assert "phash" in desc               # still anchored to the witnessed phash
