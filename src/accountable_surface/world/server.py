@@ -298,6 +298,18 @@ class Handler(BaseHTTPRequestHandler):
             if not message:
                 return self._send(400, {"error": "empty message"})
             return self._send(200, _WORLD.chat(message))
+        if path == "/capture/start":
+            region = body.get("region")
+            try:
+                max_frames = max(1, min(int(body.get("max_frames", 120) or 120), 1000))
+                interval = min(max(float(body.get("interval", 1.0) or 1.0), 0.0), 30.0)
+            except (ValueError, TypeError):
+                return self._send(400, {"error": "max_frames/interval must be numeric"})
+            res = _WORLD.start_capture(region=region, max_frames=max_frames, interval=interval)
+            return self._send(200 if res.get("started") else 403, res)
+        if path == "/capture/stop":
+            _WORLD.stop_capture()
+            return self._send(200, {"running": False})
         return self._send(404, {"error": "not found"})
 
     def _stream(self):

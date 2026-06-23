@@ -154,3 +154,14 @@ def test_stop_capture_clears_the_flag(tmp_path):
     world._capturing = True
     world.stop_capture()
     assert world._capturing is False
+
+
+def test_start_capture_returns_witnessed_refusal_dict_without_grant(tmp_path):
+    # The endpoint maps start_capture's refusal to a clean error response; we test the
+    # decision at the World level (the routing is a thin pass-through over this).
+    world = World(tmp_path, _sandbox_grant())
+    res = world.start_capture(region=[0, 0, 10, 10])
+    assert res.get("error") and "screen" in res["error"]
+    # stop is always safe / idempotent
+    world.stop_capture()
+    assert world._capturing is False
