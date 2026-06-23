@@ -20,6 +20,7 @@ from coherence_membrane.pngview import decode_png, is_png, read_ihdr
 from coherence_membrane.ascii_view import ascii_view
 from coherence_membrane.phash import perceptual_hash
 from coherence_membrane.color import srgb_to_oklab, delta_e_ok
+from .structure import witness_structure
 
 _LEGEND = {"k": "dark", "w": "light", "n": "grey", "r": "red", "o": "orange",
            "y": "yellow", "g": "green", "c": "cyan", "b": "blue", "m": "purple"}
@@ -102,6 +103,7 @@ def witness_image(payload: bytes, *, cols: int = 96) -> dict:
         "height": img.height,
         "ascii": ascii_view(img, cols=cols),
         "color": _color_view(img),
+        "structure": witness_structure(img),
         "phash": format(perceptual_hash(img), "016x"),
         "digest": "sha256:" + hashlib.sha256(payload).hexdigest(),
     }
@@ -135,8 +137,12 @@ def describe_sight(sight) -> str:
         "a compact bright region" if coverage < 0.45 else "a broad bright field")
     pal = (sight.get("color") or {}).get("palette") or []
     colour = ("; colours: " + ", ".join(f"{p['name']} {p['pct']}%" for p in pal[:3])) if pal else ""
-    return (f"{shape}, about {int(round(coverage * 100))}% bright, toward {where}{colour}; "
-            f"{w}×{h} glyph grid, phash {sight.get('phash')}")
+    st = sight.get("structure") or {}
+    nc = st.get("contours", 0)
+    busy = "clean edges" if st.get("edge_ink", 0.0) < 4.0 else "busy edges"
+    structure = f"; {nc} contour{'s' if nc != 1 else ''}, {busy}" if st else ""
+    return (f"{shape}, about {int(round(coverage * 100))}% bright, toward {where}{colour}"
+            f"{structure}; {w}×{h} glyph grid, phash {sight.get('phash')}")
 
 
 _CACHE: dict = {}   # (path, size, mtime, cols) -> sight; keeps the richer sight cheap on re-snapshot
