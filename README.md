@@ -186,3 +186,12 @@ Accessibility, Efficiency**.
 ## License
 
 MIT (c) 2026 Zain Dana Harper
+
+## For developers
+
+Keep the public README, package metadata, and examples aligned with current behavior. Before opening a PR or pushing a release, run the local package verification path.
+
+```bash
+python -m pip install -e ".[test]"
+python -m pytest
+```
