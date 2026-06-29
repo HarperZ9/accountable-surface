@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "accountable-surface"
 version = "0.1.0"
-description = "A live seam where a model perceives and acts under witness, gate, and memory — machines learning to hold themselves accountable."
+description = "Gate AI-agent actions with explicit grants, durable journals, MCP server support, and verification."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
