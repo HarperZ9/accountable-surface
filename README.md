@@ -1,5 +1,47 @@
 # Accountable Surface
 
+![Accountable Surface hero](docs/brand/accountable-surface-hero.png)
+
+> Gate agent actions with explicit grants, durable journals, and verification.
+
+Accountable Surface is a Python and MCP workbench for controlled agent action.
+It lets an agent perceive a bounded target, propose an action, pass that action
+through an operator-loaded grant, execute only when allowed, and verify the
+result afterward.
+
+## Why it matters
+
+Agent workflows need autonomy without silent authority. This repo gives
+developers a concrete loop for reviewable action: observe, propose, gate, act,
+verify, and record a receipt.
+
+## Try it
+
+```bash
+PYTHONPATH="src;C:/path/to/sibling-package/src" python examples/demo.py
+PYTHONPATH="src;C:/path/to/sibling-package/src" python -m pytest
+```
+
+## What to test first
+
+- Run `examples/demo.py` to see the basic accountable loop.
+- Run `examples/actuate_demo.py` for the actuation path.
+- Run `examples/smoke_mcp.py` before wiring it into an MCP client.
+
+## Current status
+
+Alpha package with local examples, Python tests, and an MCP server entry point.
+It depends on sibling package checkouts listed in the setup commands below.
+
+## Developer entry points
+
+- Python package: `src/accountable_surface/`
+- MCP server: `accountable_surface.server`
+- CLI script: `accountable-surface-server`
+- Tests: `tests/`
+
+## Existing technical notes
+
 > *Senses and sensibility are what lead to the new frontier. Machines learning to hold themselves accountable.*
 
 A live seam where a model **perceives** and **acts** only through accountability —
