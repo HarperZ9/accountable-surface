@@ -1,7 +1,7 @@
 """Accountability integrity red-team suite.
 
 Each test attacks a specific accountability construction in OUR OWN code and
-confirms the construction HOLDS.  They are falsifiable — if any construction
+confirms the construction HOLDS.  They are falsifiable -- if any construction
 were removed or weakened, at least one test here would fail.
 
 Scope: witness / gate / provenance / journal / effector / cortex integrity of
@@ -29,7 +29,7 @@ from coherence_membrane.observation import sha256_hex
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-# A minimal valid HTML page the surface can perceive (bytes, not a URL —
+# A minimal valid HTML page the surface can perceive (bytes, not a URL --
 # WebDocumentOrgan accepts raw bytes and witnesses them directly).
 _PAGE = (
     b"<!doctype html><html><head><title>Red Team</title></head>"
@@ -70,11 +70,11 @@ class _Deny:
 
 
 # ---------------------------------------------------------------------------
-# 1. Forged provenance digest — re-perceive re-derives; a forgery doesn't hold
+# 1. Forged provenance digest -- re-perceive re-derives; a forgery doesn't hold
 # ---------------------------------------------------------------------------
 
 class TestForgedProvenanceDigest:
-    """The provenance digest is derived from the witnessed bytes — it cannot be
+    """The provenance digest is derived from the witnessed bytes -- it cannot be
     pre-loaded from a forged value and survive re-derivation."""
 
     def test_perceive_derives_digest_from_content(self):
@@ -105,7 +105,7 @@ class TestForgedProvenanceDigest:
     def test_gate_rejects_forged_expected_digest(self):
         s = AccountableSurface()
         obs = s.perceive(_PAGE)
-        # The gate expects a raw 64-char hex digest (no "sha256:" prefix) —
+        # The gate expects a raw 64-char hex digest (no "sha256:" prefix) --
         # the same format stored in obs.data["identity_sha256"].
         forged = hashlib.sha256(b"not the real page").hexdigest()
         out = s.propose(
@@ -125,7 +125,7 @@ class TestForgedProvenanceDigest:
 
 
 # ---------------------------------------------------------------------------
-# 2. Journal tamper — corrupt a line, reload; replay_errors > 0, never silent
+# 2. Journal tamper -- corrupt a line, reload; replay_errors > 0, never silent
 # ---------------------------------------------------------------------------
 
 class TestJournalTamper:
@@ -138,7 +138,7 @@ class TestJournalTamper:
             fh.write("{ NOT VALID JSON AT ALL\n")
         reloaded = AccountableSurface(journal_path=path)
         assert reloaded.replay_errors == 1, (
-            "A single corrupt line must increment replay_errors by exactly 1 — never silently dropped."
+            "A single corrupt line must increment replay_errors by exactly 1 -- never silently dropped."
         )
 
     def test_valid_entries_survive_alongside_corrupt(self, tmp_path):
@@ -162,14 +162,14 @@ class TestJournalTamper:
             fh.write("bad1\nbad2\nbad3\n")
         reloaded = AccountableSurface(journal_path=path)
         assert reloaded.replay_errors == 3, (
-            "Each corrupt line must be counted independently — not collapsed into one."
+            "Each corrupt line must be counted independently -- not collapsed into one."
         )
 
     def test_tampered_json_structure_is_also_caught(self, tmp_path):
         """A structurally valid JSON object but missing required keys is a tamper signal."""
         path = tmp_path / "j.jsonl"
         AccountableSurface(journal_path=path).perceive(_PAGE)
-        # Valid JSON but missing 'kind' — JournalEntry.from_dict raises KeyError.
+        # Valid JSON but missing 'kind' -- JournalEntry.from_dict raises KeyError.
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps({"summary": "injected", "detail": {}}) + "\n")
         reloaded = AccountableSurface(journal_path=path)
@@ -179,7 +179,7 @@ class TestJournalTamper:
 
 
 # ---------------------------------------------------------------------------
-# 3. Plan/content tamper — content diverging from content_sha256 raises RefusedActuation
+# 3. Plan/content tamper -- content diverging from content_sha256 raises RefusedActuation
 # ---------------------------------------------------------------------------
 
 class TestPlanContentTamper:
@@ -191,7 +191,7 @@ class TestPlanContentTamper:
         with pytest.raises(RefusedActuation, match="content does not match"):
             eff.act(plan, allow, content=b"TAMPERED content")
         assert not Path(target).exists(), (
-            "A content-mismatch must leave the filesystem untouched — no partial write."
+            "A content-mismatch must leave the filesystem untouched -- no partial write."
         )
 
     def test_act_raises_on_empty_bytes_substituted_for_authorized(self, tmp_path):
@@ -231,7 +231,7 @@ class TestPlanContentTamper:
 
 
 # ---------------------------------------------------------------------------
-# 4. Forged/None allow-receipt — act() raises RefusedActuation; nothing written
+# 4. Forged/None allow-receipt -- act() raises RefusedActuation; nothing written
 # ---------------------------------------------------------------------------
 
 class TestForgedAllowReceipt:
@@ -284,7 +284,7 @@ class TestForgedAllowReceipt:
 
 
 # ---------------------------------------------------------------------------
-# 5. Out-of-bounds target — effector bound to root A; plan for B is refused even
+# 5. Out-of-bounds target -- effector bound to root A; plan for B is refused even
 #    with a valid allow receipt
 # ---------------------------------------------------------------------------
 
@@ -329,7 +329,7 @@ class TestOutOfBoundsTarget:
 
 
 # ---------------------------------------------------------------------------
-# 6. Interoception drift — digest re-derives after journal changes; not cached
+# 6. Interoception drift -- digest re-derives after journal changes; not cached
 # ---------------------------------------------------------------------------
 
 class TestInteroceptionDrift:
@@ -339,7 +339,7 @@ class TestInteroceptionDrift:
         s.perceive(_PAGE)
         obs_after = s.interocept()
         assert obs_empty.data["journal_digest"] != obs_after.data["journal_digest"], (
-            "interoception digest must change when the journal changes — not cached."
+            "interoception digest must change when the journal changes -- not cached."
         )
 
     def test_digest_tracks_every_entry_added(self):
@@ -350,7 +350,7 @@ class TestInteroceptionDrift:
         digests.append(s.interocept().data["journal_digest"])
         s.propose(action_kind="summarize", target="p", authorization=_grant(["summarize"]))
         digests.append(s.interocept().data["journal_digest"])
-        # All three must be distinct — each journal change shifts the digest.
+        # All three must be distinct -- each journal change shifts the digest.
         assert len(set(digests)) == 3, (
             "Each journal entry must produce a distinct interoception digest."
         )
@@ -376,12 +376,12 @@ class TestInteroceptionDrift:
         s.interocept()
         s.interocept()
         assert len(s.journal) == n, (
-            "interocept() must be a pure read — it must not grow the journal."
+            "interocept() must be a pure read -- it must not grow the journal."
         )
 
 
 # ---------------------------------------------------------------------------
-# 7. Ungrounded premise — actuate with unrelated justification/cortex yields
+# 7. Ungrounded premise -- actuate with unrelated justification/cortex yields
 #    verdict "ungrounded-premise", acted=False
 # ---------------------------------------------------------------------------
 
@@ -444,7 +444,7 @@ class TestUngroundedPremise:
 
 
 # ---------------------------------------------------------------------------
-# 8. Relevance filter — ReferenceCortex.ground() drops below-min_relevance sources
+# 8. Relevance filter -- ReferenceCortex.ground() drops below-min_relevance sources
 # ---------------------------------------------------------------------------
 
 class TestRelevanceFilter:
@@ -470,10 +470,10 @@ class TestRelevanceFilter:
         cortex = ReferenceCortex(source, min_relevance=0.3)
         grounding = cortex.ground("accountable agent gating verification provenance")
         assert grounding.confidence == "ungrounded", (
-            "If no source meets min_relevance, confidence must be 'ungrounded' — not a fabricated citation."
+            "If no source meets min_relevance, confidence must be 'ungrounded' -- not a fabricated citation."
         )
         assert grounding.references == [], (
-            "An ungrounded result must carry zero references — no placeholder citations."
+            "An ungrounded result must carry zero references -- no placeholder citations."
         )
 
     def test_raising_min_relevance_shrinks_result_set(self):
@@ -492,7 +492,7 @@ class TestRelevanceFilter:
 
 
 # ---------------------------------------------------------------------------
-# 9. Verify catches out-of-band tamper — write via act(), tamper bytes on disk,
+# 9. Verify catches out-of-band tamper -- write via act(), tamper bytes on disk,
 #    verify() returns failed
 # ---------------------------------------------------------------------------
 
@@ -547,7 +547,7 @@ class TestVerifyCatchesOutOfBandTamper:
 
 
 # ---------------------------------------------------------------------------
-# 10. Irreversible escalation — irreversible plan without allow_irreversible
+# 10. Irreversible escalation -- irreversible plan without allow_irreversible
 #     yields verdict "irreversible-needs-human", acted=False
 # ---------------------------------------------------------------------------
 
@@ -572,12 +572,12 @@ class TestIrreversibleEscalation:
             target="https://app.test/result",
             content=action,
             authorization=_grant(["web.submit"]),
-            allow_irreversible=False,  # default — explicit for test clarity
+            allow_irreversible=False,  # default -- explicit for test clarity
         )
         assert out.acted is False
         assert out.decision == "needs-human"
         assert out.verdict == "irreversible-needs-human"
-        # The driver must still be on the original page — no navigation happened.
+        # The driver must still be on the original page -- no navigation happened.
         assert driver.current_url() == "https://app.test/form"
 
     def test_irreversible_with_flag_is_allowed_to_proceed(self, tmp_path):
@@ -604,7 +604,7 @@ class TestIrreversibleEscalation:
         assert out.decision == "allow"
 
     def test_filesystem_write_is_reversible_no_escalation(self, tmp_path):
-        """FilesystemEffector writes are reversible — no escalation expected."""
+        """FilesystemEffector writes are reversible -- no escalation expected."""
         surface = AccountableSurface()
         target = str(tmp_path / "f.txt")
         out = surface.actuate(
@@ -618,7 +618,7 @@ class TestIrreversibleEscalation:
 
 
 # ---------------------------------------------------------------------------
-# 11. Selftest falsifiability — selftest() returns True clean, and fails if the
+# 11. Selftest falsifiability -- selftest() returns True clean, and fails if the
 #     contract is violated (demonstrably falsifiable)
 # ---------------------------------------------------------------------------
 
@@ -635,7 +635,7 @@ class TestSelftestFalsifiability:
 
         class _BypassedEffector(FilesystemEffector):
             def act(self, plan, allow_receipt, content):
-                # Bypass the allow check — the contract is violated.
+                # Bypass the allow check -- the contract is violated.
                 path = Path(plan.target)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(content)
@@ -649,14 +649,14 @@ class TestSelftestFalsifiability:
                     plan = probe.preview(target, b"x")
                     try:
                         probe.act(plan, allow_receipt=None, content=b"x")
-                        # act() did NOT raise — the guard is absent
+                        # act() did NOT raise -- the guard is absent
                         return False
                     except RefusedActuation:
                         return not Path(target).exists()
 
         bypassed = _BypassedEffector(tmp_path)
         assert bypassed.selftest() is False, (
-            "selftest() on a contract-violating effector must return False — "
+            "selftest() on a contract-violating effector must return False -- "
             "proving the selftest is falsifiable and not a rubber stamp."
         )
 
@@ -666,7 +666,7 @@ class TestSelftestFalsifiability:
 
         class _NoFilterCortex(ReferenceCortex):
             def ground(self, subject):
-                # Return all results regardless of relevance — filter bypassed.
+                # Return all results regardless of relevance -- filter bypassed.
                 raw = self._source.search(subject, limit=10)
                 refs = [self._witness(item, 1.0) for item in raw]
                 import hashlib

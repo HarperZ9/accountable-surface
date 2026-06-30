@@ -1,4 +1,4 @@
-"""Tests for grounded actuation — an action must cite grounded references.
+"""Tests for grounded actuation -- an action must cite grounded references.
 
 Offline. When a justification + reference cortex are supplied, the surface grounds
 the action's premise before acting: an ungrounded premise escalates to needs-human

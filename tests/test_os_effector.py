@@ -1,7 +1,7 @@
-"""Tests for OS actuation — CommandEffector (Phase 5, third effector).
+"""Tests for OS actuation -- CommandEffector (Phase 5, third effector).
 
 Offline + deterministic via a FakeRunner (no real subprocess). Proves: inert until
-authorized; bounded to an allowlist; and — the headline — commands are IRREVERSIBLE,
+authorized; bounded to an allowlist; and -- the headline -- commands are IRREVERSIBLE,
 so the surface escalates to needs-human unless the grant explicitly pre-authorizes it.
 """
 

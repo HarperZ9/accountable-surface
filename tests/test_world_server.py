@@ -1,4 +1,4 @@
-"""Tests for the Shared World server core — the live World (pub/sub over the body).
+"""Tests for the Shared World server core -- the live World (pub/sub over the body).
 
 The HTTP/SSE plumbing is verified end-to-end in the browser; here we prove the in-process
 World: a proposed action runs the real loop AND is pushed to every live subscriber (so watchers
@@ -62,7 +62,7 @@ def test_chat_grounds_in_the_sight_and_remembers(tmp_path):
 
 def test_spectator_sees_the_same_structure_and_colour_the_model_reads(tmp_path):
     """Spectator-parity: the snapshot the browser receives carries the byte-identical
-    structure/colour/digest the model read — one frame, not two."""
+    structure/colour/digest the model read -- one frame, not two."""
     root = tmp_path / "w"
     root.mkdir()
     png_path = root / "scene.png"
@@ -70,12 +70,12 @@ def test_spectator_sees_the_same_structure_and_colour_the_model_reads(tmp_path):
     w = World(root, _sandbox_grant())
     snap = w.snapshot()
     # the snapshot must surface at least one sight for the PNG we planted
-    assert snap["sights"], "snapshot produced no sights — PNG was not witnessed"
+    assert snap["sights"], "snapshot produced no sights -- PNG was not witnessed"
     snap_sight = snap["sights"][0]
     # model-side: call sight_of directly on the same file (independent path through the code)
     model_sight = sight_of(png_path, cols=SIGHT_COLS)
     assert model_sight is not None, "sight_of returned None for a valid PNG"
-    # parity assertions — one frame, not two
+    # parity assertions -- one frame, not two
     assert snap_sight["structure"]["ghash"] == model_sight["structure"]["ghash"]
     assert snap_sight["structure"]["coords"] == model_sight["structure"]["coords"]
     assert snap_sight["color"] == model_sight["color"]

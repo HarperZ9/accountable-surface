@@ -1,8 +1,8 @@
-"""Tests for goal/task mode — AccountableSurface.pursue (bounded autonomy).
+"""Tests for goal/task mode -- AccountableSurface.pursue (bounded autonomy).
 
 Offline. Proves the surface executes a multi-step plan within ONE operator grant
 envelope, autonomously (no per-step prompt), but halts on the first step that is
-denied or fails verification — accountability woven through every step.
+denied or fails verification -- accountability woven through every step.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Grounded actuation — runnable transcript: an action must cite grounded references.
+"""Grounded actuation -- runnable transcript: an action must cite grounded references.
 
 Same authorized write, two premises: a GROUNDED one proceeds and cites its evidence;
 an UNGROUNDED one escalates to needs-human and never touches the world. Evidence is
@@ -64,7 +64,7 @@ def main() -> None:
         print(f"  acted: {out.acted}  decision: {out.decision}  verdict: {out.verdict}")
         print(f"  file exists: {Path(target).exists()}   (the ungrounded action never ran)\n")
 
-        print("== JOURNAL (second attempt — grounding + actuation, witnessed) ==")
+        print("== JOURNAL (second attempt -- grounding + actuation, witnessed) ==")
         for entry in surface2.journal:
             if entry.kind in ("grounding", "actuation"):
                 print(f"  [{entry.kind}] {entry.summary}")

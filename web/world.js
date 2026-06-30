@@ -1,8 +1,8 @@
-// world.js — the shared world, live in the browser.
+// world.js -- the shared world, live in the browser.
 //
 // Subscribes to the body's loop over SSE: every proposed action streams in as a witnessed step
 // (gate decision, the hands acting, the receipt) and the world's new state (material + journal).
-// The operator can propose actions too. The receipt is re-checked CLIENT-SIDE (recheck.js) — the
+// The operator can propose actions too. The receipt is re-checked CLIENT-SIDE (recheck.js) -- the
 // meet re-derived from the certificate's own evidence. Trust nothing; check it.
 import { recheckComposed } from "./recheck.js";
 
@@ -11,7 +11,7 @@ let liveCert = null;
 
 const announce = msg => { $("status").textContent = msg; };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const shortDigest = d => !d ? "—" : (d.length > 30 ? d.slice(0, 30) + "…" : d);
+const shortDigest = d => !d ? "--" : (d.length > 30 ? d.slice(0, 30) + "…" : d);
 
 function renderWorld(snap) {
   $("world-root").textContent = "root: " + snap.root;
@@ -39,16 +39,16 @@ function renderCertificate(cert) {
   liveCert = cert || null;
   $("recheck-out").hidden = true;
   if (!cert) return;
-  $("cert-claim").textContent = cert.claim || "—";
-  const v = $("cert-verdict"); v.textContent = cert.verdict || "—"; v.className = "tag " + (cert.verdict || "unverifiable");
-  $("cert-oracle").textContent = cert.oracle || "—";
+  $("cert-claim").textContent = cert.claim || "--";
+  const v = $("cert-verdict"); v.textContent = cert.verdict || "--"; v.className = "tag " + (cert.verdict || "unverifiable");
+  $("cert-oracle").textContent = cert.oracle || "--";
   $("cert-evidence").innerHTML = (cert.evidence || []).map(([k, val]) =>
     `<div class="ev"><span class="ek">${esc(k)}</span><span class="evv"><span class="tag ${esc(val)}">${esc(val)}</span></span></div>`).join("");
 }
 
 function renderMove(step) {
   const dec = $("move-decision");
-  dec.textContent = step.decision || "—";
+  dec.textContent = step.decision || "--";
   dec.className = "tag " + (step.decision === "allow" ? "verified" : step.decision === "deny" ? "refuted" : "needs-human");
   $("move-flags").innerHTML =
     `<span class="flag ${step.acted ? "on" : "off"}">${step.acted ? "acted" : "did not act"}</span>` +
@@ -65,11 +65,11 @@ function recheck() {
   const r = recheckComposed(liveCert);
   const out = $("recheck-out"); out.hidden = false;
   out.innerHTML =
-    `<div class="rc-line">re-derived in your browser — the meet of [` +
+    `<div class="rc-line">re-derived in your browser -- the meet of [` +
     r.subs.map(s => `<span class="tag ${esc(s.verdict)}">${esc(s.verdict)}</span>`).join(" · ") +
     `] → <span class="tag ${esc(r.verdict)}">${esc(r.verdict)}</span></div>` +
     `<div class="rc-match ${r.matches ? "ok" : "bad"}">` +
-    (r.matches ? "✓ reproduces the receipt — you didn't have to trust it"
+    (r.matches ? "✓ reproduces the receipt -- you didn't have to trust it"
                : "✗ does not match the receipt") + `</div>`;
   announce(`Re-checked: the meet reproduces ${r.verdict}, ${r.matches ? "matches" : "does not match"} the receipt.`);
 }
@@ -104,7 +104,7 @@ function setRunning(running) {
   $("ap-stop").disabled = !running;
 }
 
-// each autonomous step's reasoning is the mind's voice — shown beside the verdict the surface gave it
+// each autonomous step's reasoning is the mind's voice -- shown beside the verdict the surface gave it
 function appendVoice(step) {
   if (!step.reasoning) return;
   apStep += 1;
@@ -114,7 +114,7 @@ function appendVoice(step) {
   const div = document.createElement("div");
   div.className = "voice";
   div.innerHTML = `<span class="vi">${apStep}</span>` +
-    `<span class="vt">${esc(step.reasoning)} <em>— ${esc(step.kind)} ${esc(target)}</em></span>` +
+    `<span class="vt">${esc(step.reasoning)} <em>-- ${esc(step.kind)} ${esc(target)}</em></span>` +
     `<span class="vv"><span class="tag ${esc(v)}">${esc(v)}</span></span>`;
   $("transcript").appendChild(div);
   $("transcript").scrollTop = $("transcript").scrollHeight;
@@ -154,7 +154,7 @@ function connect() {
   es.addEventListener("world", e => renderWorld(JSON.parse(e.data)));
   es.addEventListener("step", e => { const s = JSON.parse(e.data); renderMove(s); appendVoice(s); });
   es.addEventListener("autopilot", () => { setRunning(false); announce("Autopilot finished."); });
-  es.onerror = () => announce("stream disconnected — retrying…");
+  es.onerror = () => announce("stream disconnected -- retrying…");
 }
 
 $("act-btn").addEventListener("click", propose);

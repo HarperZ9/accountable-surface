@@ -1,11 +1,11 @@
-"""The live capture witnessing loop — the engine-agnostic eye, moving.
+"""The live capture witnessing loop -- the engine-agnostic eye, moving.
 
 Pulls frames from any coherence-membrane CaptureSource (a screen grabber in
 production, a fake in tests), witnesses each via the increment-1 eye
 (witness_image: shape + structure + OKLab colour + provenance), and hands each
 *changed* frame to a callback. Source-agnostic by construction (never imports a
 graphics API), deterministic (sleep + should_stop are injected), bounded, and
-change-proportional (an unchanged frame — byte-identical digest — is skipped, not
+change-proportional (an unchanged frame -- byte-identical digest -- is skipped, not
 re-witnessed downstream). Stdlib + coherence-membrane only.
 """
 from __future__ import annotations

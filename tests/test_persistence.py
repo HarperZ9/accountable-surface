@@ -4,7 +4,7 @@ Offline. Proves the journal survives across sessions: append-only JSONL on
 every perception/decision, replay on init, round-trip fidelity, and that a
 corrupt line is surfaced (a tamper signal) rather than silently dropped.
 
-The in-memory default (no path) is unchanged — guarded by the existing suite.
+The in-memory default (no path) is unchanged -- guarded by the existing suite.
 """
 
 from __future__ import annotations
@@ -99,7 +99,7 @@ def test_malformed_line_is_counted_not_dropped(tmp_path):
     assert reloaded.replay_errors == 1     # the corruption is surfaced, not hidden
 
 
-# --- Cycle 2: the payoff — a witnessed self-view that spans sessions --------
+# --- Cycle 2: the payoff -- a witnessed self-view that spans sessions --------
 
 def test_interocept_spans_replayed_sessions(tmp_path):
     # The point of durability: the self-view counts history from prior sessions.
@@ -114,7 +114,7 @@ def test_interocept_spans_replayed_sessions(tmp_path):
 
 def test_interocept_digest_is_storage_independent(tmp_path):
     # The self-view digests journal CONTENT, not storage. The same activity
-    # yields the same digest whether it was created in-session or replayed —
+    # yields the same digest whether it was created in-session or replayed --
     # so persistence cannot silently alter what the surface attests to.
     path = tmp_path / "journal.jsonl"
     AccountableSurface(journal_path=path).perceive(FIXTURE)
@@ -127,7 +127,7 @@ def test_interocept_digest_is_storage_independent(tmp_path):
 
 def test_no_path_writes_nothing(tmp_path):
     # Backward-compatible default: with no journal_path the surface touches no
-    # disk at all — purely in-memory, exactly as before Phase 3.
+    # disk at all -- purely in-memory, exactly as before Phase 3.
     s = AccountableSurface()
     s.perceive(FIXTURE)
     s.propose(action_kind="summarize", target="page", authorization=_grant(["summarize"]))

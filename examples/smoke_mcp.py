@@ -1,4 +1,4 @@
-"""Live MCP protocol smoke — proves the server actually speaks MCP.
+"""Live MCP protocol smoke -- proves the server actually speaks MCP.
 
 Spawns the packaged server (`python -m accountable_surface.server`) as an MCP
 stdio server, connects a real client, runs the handshake, lists tools, and calls

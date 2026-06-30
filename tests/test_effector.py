@@ -1,4 +1,4 @@
-"""Tests for the efferent arm — FilesystemEffector (Phase 5).
+"""Tests for the efferent arm -- FilesystemEffector (Phase 5).
 
 Offline. Proves an effector is **inert until authorized** (no gate allow -> refuses,
 writes nothing), **bounded** to its construction root, **reversible**, and that it

@@ -1,6 +1,6 @@
-// watch.js — the broadcast. Read-only: a spectator tunes into the shared world and sees what the
-// operator and the model see — the witnessed material (including the glyph grid the model actually
-// perceives), the mind's voice, and every gated, witnessed move — streamed live. Like a stream.
+// watch.js -- the broadcast. Read-only: a spectator tunes into the shared world and sees what the
+// operator and the model see -- the witnessed material (including the glyph grid the model actually
+// perceives), the mind's voice, and every gated, witnessed move -- streamed live. Like a stream.
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -11,7 +11,7 @@ function setLive(on, label) {
 }
 
 function setNow(goal) {
-  $("now").innerHTML = goal ? `now: ${esc(goal)}` : "<b>idle — waiting for a goal</b>";
+  $("now").innerHTML = goal ? `now: ${esc(goal)}` : "<b>idle -- waiting for a goal</b>";
 }
 
 // ---- the ASCII video player: moving material, played a witnessed frame at a time ----
@@ -34,10 +34,10 @@ function playReel(r) {
 }
 
 function renderStage(snap) {
-  if (reelTimer) return;   // a reel is playing — it owns the stage (moving material is the headline)
+  if (reelTimer) return;   // a reel is playing -- it owns the stage (moving material is the headline)
   const screen = $("screen");
   const sights = snap.sights || [];
-  if (sights.length) {                              // show what the model sees — the witnessed grid
+  if (sights.length) {                              // show what the model sees -- the witnessed grid
     const s = sights[0];
     screen.innerHTML = `<pre class="sight">${esc(s.ascii.join("\n"))}</pre>`;
     $("stage-cap").innerHTML = `the stage &middot; <b>what the model sees</b> &middot; ${esc(s.name)}`;
@@ -53,7 +53,7 @@ function renderStage(snap) {
     $("sightmeta").textContent = "";
     return;
   }
-  screen.innerHTML = `<span class="empty">the world is quiet — ${(snap.files || []).length} file(s)</span>`;
+  screen.innerHTML = `<span class="empty">the world is quiet -- ${(snap.files || []).length} file(s)</span>`;
   $("sightmeta").textContent = "";
 }
 
@@ -65,7 +65,7 @@ function addVoice(step) {
   const div = document.createElement("div");
   div.className = "vline";
   div.innerHTML = `<span class="who">the model · move ${moveN}</span>${esc(step.reasoning)} ` +
-    `<em>— ${esc(step.kind)} ${esc(target)}</em>`;
+    `<em>-- ${esc(step.kind)} ${esc(target)}</em>`;
   $("voice").appendChild(div);
   $("voice").scrollTop = $("voice").scrollHeight;
 }
@@ -91,7 +91,7 @@ async function init() {
   } catch (e) { /* the stream will drive the view */ }
   try {
     const rl = await (await fetch("./reel")).json();
-    if (rl && rl.count) playReel(rl);   // moving material present — start the ASCII video player
+    if (rl && rl.count) playReel(rl);   // moving material present -- start the ASCII video player
   } catch (e) { /* no reel */ }
 }
 

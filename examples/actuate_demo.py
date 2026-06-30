@@ -1,8 +1,8 @@
-"""Accountable actuation — runnable transcript (the demo IS the argument).
+"""Accountable actuation -- runnable transcript (the demo IS the argument).
 
 The efferent arm: the surface perceives a target, ACTS only on a gate allow,
 verifies its own work by re-perceiving, and rolls back a faulty actuation. A
-FilesystemEffector bounded to a temp dir — nothing outside it, nothing without an
+FilesystemEffector bounded to a temp dir -- nothing outside it, nothing without an
 operator grant. No internet; nothing irreversible.
 
 Run: PYTHONPATH="src;<coherence-membrane>/src;<proof-surface>/src" python examples/actuate_demo.py

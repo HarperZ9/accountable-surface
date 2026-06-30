@@ -1,18 +1,18 @@
-"""The Accountable Surface (Phase 2 spike) — the live seam where a model
+"""The Accountable Surface (Phase 2 spike) -- the live seam where a model
 perceives-and-acts under witness + gate.
 
 A standalone composition of EXISTING, audited parts, proving the keystone before
 any surgery on released ORCA 1.0.0:
 
-  * perception — coherence-membrane organs (here, WebDocumentOrgan) emit
+  * perception -- coherence-membrane organs (here, WebDocumentOrgan) emit
     witnessed Observations; nothing reaches the model un-witnessed.
-  * action     — every proposed action is routed through proof-surface's
+  * action     -- every proposed action is routed through proof-surface's
     pre-execution gate (allow / deny / needs-human) via the membrane's
     build_gate_request/decide bridge. The surface NEVER executes; it returns the
     gate's advisory decision for the operator/runtime to enforce.
-  * memory     — every perception and every decision is journaled.
+  * memory     -- every perception and every decision is journaled.
 
-The surface holds no authority. It perceives, it asks the gate, it records — the
+The surface holds no authority. It perceives, it asks the gate, it records -- the
 operational form of "awareness is not authority" and "machines learning to hold
 themselves accountable."
 
@@ -56,7 +56,7 @@ class JournalEntry:
 @dataclass(frozen=True)
 class ActionOutcome:
     """The gate's advisory result for a proposed action. `executed` is ALWAYS
-    False — the surface reports a decision; it never acts on it."""
+    False -- the surface reports a decision; it never acts on it."""
 
     decision: str  # "allow" | "deny" | "needs-human"
     reasons: list[str]
@@ -87,7 +87,7 @@ class ActuationOutcome:
 class Step:
     """One intended action in a task plan: an effector, a target, and the content
     (bytes for the filesystem, a WebAction for the web). The plan may come from a
-    model — each step is still independently gated."""
+    model -- each step is still independently gated."""
 
     effector: Any
     target: str
@@ -138,7 +138,7 @@ class AccountableSurface:
     def _record(self, entry: JournalEntry) -> None:
         """Append an entry to the in-memory journal and, when persisting, to the
         append-only JSONL file (one compact JSON object per line). The surface
-        only ever appends — it never rewrites or truncates the record."""
+        only ever appends -- it never rewrites or truncates the record."""
         self.journal.append(entry)
         if self._journal_path is not None:
             line = json.dumps(entry.to_dict(), sort_keys=True, separators=(",", ":"))
@@ -179,7 +179,7 @@ class AccountableSurface:
         decision; the surface does not execute it.
 
         ``expected_digest`` (a state precondition) must be a **raw 64-char lowercase
-        hex SHA-256** — NOT the ``sha256:``-prefixed form that ``Provenance.digest``
+        hex SHA-256** -- NOT the ``sha256:``-prefixed form that ``Provenance.digest``
         carries. A prefixed value is rejected as malformed and fails closed as an
         *authorization* deny (not a *state* deny); strip the prefix before passing it."""
         request = build_gate_request(
@@ -259,18 +259,18 @@ class AccountableSurface:
         if justification is not None and cortex is not None:
             grounding = self.ground(justification, cortex)
             if grounding.confidence == "ungrounded":
-                # An action must cite grounded references — an ungrounded premise is not
+                # An action must cite grounded references -- an ungrounded premise is not
                 # actionable autonomously; escalate for human review. Evidence is gated
                 # like authority.
                 return self._record_actuation(
                     plan, acted=False, decision="needs-human", verdict="ungrounded-premise",
                     verified=False, rolled_back=False,
-                    reasons=[f"action premise {justification!r} is ungrounded — no supporting references"],
+                    reasons=[f"action premise {justification!r} is ungrounded -- no supporting references"],
                     before=before, after=None, grounding=grounding,
                 )
         if not plan.reversible and not allow_irreversible:
             # Irreversible action: the gate allowed it, but it cannot be undone, so a
-            # bare grant is not enough — escalate to needs-human unless the operator
+            # bare grant is not enough -- escalate to needs-human unless the operator
             # pre-authorized irreversibility (an explicit, separate session policy).
             return self._record_actuation(
                 plan, acted=False, decision="needs-human", verdict="irreversible-needs-human",
@@ -352,7 +352,7 @@ class AccountableSurface:
         allow_irreversible: bool = False,
     ) -> GoalOutcome:
         """Execute a task plan (a sequence of Steps) autonomously within ONE operator
-        grant envelope — perceive→plan→gate→act→verify per step — with NO per-step human
+        grant envelope -- perceive→plan→gate→act→verify per step -- with NO per-step human
         prompt (the envelope is pre-authorized), but halting on the first step that is
         denied, escalated, refused, or fails verification. Bounded autonomy made safe by
         per-step accountability: a plan (even a model's plan) is not authority."""
@@ -381,7 +381,7 @@ class AccountableSurface:
             JournalEntry(
                 kind="goal",
                 summary=f"goal {goal!r}: {'achieved' if achieved else 'halted'} ({acted}/{len(steps)} steps)"
-                + (f" — {halted}" if halted else ""),
+                + (f" -- {halted}" if halted else ""),
                 detail={"achieved": achieved, "steps": len(steps), "acted": acted, "halted_reason": halted},
             )
         )
@@ -408,7 +408,7 @@ class AccountableSurface:
         return grounding
 
     def interocept(self) -> Observation:
-        """Perceive the surface's OWN session — a witnessed, tamper-evident view
+        """Perceive the surface's OWN session -- a witnessed, tamper-evident view
         of what it has perceived and what the gate decided. A pure read: it does
         not append to the journal, grants no authority, and its journal_digest
         re-derives, so the self-report cannot silently drift."""

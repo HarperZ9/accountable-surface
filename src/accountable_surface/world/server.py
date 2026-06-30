@@ -1,10 +1,10 @@
-"""Zero-dep live server for the Shared World — the body operating, watched together over SSE.
+"""Zero-dep live server for the Shared World -- the body operating, watched together over SSE.
 
 stdlib http.server only. Holds ONE shared world (a WorldSession bound to a sandbox root + an
 operator grant) and a set of live subscribers: a proposed action POSTed to /act runs the real
 loop and is pushed to every open /world/stream connection, so the operator sees the body act in
 real time. Grants are operator-supplied at startup (env or arg); the built-in fallback is an
-explicit, sandbox-scoped demo grant — default-deny still holds (no grant -> nothing acts).
+explicit, sandbox-scoped demo grant -- default-deny still holds (no grant -> nothing acts).
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ _CT = {".html": "text/html", ".js": "text/javascript", ".css": "text/css",
 
 
 def _sandbox_grant(actions=("fs.write",)) -> dict:
-    """An explicit, sandbox-scoped demo grant — the person starting the server is the operator."""
+    """An explicit, sandbox-scoped demo grant -- the person starting the server is the operator."""
     return {"authorization_version": "0.1", "receipt_id": "rcpt-world-sandbox",
             "kind": "authorization-grant", "principal": {"id": "operator", "role": "operator"},
             "agent": {"id": "world-agent"}, "intent": "operate in the local sandbox world",
@@ -43,15 +43,15 @@ def _sandbox_grant(actions=("fs.write",)) -> dict:
 
 
 def _offline_reply(snap) -> str:
-    """An honest reading of the shared sight when no model is configured — never a fabrication."""
+    """An honest reading of the shared sight when no model is configured -- never a fabrication."""
     sights = snap.get("sights") or []
     if sights:
-        return "Looking with you — I can make out " + describe_sight(sights[0]) + ". What stands out to you?"
-    return "Nothing is in view yet — add an image and we'll look at it together."
+        return "Looking with you -- I can make out " + describe_sight(sights[0]) + ". What stands out to you?"
+    return "Nothing is in view yet -- add an image and we'll look at it together."
 
 
 def _safe_name(name) -> str:
-    """A safe stem for an uploaded file — alnum/._- only, no path traversal."""
+    """A safe stem for an uploaded file -- alnum/._- only, no path traversal."""
     base = re.sub(r"[^A-Za-z0-9._-]", "_", str(name or "image")).strip("._") or "image"
     return base[:-4] if base.lower().endswith(".png") else base
 
@@ -78,15 +78,15 @@ class World:
     @property
     def chat_history(self) -> list:
         with self._lock:
-            return list(self._chat)   # a copy — never hand out the live list
+            return list(self._chat)   # a copy -- never hand out the live list
 
     def status(self) -> dict:
-        """The pilot/run status, read atomically — folded into GET /world alongside the snapshot."""
+        """The pilot/run status, read atomically -- folded into GET /world alongside the snapshot."""
         with self._lock:
             return {"pilot": self.pilot_kind, "running": self._running, "goal": self._goal}
 
     def chat(self, message) -> dict:
-        """One turn of the conversation about what they both see — grounded in the witnessed sight,
+        """One turn of the conversation about what they both see -- grounded in the witnessed sight,
         remembered. The pilot converses if it can; otherwise an honest reading of the sight."""
         snap = self.snapshot()                       # locks internally; take it before our own lock
         with self._lock:
@@ -98,7 +98,7 @@ class World:
             reply = _offline_reply(snap)
         with self._lock:
             self._chat.append({"role": "assistant", "text": reply})
-            del self._chat[:-40]   # bounded memory — the recent conversation
+            del self._chat[:-40]   # bounded memory -- the recent conversation
             history = list(self._chat)
         return {"reply": reply, "history": history}   # return the copy, never the live list
 
@@ -386,7 +386,7 @@ def serve(host=None, port=8808, root=None, grant=None):
     pilot, kind = _build_pilot()
     _WORLD = World(root, grant, pilot, kind)
     if host not in ("127.0.0.1", "localhost", "::1"):
-        print(f"!! WARNING: binding {host} exposes this surface PUBLICLY with NO authentication — "
+        print(f"!! WARNING: binding {host} exposes this surface PUBLICLY with NO authentication -- "
               "anyone who can reach this port can drive the body and read the sandbox. "
               "Only do this behind your own auth/firewall.")
     httpd = ThreadingHTTPServer((host, port), Handler)

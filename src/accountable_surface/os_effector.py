@@ -1,11 +1,11 @@
-"""OS actuation for the efferent arm — run bounded, allowlisted commands.
+"""OS actuation for the efferent arm -- run bounded, allowlisted commands.
 
 Inert until authorized; bounded to an allowlist + a cwd. This is the prime
 IRREVERSIBLE effector: a command's effects can't be rolled back, so
 `AccountableSurface.actuate` escalates to needs-human unless the operator grant
 explicitly carries `allow_irreversible`. Native: a `runner` abstraction
 (`SubprocessRunner` real; a fake for tests) so the accountability logic is testable
-offline without spawning processes. No shell — argv only.
+offline without spawning processes. No shell -- argv only.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from accountable_surface.effector import Plan, RefusedActuation, Verdict
 
 
 class SubprocessRunner:
-    """Real runner — `subprocess.run`, bounded cwd, captured output, no shell."""
+    """Real runner -- `subprocess.run`, bounded cwd, captured output, no shell."""
 
     def run(self, argv: list[str], cwd: str) -> dict:
         proc = subprocess.run(  # noqa: S603 (argv only, no shell; caller allowlists argv[0])
@@ -57,12 +57,12 @@ class CommandEffector:
     def preview(self, target: str, command: list[str], before: Observation | None = None) -> Plan:
         content_sha = sha256_hex(" ".join(command).encode("utf-8"))
         digest = "sha256:" + sha256_hex(f"{self.action_kind}|{target}|{content_sha}".encode("utf-8"))
-        # reversible=False — a command's effects cannot be undone.
+        # reversible=False -- a command's effects cannot be undone.
         return Plan(self.action_kind, target, content_sha, False, False, digest)
 
     def act(self, plan: Plan, allow_receipt: Any, command: list[str]) -> Observation:
         if getattr(allow_receipt, "decision", None) != "allow":
-            raise RefusedActuation("no gate allow — the effector will not run anything")
+            raise RefusedActuation("no gate allow -- the effector will not run anything")
         request = getattr(allow_receipt, "request", {}) or {}
         planned = request.get("planned_action", {}) if isinstance(request, dict) else {}
         if planned.get("action_kind") != plan.action_kind or planned.get("target") != plan.target:
@@ -79,7 +79,7 @@ class CommandEffector:
         return Verdict("pass" if code == 0 else "failed", f"command exit code: {code}")
 
     def rollback(self, plan: Plan) -> Observation:
-        raise RefusedActuation("os.run is irreversible by construction — nothing to roll back")
+        raise RefusedActuation("os.run is irreversible by construction -- nothing to roll back")
 
     def selftest(self) -> bool:
         """Falsifiable: an act without a gate allow must raise and run nothing."""

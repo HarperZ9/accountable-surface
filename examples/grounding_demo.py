@@ -1,6 +1,6 @@
-"""Reference cortex — runnable transcript: grounding, and admitting when it can't.
+"""Reference cortex -- runnable transcript: grounding, and admitting when it can't.
 
-The organ returns witnessed, relevance-scored references for a subject — and flags
+The organ returns witnessed, relevance-scored references for a subject -- and flags
 'ungrounded' rather than surface an irrelevant citation. FakeSource here (offline,
 deterministic); ArxivSource is the real native backend (stdlib urllib + xml).
 
@@ -43,7 +43,7 @@ def main() -> None:
     print("== a subject with NO relevant corpus ==")
     grounding = surface.ground("orbital mechanics of trans-neptunian objects", cortex)
     print(f"  confidence: {grounding.confidence}   refs: {len(grounding.references)}   "
-          "(the organ admits it cannot ground — no laundered citation)\n")
+          "(the organ admits it cannot ground -- no laundered citation)\n")
 
     print("== JOURNAL (every grounding, witnessed) ==")
     for entry in surface.journal:

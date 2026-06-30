@@ -1,7 +1,7 @@
-"""Goal/task mode — runnable transcript: bounded autonomy against a real localhost form.
+"""Goal/task mode -- runnable transcript: bounded autonomy against a real localhost form.
 
 The surface pursues a multi-step goal (navigate -> fill) autonomously within ONE
-operator grant — no per-step prompt — then the same goal with an UNauthorized step
+operator grant -- no per-step prompt -- then the same goal with an UNauthorized step
 HALTS at that step. Every step gated + verified + journaled. No browser, no deps.
 
 Run: PYTHONPATH="src;<coherence-membrane>/src;<proof-surface>/src" python examples/goal_demo.py
@@ -79,19 +79,19 @@ def main() -> None:
         print(f"== bounded autonomy against {base} (no browser, stdlib only) ==\n")
 
         surface, steps, drv = _signup_goal(base)
-        print("== GOAL: sign up — grant authorizes web.navigate + web.fill ==")
+        print("== GOAL: sign up -- grant authorizes web.navigate + web.fill ==")
         out = surface.pursue("sign-up", steps, authorization=_grant(["web.navigate", "web.fill"]))
         print(f"  achieved: {out.achieved}   steps acted: {out.steps_acted}/{out.steps_attempted}")
         print(f"  Email on the page: {drv.field_value('Email')!r}   (navigate THEN fill, no per-step prompt)\n")
 
         surface2, steps2, drv2 = _signup_goal(base)
-        print("== GOAL: sign up — grant authorizes web.navigate ONLY (fill not allowed) ==")
+        print("== GOAL: sign up -- grant authorizes web.navigate ONLY (fill not allowed) ==")
         out = surface2.pursue("sign-up", steps2, authorization=_grant(["web.navigate"]))
         print(f"  achieved: {out.achieved}   steps acted: {out.steps_acted}/{out.steps_attempted}")
         print(f"  halted: {out.halted_reason}")
         print(f"  Email on the page: {drv2.field_value('Email')!r}   (the unauthorized step never ran)\n")
 
-        print("== JOURNAL (second goal — every step + the goal record, witnessed) ==")
+        print("== JOURNAL (second goal -- every step + the goal record, witnessed) ==")
         for entry in surface2.journal:
             if entry.kind in ("actuation", "goal"):
                 print(f"  [{entry.kind}] {entry.summary}")

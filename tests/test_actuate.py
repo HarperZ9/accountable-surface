@@ -1,4 +1,4 @@
-"""Tests for AccountableSurface.actuate — the full accountable-actuation loop.
+"""Tests for AccountableSurface.actuate -- the full accountable-actuation loop.
 
 Offline. Proves the loop perceive -> plan -> gate -> ACT -> re-perceive -> verify:
 no grant -> no action; an authorized action is acted, self-verified, and journaled;

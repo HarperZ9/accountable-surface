@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout accountable-surface
+        uses: actions/checkout@v7
+        with:
+          path: accountable-surface
+      - name: Checkout coherence-membrane
+        uses: actions/checkout@v7
+        with:
+          repository: HarperZ9/coherence-membrane
+          path: coherence-membrane
+      - name: Checkout proof-surface
+        uses: actions/checkout@v7
+        with:
+          repository: HarperZ9/proof-surface
+          path: proof-surface
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Install package
+        shell: powershell
+        working-directory: accountable-surface
+        run: python -m pip install -e ".[test]"
+      - name: Run Python tests
+        shell: powershell
+        working-directory: accountable-surface
+        run: |
+          $env:PYTHONPATH = "$PWD\src;$PWD\..\coherence-membrane\src;$PWD\..\proof-surface\src"
+          python -m pytest
+      - name: Run web tests
+        shell: powershell
+        working-directory: accountable-surface
+        run: node --test web/*.test.mjs

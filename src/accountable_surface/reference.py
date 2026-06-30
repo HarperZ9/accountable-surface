@@ -1,9 +1,9 @@
-"""The reference cortex — a grounding organ (afferent, semantic).
+"""The reference cortex -- a grounding organ (afferent, semantic).
 
 Given a subject, it returns WITNESSED references (provenance-bound, relevance-scored),
 never raw assertions. A grounding tool that surfaces plausible-but-irrelevant sources
-launders falsehood with the authority of a citation — so this organ witnesses every
-reference, scores relevance natively (lexical overlap — explainable, no ML, no external
+launders falsehood with the authority of a citation -- so this organ witnesses every
+reference, scores relevance natively (lexical overlap -- explainable, no ML, no external
 deps), flags when it cannot ground (`confidence`), and stays INERT (it grounds; it
 asserts nothing).
 
@@ -32,7 +32,7 @@ def _tokens(text: str) -> set[str]:
 
 def _relevance(subject: str, text: str) -> float:
     """Fraction of the subject's significant terms present in the text (0..1).
-    Crude and lexical by design — explainable, never a confident black box."""
+    Crude and lexical by design -- explainable, never a confident black box."""
     subject_terms = _tokens(subject)
     if not subject_terms:
         return 0.0
@@ -78,7 +78,7 @@ def parse_arxiv_atom(xml: str) -> list[dict]:
 
 
 class FakeSource:
-    """Deterministic source for tests/offline demos — canned result dicts."""
+    """Deterministic source for tests/offline demos -- canned result dicts."""
 
     def __init__(self, results: list[dict]) -> None:
         self._results = results
@@ -88,7 +88,7 @@ class FakeSource:
 
 
 class ArxivSource:
-    """Real source — the arXiv API over stdlib urllib (http/https). Network; the PARSE
+    """Real source -- the arXiv API over stdlib urllib (http/https). Network; the PARSE
     is tested (`parse_arxiv_atom`), this thin fetch wrapper is not exercised offline."""
 
     def __init__(self, *, timeout: float = 10.0, max_bytes: int = 5_000_000) -> None:

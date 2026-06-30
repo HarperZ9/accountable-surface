@@ -1,4 +1,4 @@
-"""Tests for WorldSession — the body alive in a shared world.
+"""Tests for WorldSession -- the body alive in a shared world.
 
 Proves one PROPOSED action becomes one witnessed turn through the REAL perceive->gate->act->
 verify loop on real files under a sandbox root: a granted write acts, self-verifies, and carries
