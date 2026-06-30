@@ -1,4 +1,4 @@
-"""The Accountable Surface — a live seam where a model perceives and acts only
+"""The Accountable Surface -- a live seam where a model perceives and acts only
 through accountability: witnessed perception, a pre-execution gate, and a
 tamper-evident, durable memory, under human stewardship.
 

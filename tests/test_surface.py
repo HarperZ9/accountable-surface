@@ -1,4 +1,4 @@
-"""Tests for the Accountable Surface spike — the keystone loop.
+"""Tests for the Accountable Surface spike -- the keystone loop.
 
 Proves: witnessed perception; authorized -> allow; unauthorized/expired/empty
 grant -> deny; integrity mismatch -> state deny; integrity match -> allow; the

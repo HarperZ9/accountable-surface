@@ -1,4 +1,4 @@
-"""Grant helpers — shared across all proof-surface boundaries.
+"""Grant helpers -- shared across all proof-surface boundaries.
 
 proof-surface's action-authorization schema is CLOSED: it rejects any unexpected
 field in ``scope``. ``allowed_perceptions`` is accountable-surface's own
@@ -16,7 +16,7 @@ from __future__ import annotations
 def action_authorization(grant):
     """Return a grant suitable for proof-surface's closed action-authorization schema.
 
-    Strips ``allowed_perceptions`` from ``scope`` (copy — never mutates the original).
+    Strips ``allowed_perceptions`` from ``scope`` (copy -- never mutates the original).
     Total over non-dict / missing-field grants: returns the original unchanged when
     there is nothing to strip, so the call is always safe regardless of grant shape.
     """

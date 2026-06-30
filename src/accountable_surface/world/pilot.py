@@ -1,15 +1,15 @@
-"""Pilots — the mind that drives the body, kept honest by the surface around it.
+"""Pilots -- the mind that drives the body, kept honest by the surface around it.
 
-A Pilot perceives the WITNESSED world state (real files, real digests, the journal — never its
+A Pilot perceives the WITNESSED world state (real files, real digests, the journal -- never its
 own recollection) and proposes ONE next action; the body still gates, acts, verifies its own
 work, and witnesses the result, which is fed back as ground truth for the next step. This is
 scaffolding for exactly where models are weak: it externalizes perception (the model can't
-hallucinate the state — it's handed the real one), verification (a botched action is caught and
+hallucinate the state -- it's handed the real one), verification (a botched action is caught and
 rolled back, not assumed done), and memory (the journal), and bounds reach (the gate). The mind
 proposes; the surface keeps it true.
 
-Model-agnostic: ScriptedPilot (deterministic, offline — tests + demos) or ClaudePilot (a real
-model via the Anthropic Messages API over stdlib urllib — no SDK, zero third-party deps).
+Model-agnostic: ScriptedPilot (deterministic, offline -- tests + demos) or ClaudePilot (a real
+model via the Anthropic Messages API over stdlib urllib -- no SDK, zero third-party deps).
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ class Proposal:
 
 
 class ScriptedPilot:
-    """Replays a fixed list of proposals, then signals done. Deterministic — tests + offline demos."""
+    """Replays a fixed list of proposals, then signals done. Deterministic -- tests + offline demos."""
 
     def __init__(self, proposals):
         self._q = list(proposals)
@@ -48,7 +48,7 @@ class ScriptedPilot:
 
 
 class SightfulPilot:
-    """Reacts to what it SEES — offline, deterministic. Reads the witnessed glyph grid, says what it
+    """Reacts to what it SEES -- offline, deterministic. Reads the witnessed glyph grid, says what it
     can honestly tell from it, and records that observation. Proves the loop RESPONDS to sight (not
     canned text) without any model; a real model (ClaudePilot/OllamaPilot) does this far richer."""
 
@@ -115,7 +115,7 @@ def _to_proposal(obj):
 
 
 def _drive(post, body, extract_text, attempts):
-    """Call a model, retrying on UNPARSEABLE output (small/local models are flaky) — the scaffolding
+    """Call a model, retrying on UNPARSEABLE output (small/local models are flaky) -- the scaffolding
     compensating for where models are weak. A transport error or a clean run of unusable output
     fails closed to a witnessed `done`, never a crash."""
     for _ in range(max(1, attempts)):
@@ -174,7 +174,7 @@ class ClaudePilot:
 
 class OllamaPilot:
     """A real LOCAL model driving the body via Ollama's HTTP API (stdlib urllib; no SDK, no key, no
-    cloud). Reasons over the WITNESSED state — including the glyph grid, the same shared sight the
+    cloud). Reasons over the WITNESSED state -- including the glyph grid, the same shared sight the
     spectator sees. Even a small local model is kept honest by the gate + verify + witness; this is
     the thesis made cheap to run: scaffolding that makes a weak model safe and useful."""
 

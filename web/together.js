@@ -1,8 +1,8 @@
-// together.js — bring your own media, observe it together, talk about it.
+// together.js -- bring your own media, observe it together, talk about it.
 //
 // The browser decodes any image you drop (jpg/png/gif/webp) and converts it to PNG; the zero-dep
 // world witnesses it as the glyph grid the model sees. Drag the seam to wipe between your photo and
-// that witnessed sight — the same frame, two ways of seeing. The chat is grounded in the sight,
+// that witnessed sight -- the same frame, two ways of seeing. The chat is grounded in the sight,
 // with a small memory the model carries across the conversation.
 
 const $ = id => document.getElementById(id);
@@ -42,7 +42,7 @@ async function addImage(file) {
     if (d.error) { setStatus("upload: " + d.error); return; }
     currentSight = d.sight;
     showOverlay(dataUrl, d.sight);
-    setStatus("witnessed — drag the seam, then ask the model what it sees");
+    setStatus("witnessed -- drag the seam, then ask the model what it sees");
   } catch (e) { setStatus("couldn't read that image: " + e.message); }
 }
 

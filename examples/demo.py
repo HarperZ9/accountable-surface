@@ -1,7 +1,7 @@
-"""Accountable Surface — runnable transcript (the demo IS the argument).
+"""Accountable Surface -- runnable transcript (the demo IS the argument).
 
 Spins a localhost page, perceives it through the witnessed web organ, then shows
-proof-surface ALLOWING an authorized action and REFUSING an unauthorized one —
+proof-surface ALLOWING an authorized action and REFUSING an unauthorized one --
 every step recorded in the journal. No internet; nothing is executed.
 
 Run: PYTHONPATH="<coherence-membrane>/src;<proof-surface>/src" python examples/demo.py

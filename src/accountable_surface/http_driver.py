@@ -1,11 +1,11 @@
-"""Native HTTP/HTML page driver for `WebEffector` — stdlib `html.parser` plus the
+"""Native HTTP/HTML page driver for `WebEffector` -- stdlib `html.parser` plus the
 witnessed clean GET from the coherence-membrane web organ. No browser binary; for
 server-rendered pages.
 
 `navigate` = GET + parse the form structure (fields keyed by accessible name);
 `fill` = stage a client-side value; `snapshot` = the page structure with staged
 values applied. A redirect that changes the URL simply fails `WebEffector.verify`
-(the post-condition "I am at the intended URL" is false) — the accountable outcome.
+(the post-condition "I am at the intended URL" is false) -- the accountable outcome.
 Drop-in for `FakePageDriver`.
 """
 
@@ -77,7 +77,7 @@ def parse_html(url: str, html: str) -> dict:
 
 
 def post_form(url: str, data: dict, *, timeout: float = 10.0, max_bytes: int = 5_000_000) -> tuple[bytes, dict]:
-    """Native stdlib form POST (http/https only, bounded) — mirrors the web organ's
+    """Native stdlib form POST (http/https only, bounded) -- mirrors the web organ's
     clean-fetch discipline on the write side. Returns (payload, meta)."""
     if urllib.parse.urlsplit(url).scheme.lower() not in ("http", "https"):
         raise ValueError(f"unsupported scheme for: {url!r}")

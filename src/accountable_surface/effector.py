@@ -1,4 +1,4 @@
-"""The efferent arm — accountable actuation.
+"""The efferent arm -- accountable actuation.
 
 An Effector is the output-side analogue of a perception organ: **inert until
 authorized**. It acts ONLY on a gate `allow` for the exact previewed plan, ONLY
@@ -20,7 +20,7 @@ from coherence_membrane.observation import Observation, Provenance, Status, sha2
 
 @dataclass(frozen=True)
 class Plan:
-    """A witnessed description of an intended action — produced BEFORE any effect,
+    """A witnessed description of an intended action -- produced BEFORE any effect,
     so it can be authorized and bound (the surface acts on THIS exact plan)."""
 
     action_kind: str
@@ -77,7 +77,7 @@ class FilesystemEffector:
     # --- the efferent contract ----------------------------------------------
 
     def preview(self, target: str, content: bytes, before: Observation | None = None) -> Plan:
-        """Describe the intended write — no side effect."""
+        """Describe the intended write -- no side effect."""
         content_sha = sha256_hex(content)
         existed = bool(before.data.get("exists")) if before is not None else Path(target).is_file()
         digest = "sha256:" + sha256_hex(
@@ -93,11 +93,11 @@ class FilesystemEffector:
         )
 
     def act(self, plan: Plan, allow_receipt: Any, content: bytes) -> Observation:
-        """Perform the write — only with a valid allow receipt for THIS plan, only
+        """Perform the write -- only with a valid allow receipt for THIS plan, only
         within the bound, and only if the content matches the preview. Backs up the
         prior content for rollback. Returns a witnessed post-action Observation."""
         if getattr(allow_receipt, "decision", None) != "allow":
-            raise RefusedActuation("no gate allow — the effector will not act")
+            raise RefusedActuation("no gate allow -- the effector will not act")
         request = getattr(allow_receipt, "request", {}) or {}
         planned = request.get("planned_action", {}) if isinstance(request, dict) else {}
         if planned.get("action_kind") != plan.action_kind or planned.get("target") != plan.target:
@@ -139,7 +139,7 @@ class FilesystemEffector:
             plan = probe.preview(target, b"x")
             try:
                 probe.act(plan, allow_receipt=None, content=b"x")
-                return False  # acted without an allow — contract violated
+                return False  # acted without an allow -- contract violated
             except RefusedActuation:
                 pass
             return not Path(target).exists()
@@ -154,5 +154,5 @@ class FilesystemEffector:
             return False
 
     def _write(self, path: Path, content: bytes) -> None:
-        """The actual byte-write — a hook subclasses (and tests) can override."""
+        """The actual byte-write -- a hook subclasses (and tests) can override."""
         path.write_bytes(content)

@@ -1,7 +1,7 @@
-// screen.js — watch the live witnessed screen: the model and you see the same frame.
+// screen.js -- watch the live witnessed screen: the model and you see the same frame.
 //
 // Per ("capture", {frame_index, sight}) SSE event we render the witnessed sight the
-// model reads — ascii shape + structure contours (overlay.js) + OKLab colour map.
+// model reads -- ascii shape + structure contours (overlay.js) + OKLab colour map.
 // No raw screen pixels cross the wire; the witnessed sight is the shared medium.
 
 const $ = id => document.getElementById(id);

@@ -1,8 +1,8 @@
-// overlay.js — draw the witnessed structure + colour on the spectator's canvas.
+// overlay.js -- draw the witnessed structure + colour on the spectator's canvas.
 //
 // The model reads sight.structure.coords (polylines normalized to [0,1]) and
 // sight.color.map (legend letters). Here the spectator sees the SAME data drawn
-// over the same photo — one frame, two ways of seeing. Pure coord math is
+// over the same photo -- one frame, two ways of seeing. Pure coord math is
 // exported for a node test; the browser also gets these on `window`.
 
 // Map normalized [0,1] polylines to pixel coords for a w×h canvas. Pure.

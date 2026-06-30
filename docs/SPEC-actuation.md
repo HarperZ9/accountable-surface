@@ -1,13 +1,13 @@
-# Spec: Accountable Actuation — the Efferent Arm (Phase 5, v0)
+# Spec: Accountable Actuation -- the Efferent Arm (Phase 5, v0)
 
 - **Date:** 2026-06-19
-- **Lives in:** `accountable-surface` — `effector.py` + `AccountableSurface.actuate()`.
+- **Lives in:** `accountable-surface` -- `effector.py` + `AccountableSurface.actuate()`.
 - **Full design corpus:** `project-docs/specs/2026-06-19-efferent-arm-actuation.md`.
 
 ## Goal
 
 Close the sensorimotor loop. The surface perceives, gates, and remembers; the
-efferent arm lets it **act** — but only through accountability. "Machines holding
+efferent arm lets it **act** -- but only through accountability. "Machines holding
 themselves accountable" now covers what they *do*, not only what they perceive.
 
 ## Doctrine
@@ -20,9 +20,9 @@ action:
 > actuation is verified by re-perceiving the effect**.
 
 Awareness is not authority; an allow is not *unchecked* action; action is not
-*assumed-done* — it is verified.
+*assumed-done* -- it is verified.
 
-## The loop — `AccountableSurface.actuate(effector, *, target, content, authorization)`
+## The loop -- `AccountableSurface.actuate(effector, *, target, content, authorization)`
 
 ```
 1. before  = effector.perceive(target)                   # witnessed
@@ -38,19 +38,19 @@ Awareness is not authority; an allow is not *unchecked* action; action is not
 
 ## The Effector contract
 
-- `perceive(target) -> Observation` — witnessed state of the target.
-- `preview(target, content, before) -> Plan` — describe the intended action; no effect.
-- `act(plan, allow_receipt, content) -> Observation` — refuses unless the receipt is a
+- `perceive(target) -> Observation` -- witnessed state of the target.
+- `preview(target, content, before) -> Plan` -- describe the intended action; no effect.
+- `act(plan, allow_receipt, content) -> Observation` -- refuses unless the receipt is a
   gate `allow` matching the plan's action+target, the content matches the preview, and
   the target is within the bound. Backs up prior state. Witnesses the result.
-- `verify(plan, after) -> Verdict` — did the on-disk state match the authorized intent?
-- `rollback(plan)` — restore prior state (reversibility).
-- `selftest()` — falsifiable: an act without an allow must raise and write nothing.
+- `verify(plan, after) -> Verdict` -- did the on-disk state match the authorized intent?
+- `rollback(plan)` -- restore prior state (reversibility).
+- `selftest()` -- falsifiable: an act without an allow must raise and write nothing.
 
 `FilesystemEffector` is the first backend (bounded text writes; reversible).
 Playwright (DOM / a11y tree) and OS effectors follow under the same contract.
 
-## Proof (tests, offline — `test_effector.py`, `test_actuate.py`)
+## Proof (tests, offline -- `test_effector.py`, `test_actuate.py`)
 
 - act without an allow → refuses, writes nothing.
 - act outside the construction-bound → refuses, even with an allow.

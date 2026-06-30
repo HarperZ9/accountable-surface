@@ -1,4 +1,4 @@
-"""Structure — the witnessed contour channel: where the form's edges are.
+"""Structure -- the witnessed contour channel: where the form's edges are.
 
 Lowers a decoded image to a luminance Field, traces iso-contours (marching
 squares), stitches and simplifies them, and reports a re-derivable structure

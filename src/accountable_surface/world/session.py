@@ -1,4 +1,4 @@
-"""WorldSession — the body, alive in a world the operator co-inhabits.
+"""WorldSession -- the body, alive in a world the operator co-inhabits.
 
 Wraps an AccountableSurface + a bound FilesystemEffector + an operator grant, and turns one
 PROPOSED action into one witnessed WorldStep through the REAL perceive -> gate -> act ->
@@ -30,7 +30,7 @@ def screen_capture_allowed(grant) -> bool:
 
 @dataclass(frozen=True)
 class WorldStep:
-    """One witnessed turn of the loop — what the model proposed and what the body did about it."""
+    """One witnessed turn of the loop -- what the model proposed and what the body did about it."""
     kind: str
     target: str
     justification: str
@@ -43,7 +43,7 @@ class WorldStep:
     rolled_back: bool
     reasons: list
     certificate: dict        # the composed Certificate (gate . effect . grounding)
-    material: str            # the target's content AFTER the turn — what both now see
+    material: str            # the target's content AFTER the turn -- what both now see
     reasoning: str = ""      # the proposer's voice: why this move (a model's narration, or "")
 
     def to_dict(self) -> dict:
@@ -58,7 +58,7 @@ def _read_text(path: str) -> str:
 
 
 def _refused(kind: str, target: str, justification: str, reason: str, reasoning: str = "") -> WorldStep:
-    """A witnessed refusal — a bad proposal becomes a recorded 'no', never a crash."""
+    """A witnessed refusal -- a bad proposal becomes a recorded 'no', never a crash."""
     return WorldStep(kind, target, justification, "deny", False, False, "refused-by-effector",
                      "", None, False, [reason],
                      {"claim": f"action: {kind} {target}", "verdict": "refuted",
@@ -89,7 +89,7 @@ class WorldSession:
         proposal the surface can't honour becomes a witnessed refusal, never a crash."""
         if kind != "fs.write":
             return _refused(kind, target, justification,
-                            f"unsupported action kind {kind!r} — this surface speaks fs.write", reasoning)
+                            f"unsupported action kind {kind!r} -- this surface speaks fs.write", reasoning)
         try:
             tpath = self._resolve(target)
         except RefusedActuation as exc:

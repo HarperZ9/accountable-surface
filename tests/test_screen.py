@@ -1,4 +1,4 @@
-"""Tests for the live capture witnessing loop — source-agnostic, deterministic.
+"""Tests for the live capture witnessing loop -- source-agnostic, deterministic.
 
 We never grab the real screen here: a fake CaptureSource (cm's IterableFrameSource)
 feeds known PNGs, so the loop's pacing, bounding, and change-proportional skipping
@@ -177,14 +177,14 @@ def test_granted_perception_does_not_break_actions(tmp_path):
 # --- Regression: action_authorization strips allowed_perceptions at MCP boundary ---
 
 def _grant_with_perceptions(actions=("summarize",), targets=()):
-    """A grant that carries allowed_perceptions — the shape operators use for screen access."""
+    """A grant that carries allowed_perceptions -- the shape operators use for screen access."""
     return {
         "authorization_version": "0.1",
         "receipt_id": "rcpt-reg-1",
         "kind": "authorization-grant",
         "principal": {"id": "operator-1", "role": "operator"},
         "agent": {"id": "reg-agent"},
-        "intent": "regression test — allowed_perceptions must not reach proof-surface schema",
+        "intent": "regression test -- allowed_perceptions must not reach proof-surface schema",
         "scope": {
             "allowed_actions": list(actions),
             "allowed_targets": list(targets),
@@ -223,7 +223,7 @@ def test_action_authorization_is_noop_on_non_dict():
 def test_mcp_propose_with_allowed_perceptions_not_schema_rejected():
     """A grant carrying allowed_perceptions must NOT be rejected by proof-surface's
     closed schema when routed through the MCP propose path. The decision should be
-    allow (for an authorised action) — NOT a deny caused by an unexpected scope field."""
+    allow (for an authorised action) -- NOT a deny caused by an unexpected scope field."""
     from accountable_surface.server import propose_impl
 
     grant = _grant_with_perceptions(actions=["summarize"])

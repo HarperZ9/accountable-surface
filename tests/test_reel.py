@@ -1,4 +1,4 @@
-"""Tests for the reel — moving material as a sequence of witnessed ASCII frames.
+"""Tests for the reel -- moving material as a sequence of witnessed ASCII frames.
 
 A directory of image frames becomes a playable reel: each frame the same shared sight the model
 and a spectator both watch, in order. Composes the witnessed sight; stdlib only. We build frames

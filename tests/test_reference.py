@@ -1,4 +1,4 @@
-"""Tests for the reference cortex — a grounding organ (afferent, semantic).
+"""Tests for the reference cortex -- a grounding organ (afferent, semantic).
 
 Offline + deterministic via FakeSource. Proves: references are witnessed
 (provenance digests), irrelevant sources are filtered, results are ranked, the

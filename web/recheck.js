@@ -1,8 +1,8 @@
-// recheck.js — re-derive a Certificate's verdict in the browser, from its own evidence.
+// recheck.js -- re-derive a Certificate's verdict in the browser, from its own evidence.
 //
 // The world's action certificates are COMPOSED (oracle "composed-v1"): the verdict is the lattice
 // meet of per-step sub-verdicts (gate, effect, grounding). Re-running the meet over the evidence
-// reproduces the verdict the certificate carries — proof, not assertion. Mirrors
+// reproduces the verdict the certificate carries -- proof, not assertion. Mirrors
 // coherence_membrane.composition.compose: REFUTED absorbs, UNVERIFIABLE attenuates,
 // all-VERIFIED -> VERIFIED, empty -> UNVERIFIABLE (fail closed).
 

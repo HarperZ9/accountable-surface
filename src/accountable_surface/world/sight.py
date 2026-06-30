@@ -1,10 +1,10 @@
-"""Witnessed sight — what the model actually sees when it looks at visual material.
+"""Witnessed sight -- what the model actually sees when it looks at visual material.
 
 Composes coherence-membrane's image organs into a richer, re-derivable perception so a text model
 can discern and understand what's on screen:
-  - SHAPE: an ASCII glyph grid (decode_png + ascii_view) — luminance, where the form is.
+  - SHAPE: an ASCII glyph grid (decode_png + ascii_view) -- luminance, where the form is.
   - COLOUR: a compact spatial colour map (one letter per cell, with a legend) + the dominant
-    colours, so the model knows WHICH colours sit WHERE — not just light and dark.
+    colours, so the model knows WHICH colours sit WHERE -- not just light and dark.
   - PROVENANCE: a perceptual hash + a content digest, so the sight is re-checkable, never faked.
 The model reads all of it natively and cannot hallucinate it; a spectator sees the same grid.
 Zero third-party deps (coherence-membrane is stdlib-only).
@@ -95,7 +95,7 @@ def _color_view(img, gc: int = 32, gr: int = 16) -> dict:
 
 def witness_image(payload: bytes, *, cols: int = 96) -> dict:
     """A witnessed sight of a PNG: shape (glyph grid) + colour (spatial map + palette) + provenance."""
-    w, h = read_ihdr(payload)[:2]   # cheap header read — refuse a decompression bomb before decode
+    w, h = read_ihdr(payload)[:2]   # cheap header read -- refuse a decompression bomb before decode
     if w * h > 4_000_000:
         raise ValueError("image too large to witness")
     img = decode_png(payload)
@@ -112,7 +112,7 @@ def witness_image(payload: bytes, *, cols: int = 96) -> dict:
 
 
 def describe_sight(sight) -> str:
-    """A coarse, honest reading of the witnessed sight — shape, where the mass sits, and the colours.
+    """A coarse, honest reading of the witnessed sight -- shape, where the mass sits, and the colours.
 
     Not semantic understanding: brightness coverage + where the bright mass sits + the dominant
     colours, each re-derivable from the same sight the model and spectator share. Cites the phash so

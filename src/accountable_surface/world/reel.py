@@ -1,4 +1,4 @@
-"""A reel — moving material the model and a spectator both watch as ASCII frames.
+"""A reel -- moving material the model and a spectator both watch as ASCII frames.
 
 A directory of image frames (e.g. extracted from a GIF or video) becomes a sequence of witnessed
 glyph grids: each frame the same shared sight, played in order. The spectator watches an ASCII

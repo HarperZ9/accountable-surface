@@ -1,4 +1,4 @@
-"""Native web actuation — runnable transcript against a REAL localhost server.
+"""Native web actuation -- runnable transcript against a REAL localhost server.
 
 No browser, no Playwright, no external deps: HttpDriver GETs + parses the page
 (stdlib, via the witnessed clean fetch), WebEffector navigates + fills by accessible

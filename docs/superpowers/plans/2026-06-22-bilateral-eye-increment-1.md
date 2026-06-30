@@ -1,8 +1,8 @@
-# Bilateral Eye — Increment 1 Implementation Plan
+# Bilateral Eye -- Increment 1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give the witnessed sight a structure (contour) channel and OKLab-grounded colour, and draw the same contours + colour the model reads into the spectator view — the bilateral "same frame" in one increment.
+**Goal:** Give the witnessed sight a structure (contour) channel and OKLab-grounded colour, and draw the same contours + colour the model reads into the spectator view -- the bilateral "same frame" in one increment.
 
 **Architecture:** A new pure lowering module (`world/structure.py`) traces an image's edges via coherence-membrane's marching-squares `contour` → `stitch` → `simplify`, normalized to [0,1]. `world/sight.py` composes it into the sight and swaps the hand-rolled HSV colour for OKLab nearest-anchor classification with a perceptually-merged palette. The frontend gains a pure, node-tested coord-mapping module (`web/overlay.js`) and draws contours on the existing image canvas plus an OKLab colour map.
 
@@ -45,7 +45,7 @@
 
 ---
 
-## Task 1: `structure.py` — the contour lowering
+## Task 1: `structure.py` -- the contour lowering
 
 **Files:**
 - Create: `src/accountable_surface/world/structure.py`
@@ -53,7 +53,7 @@
 
 **Interfaces:**
 - Consumes: cm `decode_png`, `Field`, `FieldKind`, `contour`, `stitch`, `simplify_geometry` (signatures above).
-- Produces: `witness_structure(img) -> dict` with keys `contours: int`, `edge_ink: float`, `outline: str`, `coords: list[list[list[float]]]` (polylines of `[x,y]` in [0,1]), `ghash: str` (16 hex chars). `img` is a decoded image (the `DecodedImage` from `decode_png`), NOT raw bytes — `sight.py` already decodes once and passes it in.
+- Produces: `witness_structure(img) -> dict` with keys `contours: int`, `edge_ink: float`, `outline: str`, `coords: list[list[list[float]]]` (polylines of `[x,y]` in [0,1]), `ghash: str` (16 hex chars). `img` is a decoded image (the `DecodedImage` from `decode_png`), NOT raw bytes -- `sight.py` already decodes once and passes it in.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -77,7 +77,7 @@ def test_structure_traces_a_disc_outline():
 def test_structure_of_a_flat_image_is_honestly_empty():
     flat = encode_png(16, 16, bytes([128, 128, 128]) * (16 * 16), channels=3)
     st = witness_structure(decode_png(flat))
-    assert st["contours"] == 0                        # no edges — and we say so
+    assert st["contours"] == 0                        # no edges -- and we say so
     assert st["outline"] == "no distinct edges"
     assert st["coords"] == []
     assert len(st["ghash"]) == 16                     # key present, never omitted
@@ -97,7 +97,7 @@ Expected: FAIL with `ModuleNotFoundError: accountable_surface.world.structure`.
 - [ ] **Step 3: Write `structure.py`**
 
 ```python
-"""Structure — the witnessed contour channel: where the form's edges are.
+"""Structure -- the witnessed contour channel: where the form's edges are.
 
 Lowers a decoded image to a luminance Field, traces iso-contours (marching
 squares), stitches and simplifies them, and reports a re-derivable structure
@@ -183,7 +183,7 @@ def witness_structure(img) -> dict:
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_sight.py -k structure -v`
-Expected: PASS (3 tests). If `test_structure_traces_a_disc_outline` finds `contours == 0`, the disc PNG is too small for the 128-wide field to resolve — it won't be; `_disc_png()` is 40×40 and the level-0.5 crossing on the bright disc vs dark field yields a closed loop.
+Expected: PASS (3 tests). If `test_structure_traces_a_disc_outline` finds `contours == 0`, the disc PNG is too small for the 128-wide field to resolve -- it won't be; `_disc_png()` is 40×40 and the level-0.5 crossing on the bright disc vs dark field yields a closed loop.
 
 - [ ] **Step 5: Commit**
 
@@ -202,7 +202,7 @@ git commit -m "feat(world): witness the edge structure of an image (contour chan
 
 **Interfaces:**
 - Consumes: cm `srgb_to_oklab`, `delta_e_ok`.
-- Produces: `_classify(r, g, b) -> str` (same 10-letter contract, r/g/b are 0–255 ints) now OKLab-grounded; `_color_view(...)` palette entries gain `"oklab": [L, a, b]`.
+- Produces: `_classify(r, g, b) -> str` (same 10-letter contract, r/g/b are 0--255 ints) now OKLab-grounded; `_color_view(...)` palette entries gain `"oklab": [L, a, b]`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -227,7 +227,7 @@ def test_palette_merges_near_identical_shades_into_one_entry():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_sight.py -k "oklab or merges" -v`
-Expected: FAIL — `KeyError: 'oklab'` (palette entries have no `oklab` key yet).
+Expected: FAIL -- `KeyError: 'oklab'` (palette entries have no `oklab` key yet).
 
 - [ ] **Step 3: Replace `_classify` and extend `_color_view`**
 
@@ -260,7 +260,7 @@ def _classify(r, g, b) -> str:
     return min(_ANCHORS, key=lambda k: delta_e_ok(lab, _ANCHORS[k]))
 ```
 
-Add `import math` at the top if not already present (it is not in the current file — add it beside `import hashlib`).
+Add `import math` at the top if not already present (it is not in the current file -- add it beside `import hashlib`).
 
 In `_color_view`, accumulate mean OKLab per letter and emit it in the palette. Replace the cell loop's per-cell tail and the palette construction:
 
@@ -344,7 +344,7 @@ def test_describe_sight_reads_structure():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_sight.py -k "structure_channel or reads_structure" -v`
-Expected: FAIL — `KeyError: 'structure'` and the description lacks "contour".
+Expected: FAIL -- `KeyError: 'structure'` and the description lacks "contour".
 
 - [ ] **Step 3: Wire structure in**
 
@@ -389,7 +389,7 @@ and change the final return to include it:
 - [ ] **Step 4: Run the sight tests**
 
 Run: `python -m pytest tests/test_sight.py -v`
-Expected: PASS (all — new + pre-existing). The pre-existing `test_describe_sight_reads_the_glyph_grid_honestly` still passes (it asserts `%`, `phash`, and a shape word — all still present).
+Expected: PASS (all -- new + pre-existing). The pre-existing `test_describe_sight_reads_the_glyph_grid_honestly` still passes (it asserts `%`, `phash`, and a shape word -- all still present).
 
 - [ ] **Step 5: Commit**
 
@@ -400,14 +400,14 @@ git commit -m "feat(world): compose structure into the witnessed sight + honest 
 
 ---
 
-## Task 4: Spectator parity — the same frame, proven
+## Task 4: Spectator parity -- the same frame, proven
 
 **Files:**
-- Test: `tests/test_world_session.py` (or `tests/test_world_server.py` — whichever already builds a session snapshot; check which exposes `snapshot()`/`sights`)
+- Test: `tests/test_world_session.py` (or `tests/test_world_server.py` -- whichever already builds a session snapshot; check which exposes `snapshot()`/`sights`)
 
 **Interfaces:**
 - Consumes: the world session's `snapshot()` (returns `{... "sights": [...]}`, per `world/server.py:110`).
-- Produces: no code — a test asserting the spectator-facing snapshot carries the byte-identical structure/colour the model read.
+- Produces: no code -- a test asserting the spectator-facing snapshot carries the byte-identical structure/colour the model read.
 
 - [ ] **Step 1: Inspect how a session/snapshot is built in the existing world tests**
 
@@ -435,7 +435,7 @@ If the existing tests construct the sight via `sight_of(path)`, assert parity be
 - [ ] **Step 3: Run to verify it fails (if it fails) or passes**
 
 Run: `python -m pytest tests/ -k "spectator_sees_the_same" -v`
-Expected: PASS once Tasks 1–3 are merged (the snapshot serializes the same sight object). If it FAILS because the snapshot strips keys, fix the serialization in `world/server.py`/`world/session.py` so the full sight (including `structure`) reaches the snapshot, then re-run. (No stripping is expected — snapshots currently pass the sight dict through — but verify.)
+Expected: PASS once Tasks 1--3 are merged (the snapshot serializes the same sight object). If it FAILS because the snapshot strips keys, fix the serialization in `world/server.py`/`world/session.py` so the full sight (including `structure`) reaches the snapshot, then re-run. (No stripping is expected -- snapshots currently pass the sight dict through -- but verify.)
 
 - [ ] **Step 4: Commit**
 
@@ -446,7 +446,7 @@ git commit -m "test(world): spectator snapshot carries the same structure+colour
 
 ---
 
-## Task 5: `web/overlay.js` — pure coord mapping + node test
+## Task 5: `web/overlay.js` -- pure coord mapping + node test
 
 **Files:**
 - Create: `web/overlay.js`
@@ -481,16 +481,16 @@ test("normToCanvas handles multiple paths and empty input", () => {
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `node --test web/overlay.test.mjs`
-Expected: FAIL — cannot resolve `./overlay.js`.
+Expected: FAIL -- cannot resolve `./overlay.js`.
 
 - [ ] **Step 3: Write `overlay.js`**
 
 ```javascript
-// overlay.js — draw the witnessed structure + colour on the spectator's canvas.
+// overlay.js -- draw the witnessed structure + colour on the spectator's canvas.
 //
 // The model reads sight.structure.coords (polylines normalized to [0,1]) and
 // sight.color.map (legend letters). Here the spectator sees the SAME data drawn
-// over the same photo — one frame, two ways of seeing. Pure coord math is
+// over the same photo -- one frame, two ways of seeing. Pure coord math is
 // exported for a node test; the browser also gets these on `window`.
 
 // Map normalized [0,1] polylines to pixel coords for a w×h canvas. Pure.
@@ -559,12 +559,12 @@ git commit -m "feat(web): pure contour-overlay coord mapping + colour-map render
 - Modify: `web/together.js` (call `drawContours` + `renderColorMap` in `showOverlay`)
 
 **Interfaces:**
-- Consumes: `window.drawContours`, `window.renderColorMap` (Task 5); `sight.structure.coords`, `sight.color` (Tasks 1–3).
+- Consumes: `window.drawContours`, `window.renderColorMap` (Task 5); `sight.structure.coords`, `sight.color` (Tasks 1--3).
 - Produces: visible contour overlay on the photo + a colour-map panel in the bilateral view.
 
 - [ ] **Step 1: Add the overlay canvas, colour panel, and module script to `together.html`**
 
-Inside `<div class="viewer" id="viewer">` (around line 97), add an overlay canvas as a sibling of the photo (it must sit above `<img id="photo">` in z-order — give it `position:absolute; inset:0; pointer-events:none`):
+Inside `<div class="viewer" id="viewer">` (around line 97), add an overlay canvas as a sibling of the photo (it must sit above `<img id="photo">` in z-order -- give it `position:absolute; inset:0; pointer-events:none`):
 
 ```html
         <canvas id="overlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
@@ -584,7 +584,7 @@ Before the existing `together.js` script tag, load the overlay module:
 
 - [ ] **Step 2: Draw in `showOverlay` (`together.js`)**
 
-In `showOverlay`, extend the `photo.onload` handler (currently lines 57–60) so the overlay canvas is sized to the rendered photo and the contours are drawn, and render the colour map:
+In `showOverlay`, extend the `photo.onload` handler (currently lines 57--60) so the overlay canvas is sized to the rendered photo and the contours are drawn, and render the colour map:
 
 ```javascript
   const photo = $("photo");
@@ -607,7 +607,7 @@ In `showOverlay`, extend the `photo.onload` handler (currently lines 57–60) so
 - [ ] **Step 3: Re-run the frontend node test (regression)**
 
 Run: `node --test web/overlay.test.mjs`
-Expected: PASS — unchanged (Step 2 only wires the already-tested pure functions).
+Expected: PASS -- unchanged (Step 2 only wires the already-tested pure functions).
 
 - [ ] **Step 4: Visual confirmation via Playwright (once)**
 
@@ -615,7 +615,7 @@ Start the world server serving `together.html`, navigate, upload `_disc_png`-equ
 - `browser_navigate` to the local `together.html` URL the world server serves.
 - Drive the upload (or `browser_evaluate` to POST `./upload` then call `showOverlay`).
 - `browser_evaluate`: assert `document.getElementById("overlay").getContext("2d").getImageData(...)` contains non-zero alpha pixels, and `document.getElementById("color-map").children.length > 0`.
-- `browser_take_screenshot` for the record (the bilateral "same frame" — contours on the photo).
+- `browser_take_screenshot` for the record (the bilateral "same frame" -- contours on the photo).
 
 Expected: contours visibly stroked over the photo; colour-map panel populated. This evidences the bilateral claim rather than asserting it.
 
@@ -630,13 +630,13 @@ git commit -m "feat(web): draw the witnessed contours + colour map in the bilate
 
 ## Final verification
 
-- [ ] Run the targeted slice: `python -m pytest tests/test_sight.py tests/test_world_session.py tests/test_world_server.py -v` — all green.
-- [ ] Run the frontend gate: `node --test web/overlay.test.mjs` — green.
+- [ ] Run the targeted slice: `python -m pytest tests/test_sight.py tests/test_world_session.py tests/test_world_server.py -v` -- all green.
+- [ ] Run the frontend gate: `node --test web/overlay.test.mjs` -- green.
 - [ ] Confirm no new third-party imports: `grep -rnE "^import |^from " src/accountable_surface/world/structure.py` shows only stdlib + `coherence_membrane`.
 - [ ] The Playwright screenshot from Task 6 Step 4 exists as the evidence artifact.
 
 ## Self-Review (completed by plan author)
 
-- **Spec coverage:** structure channel (T1, T3), OKLab colour + merged palette (T2), describe_sight (T3), payload shape incl. normalized coords + ghash (T1), fail-closed empty structure (T1), spectator parity (T4), web overlay + colour map (T5–T6), Playwright visual (T6). All spec sections map to a task.
-- **Placeholder scan:** the only non-literal code is Task 4 Step 2, deliberately templated because the exact session fixture must mirror the existing world test (Step 1 inspects it first) — flagged, not hidden.
+- **Spec coverage:** structure channel (T1, T3), OKLab colour + merged palette (T2), describe_sight (T3), payload shape incl. normalized coords + ghash (T1), fail-closed empty structure (T1), spectator parity (T4), web overlay + colour map (T5--T6), Playwright visual (T6). All spec sections map to a task.
+- **Placeholder scan:** the only non-literal code is Task 4 Step 2, deliberately templated because the exact session fixture must mirror the existing world test (Step 1 inspects it first) -- flagged, not hidden.
 - **Type consistency:** `witness_structure(img)` takes a decoded image in T1 and is called with the already-decoded `img` in T3; `normToCanvas`/`drawContours`/`renderColorMap` names match across T5 and T6; palette `oklab` key matches across T2 test and impl.

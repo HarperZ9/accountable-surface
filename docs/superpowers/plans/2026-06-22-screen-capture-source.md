@@ -1,8 +1,8 @@
-# Screen Capture Source — Increment 2 Implementation Plan
+# Screen Capture Source -- Increment 2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the bilateral eye engine-agnostic — perceive whatever is on screen as a live, consent-gated, bounded, witnessed source, streaming the witnessed sight to the spectator the same way increment 1 did for uploads.
+**Goal:** Make the bilateral eye engine-agnostic -- perceive whatever is on screen as a live, consent-gated, bounded, witnessed source, streaming the witnessed sight to the spectator the same way increment 1 did for uploads.
 
 **Architecture:** A small source-agnostic witnessing loop (`world/screen.py`) pulls frames from any coherence-membrane `CaptureSource`, witnesses each via `witness_image` (the increment-1 eye), and is bounded/change-proportional. The `World` orchestrates capture exactly like autopilot (gated, atomic, daemon thread, SSE), behind two locks (a granted `allowed_perceptions` capability + an explicit start). The spectator view renders the live witnessed sight reusing the shipped `overlay.js`.
 
@@ -33,7 +33,7 @@
 
 | File | Create/Modify | Responsibility |
 |------|---------------|----------------|
-| `src/accountable_surface/world/screen.py` | Create | `witness_capture(...)` — source-agnostic, deterministic witnessing loop (bounded, change-proportional, injectable `sleep`/`should_stop`); returns a receipt dict. |
+| `src/accountable_surface/world/screen.py` | Create | `witness_capture(...)` -- source-agnostic, deterministic witnessing loop (bounded, change-proportional, injectable `sleep`/`should_stop`); returns a receipt dict. |
 | `src/accountable_surface/world/session.py` | Modify | `screen_capture_allowed(grant) -> bool` (default-deny). |
 | `src/accountable_surface/world/server.py` | Modify | `World.start_capture/run_capture/stop_capture` + `World._screen_source` seam; `_sandbox_grant` gains `allowed_perceptions`; POST `/capture/start` + `/capture/stop`. |
 | `web/screen.html` + `web/screen.js` | Create | Live spectator view rendering the witnessed sight per `("capture", …)` SSE event (reuses `overlay.js`). |
@@ -41,7 +41,7 @@
 
 ---
 
-## Task 1: `screen.py` — the witnessing loop
+## Task 1: `screen.py` -- the witnessing loop
 
 **Files:**
 - Create: `src/accountable_surface/world/screen.py`
@@ -56,7 +56,7 @@
 Create `tests/test_screen.py`:
 
 ```python
-"""Tests for the live capture witnessing loop — source-agnostic, deterministic.
+"""Tests for the live capture witnessing loop -- source-agnostic, deterministic.
 
 We never grab the real screen here: a fake CaptureSource (cm's IterableFrameSource)
 feeds known PNGs, so the loop's pacing, bounding, and change-proportional skipping
@@ -125,19 +125,19 @@ def test_witness_capture_stops_on_should_stop():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_screen.py -v`
-Expected: FAIL — `ModuleNotFoundError: accountable_surface.world.screen`.
+Expected: FAIL -- `ModuleNotFoundError: accountable_surface.world.screen`.
 
 - [ ] **Step 3: Write `screen.py`**
 
 ```python
-"""The live capture witnessing loop — the engine-agnostic eye, moving.
+"""The live capture witnessing loop -- the engine-agnostic eye, moving.
 
 Pulls frames from any coherence-membrane CaptureSource (a screen grabber in
 production, a fake in tests), witnesses each via the increment-1 eye
 (witness_image: shape + structure + OKLab colour + provenance), and hands each
 *changed* frame to a callback. Source-agnostic by construction (never imports a
 graphics API), deterministic (sleep + should_stop are injected), bounded, and
-change-proportional (an unchanged frame — same perceptual hash — is skipped, not
+change-proportional (an unchanged frame -- same perceptual hash -- is skipped, not
 re-witnessed downstream). Stdlib + coherence-membrane only.
 """
 from __future__ import annotations
@@ -209,7 +209,7 @@ git commit -m "feat(world): the live capture witnessing loop (source-agnostic, c
 - Test: `tests/test_screen.py`
 
 **Interfaces:**
-- Produces: `accountable_surface.world.session.screen_capture_allowed(grant) -> bool` — True iff `"screen"` is in `grant["scope"]["allowed_perceptions"]`. Total over a missing/None grant or missing keys (→ False).
+- Produces: `accountable_surface.world.session.screen_capture_allowed(grant) -> bool` -- True iff `"screen"` is in `grant["scope"]["allowed_perceptions"]`. Total over a missing/None grant or missing keys (→ False).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -238,7 +238,7 @@ def test_sandbox_grant_defaults_to_no_perceptions():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_screen.py -k "deny or granted or sandbox_grant" -v`
-Expected: FAIL — `ImportError: cannot import name 'screen_capture_allowed'`.
+Expected: FAIL -- `ImportError: cannot import name 'screen_capture_allowed'`.
 
 - [ ] **Step 3: Implement the gate + grant field**
 
@@ -281,10 +281,10 @@ git commit -m "feat(world): default-deny screen-perception gate (allowed_percept
 **Interfaces:**
 - Consumes: `witness_capture` (Task 1), `screen_capture_allowed` (Task 2), cm `ScreenCaptureSource` + `capture_available`.
 - Produces:
-  - `World._screen_source(region) -> CaptureSource | None` — the real factory: returns `ScreenCaptureSource(region)` if `capture_available()`, else `None`. Tests OVERRIDE this attribute to inject a fake source.
-  - `World.start_capture(region=None, max_frames=120, interval=1.0) -> dict` — gate pre-check; returns `{"error": ...}` (witnessed refusal) if not granted / already capturing / no backend, else spawns the daemon thread and returns `{"started": True, "region": <[x,y,w,h] or "full-primary">}`.
-  - `World.run_capture(region, max_frames, interval)` — thread body: builds the source, runs `witness_capture` with `on_frame` emitting `("capture", {"frame_index", "sight"})` to subscribers; emits a `("capture", {"receipt": {...}})` stop event; clears `_capturing`.
-  - `World.stop_capture()` — sets the stop flag.
+  - `World._screen_source(region) -> CaptureSource | None` -- the real factory: returns `ScreenCaptureSource(region)` if `capture_available()`, else `None`. Tests OVERRIDE this attribute to inject a fake source.
+  - `World.start_capture(region=None, max_frames=120, interval=1.0) -> dict` -- gate pre-check; returns `{"error": ...}` (witnessed refusal) if not granted / already capturing / no backend, else spawns the daemon thread and returns `{"started": True, "region": <[x,y,w,h] or "full-primary">}`.
+  - `World.run_capture(region, max_frames, interval)` -- thread body: builds the source, runs `witness_capture` with `on_frame` emitting `("capture", {"frame_index", "sight"})` to subscribers; emits a `("capture", {"receipt": {...}})` stop event; clears `_capturing`.
+  - `World.stop_capture()` -- sets the stop flag.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -358,7 +358,7 @@ def test_run_capture_refused_when_backend_unavailable(tmp_path):
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_screen.py -k "start_capture or run_capture" -v`
-Expected: FAIL — `AttributeError: 'World' object has no attribute 'start_capture'`.
+Expected: FAIL -- `AttributeError: 'World' object has no attribute 'start_capture'`.
 
 - [ ] **Step 3: Implement the orchestration**
 
@@ -435,7 +435,7 @@ Add these methods to `World` (mirroring the autopilot pattern):
             self._capturing = False
 ```
 
-Note: `run_capture` sets `_capturing` False in `finally`; when called directly in a test (not via `start_capture`), `should_stop` is `not self._capturing` — so the test must set it. In `test_run_capture_streams_witnessed_frames` the world was not started via `start_capture`, so `_capturing` is False and `should_stop()` would be True immediately. **Fix in implementation:** have `run_capture` set `_capturing = True` at entry if not already, so a direct call self-arms:
+Note: `run_capture` sets `_capturing` False in `finally`; when called directly in a test (not via `start_capture`), `should_stop` is `not self._capturing` -- so the test must set it. In `test_run_capture_streams_witnessed_frames` the world was not started via `start_capture`, so `_capturing` is False and `should_stop()` would be True immediately. **Fix in implementation:** have `run_capture` set `_capturing = True` at entry if not already, so a direct call self-arms:
 
 ```python
     def run_capture(self, region, max_frames=120, interval=1.0) -> None:
@@ -450,7 +450,7 @@ Note: `run_capture` sets `_capturing` False in `finally`; when called directly i
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_screen.py -v`
-Expected: PASS (all — Task 1 + 2 + 3 tests).
+Expected: PASS (all -- Task 1 + 2 + 3 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -531,12 +531,12 @@ git commit -m "feat(world): /capture/start + /capture/stop endpoints (gated, bou
 **Files:**
 - Create: `web/screen.html`, `web/screen.js`
 - Modify: `src/accountable_surface/world/server.py` (`do_GET`: serve `/screen` → `screen.html`)
-- Test: reuse `web/overlay.test.mjs` (already green); a one-time controller Playwright live check (NOT done by the implementer — see scope note).
+- Test: reuse `web/overlay.test.mjs` (already green); a one-time controller Playwright live check (NOT done by the implementer -- see scope note).
 
 **Interfaces:**
 - Consumes: SSE `/world/stream` `("capture", {...})` events (Task 3); shipped `overlay.js` `window.drawContours` + `window.renderColorMap`; sight shape from `witness_image`.
 
-**SCOPE LIMIT for the implementer:** do Steps 1–4 (HTML, JS, the `/screen` route, and confirming the node gate still passes). SKIP the Playwright live check — the controller runs it (it needs a granted live capture session).
+**SCOPE LIMIT for the implementer:** do Steps 1--4 (HTML, JS, the `/screen` route, and confirming the node gate still passes). SKIP the Playwright live check -- the controller runs it (it needs a granted live capture session).
 
 - [ ] **Step 1: Add the `/screen` route**
 
@@ -585,10 +585,10 @@ In `server.py` `do_GET`, beside the `/watch` and `/together` routes, add:
 - [ ] **Step 3: Create `web/screen.js`**
 
 ```javascript
-// screen.js — watch the live witnessed screen: the model and you see the same frame.
+// screen.js -- watch the live witnessed screen: the model and you see the same frame.
 //
 // Per ("capture", {frame_index, sight}) SSE event we render the witnessed sight the
-// model reads — ascii shape + structure contours (overlay.js) + OKLab colour map.
+// model reads -- ascii shape + structure contours (overlay.js) + OKLab colour map.
 // No raw screen pixels cross the wire; the witnessed sight is the shared medium.
 
 const $ = id => document.getElementById(id);
@@ -631,7 +631,7 @@ $("stop").addEventListener("click", () => fetch("/capture/stop", { method: "POST
 - [ ] **Step 4: Confirm the node gate still passes (regression)**
 
 Run: `node --test web/overlay.test.mjs`
-Expected: PASS (2 tests) — unchanged; `screen.js` only consumes the already-tested pure functions.
+Expected: PASS (2 tests) -- unchanged; `screen.js` only consumes the already-tested pure functions.
 
 - [ ] **Step 5: Commit**
 
@@ -644,8 +644,8 @@ git commit -m "feat(web): live spectator view for the witnessed screen capture"
 
 ## Final verification (controller)
 
-- [ ] Targeted slice: `python -m pytest tests/test_screen.py tests/test_world_server.py tests/test_world_session.py -v` — all green.
-- [ ] Frontend gate: `node --test web/overlay.test.mjs` — green.
+- [ ] Targeted slice: `python -m pytest tests/test_screen.py tests/test_world_server.py tests/test_world_session.py -v` -- all green.
+- [ ] Frontend gate: `node --test web/overlay.test.mjs` -- green.
 - [ ] No new third-party imports: `grep -rnE "^import |^from " src/accountable_surface/world/screen.py` shows only stdlib + `coherence_membrane` + `.sight`.
 - [ ] **Controller Playwright live check** (the one real-grab confirmation): start the world server with a grant that includes `"screen"` (`allowed_perceptions: ["screen"]`), navigate to `/screen`, click Start, confirm `("capture", …)` events arrive and the ascii/contours/colour render live, then Stop and confirm the receipt. Capture the evidence screenshot.
 
@@ -654,4 +654,4 @@ git commit -m "feat(web): live spectator view for the witnessed screen capture"
 - **Spec coverage:** witnessing loop + change-proportional + bounds (T1); default-deny gate + grant field (T2); gated/atomic/witnessed orchestration + fail-closed backend-unavailable (T3); HTTP endpoints (T4); live spectator view reusing overlay.js + `/screen` route (T5); controller Playwright live check (final). All spec sections mapped.
 - **Placeholder scan:** no TBD/TODO; every code step is complete. The only non-implementer step is the final Playwright check, explicitly assigned to the controller (the spec mandates it as a controller action, mirroring increment 1).
 - **Type consistency:** `witness_capture(source, *, on_frame, max_frames, interval, cols, sleep, should_stop)` is identical across T1 definition and T3 call; `screen_capture_allowed(grant)` matches T2↔T3; `start_capture/run_capture/stop_capture/_screen_source` names match T3↔T4↔T5; the `("capture", {...})` event shapes (`started`/`sight`/`receipt`/`error`) match T3 emit ↔ T5 render.
-- **Known seam called out:** T3 Step 3 explicitly notes `run_capture` must self-arm `_capturing = True` at entry so a direct (non-`start_capture`) call in tests runs — flagged inline, not hidden.
+- **Known seam called out:** T3 Step 3 explicitly notes `run_capture` must self-arm `_capturing = True` at entry so a direct (non-`start_capture`) call in tests runs -- flagged inline, not hidden.

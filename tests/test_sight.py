@@ -1,4 +1,4 @@
-"""Tests for witnessed sight — what the model actually sees when it looks at visual material.
+"""Tests for witnessed sight -- what the model actually sees when it looks at visual material.
 
 An image becomes a faithful, re-derivable ASCII glyph grid (the model reads it natively and a
 spectator sees the SAME grid) plus a perceptual hash and a content digest. Composes
@@ -34,7 +34,7 @@ def test_witnessed_sight_is_re_derivable_and_renders_the_image():
     png = _gradient_png()
     assert witness_image(png)["digest"] == witness_image(png)["digest"]  # deterministic
     grid = witness_image(png, cols=16)["ascii"]
-    assert grid[0][0] == " " and grid[0][-1] in "%@#"  # left dark, right bright — a real perception
+    assert grid[0][0] == " " and grid[0][-1] in "%@#"  # left dark, right bright -- a real perception
 
 
 def test_sight_of_an_image_file(tmp_path):
@@ -107,7 +107,7 @@ def test_structure_traces_a_disc_outline():
 def test_structure_of_a_flat_image_is_honestly_empty():
     flat = encode_png(16, 16, bytes([128, 128, 128]) * (16 * 16), channels=3)
     st = witness_structure(decode_png(flat))
-    assert st["contours"] == 0                        # no edges — and we say so
+    assert st["contours"] == 0                        # no edges -- and we say so
     assert st["outline"] == "no distinct edges"
     assert st["coords"] == []
     assert len(st["ghash"]) == 16                     # key present, never omitted

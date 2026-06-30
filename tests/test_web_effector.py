@@ -1,8 +1,8 @@
-"""Tests for native web actuation — WebEffector (Phase 5, second effector).
+"""Tests for native web actuation -- WebEffector (Phase 5, second effector).
 
 Offline + deterministic via FakePageDriver (no browser, no external deps). Proves
-the same accountability invariants as FilesystemEffector — inert until authorized,
-origin-bounded, verified by re-perceiving — now on the page's structure (navigate,
+the same accountability invariants as FilesystemEffector -- inert until authorized,
+origin-bounded, verified by re-perceiving -- now on the page's structure (navigate,
 fill by accessible label).
 """
 
@@ -160,7 +160,7 @@ def test_actuate_permissive_grant_still_bounded_by_effector():
     assert drv.current_url() == "https://ok.test/"
 
 
-# --- form submit (POST) — an irreversible action ----------------------------
+# --- form submit (POST) -- an irreversible action ----------------------------
 
 def _site_with_thanks():
     drv = FakePageDriver(

@@ -1,8 +1,8 @@
-"""Tests for the pilots + the autopilot loop — a mind driving the body, kept honest by the surface.
+"""Tests for the pilots + the autopilot loop -- a mind driving the body, kept honest by the surface.
 
 The autopilot loop is proven with a deterministic ScriptedPilot (no network): the mind proposes,
 the body gates+acts+verifies+witnesses on REAL files, and the loop is bounded. ClaudePilot's
-request-build and response-parse are proven with an injected transport — the real Anthropic call
+request-build and response-parse are proven with an injected transport -- the real Anthropic call
 is the only un-mocked seam. Offline, stdlib only.
 """
 from __future__ import annotations
@@ -45,7 +45,7 @@ def test_autopilot_is_bounded_by_max_steps(tmp_path):
 
 
 def test_autopilot_witnesses_a_refused_overreach(tmp_path):
-    # the mind proposes an escape; the surface refuses it and witnesses the 'no' — the loop survives
+    # the mind proposes an escape; the surface refuses it and witnesses the 'no' -- the loop survives
     ws = WorldSession(tmp_path / "w", _sandbox_grant(["fs.write"]))
     pilot = ScriptedPilot([Proposal(target="../escape.txt", content="nope", reasoning="try to escape")])
     steps = autopilot(ws, pilot, goal="overreach", max_steps=2)
@@ -68,7 +68,7 @@ def test_claude_pilot_request_body_carries_witnessed_state():
 def test_claude_pilot_parses_a_proposal_from_a_canned_response():
     canned = {"content": [{"type": "text", "text":
               'My move:\n{"reasoning":"need a readme","kind":"fs.write","target":"README.md",'
-              '"content":"# Hi","justification":"document it"} — done.'}]}
+              '"content":"# Hi","justification":"document it"} -- done.'}]}
     cp = ClaudePilot("sk-test", post=lambda body: canned)
     prop = cp.propose({"files": []}, "make a readme")
     assert prop.done is False

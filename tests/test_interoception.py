@@ -1,4 +1,4 @@
-"""Tests for interoception — the surface perceiving its own session (Phase 3).
+"""Tests for interoception -- the surface perceiving its own session (Phase 3).
 
 Offline. Proves the self-view is witnessed, accurate, tamper-evident, and inert.
 """

@@ -1,13 +1,13 @@
-"""Native web actuation for the efferent arm — act on the page's STRUCTURE (navigate,
+"""Native web actuation for the efferent arm -- act on the page's STRUCTURE (navigate,
 fill by accessible label), NOT pixels, under the same Effector contract.
 
 **Zero external dependencies, by design.** This is a native ecosystem meant to
 SURPASS heavyweight browser-automation deps (Playwright/Chromium), not depend on
 them: the accountability logic is driver-agnostic, and the real backend is a native
 stdlib HTTP/HTML driver (`urllib` + `html.parser`, reusing the witnessed web organ)
-— no browser binary for server-rendered pages. `FakePageDriver` makes the whole
+-- no browser binary for server-rendered pages. `FakePageDriver` makes the whole
 contract deterministically testable offline. Acting by accessible label is both more
-robust than screenshot-driving and inherently accessible — the path a screen-reader
+robust than screenshot-driving and inherently accessible -- the path a screen-reader
 user takes.
 """
 
@@ -25,7 +25,7 @@ from accountable_surface.effector import Plan, RefusedActuation, Verdict
 
 @dataclass(frozen=True)
 class WebAction:
-    """A semantic action on the accessibility tree — never a pixel coordinate."""
+    """A semantic action on the accessibility tree -- never a pixel coordinate."""
 
     kind: str  # "navigate" | "fill" | "submit"
     url: str = ""  # navigate: destination; fill: the page; submit: the POST/action url
@@ -76,7 +76,7 @@ class FakePageDriver:
 class WebEffector:
     """Acts on a page's structure / accessibility tree (navigate / fill), bounded to
     allowed origins, only on a gate allow, and verified by re-snapshotting. Native:
-    a `FakePageDriver` (offline) or a stdlib HTTP/HTML driver — never a browser dep."""
+    a `FakePageDriver` (offline) or a stdlib HTTP/HTML driver -- never a browser dep."""
 
     name = "web-effector"
 
@@ -110,7 +110,7 @@ class WebEffector:
             post_target = f"{action.url}#{action.selector}"
             content_sha, reversible = sha256_hex(action.value.encode("utf-8")), True
         elif action.kind == "submit":
-            # a POST mutates server state — irreversible (escalates unless pre-authorized)
+            # a POST mutates server state -- irreversible (escalates unless pre-authorized)
             post_target, content_sha, reversible = action.url, sha256_hex(action.value.encode("utf-8")), False
         else:
             raise RefusedActuation(f"unsupported web action: {action.kind!r}")
@@ -119,10 +119,10 @@ class WebEffector:
         return Plan(action_kind, post_target, content_sha, reversible, existed, digest)
 
     def act(self, plan: Plan, allow_receipt: Any, action: WebAction) -> Observation:
-        """Perform the action — only on a gate allow for THIS plan, only within the
+        """Perform the action -- only on a gate allow for THIS plan, only within the
         allowed origins. Records rollback info. Returns a witnessed post-snapshot."""
         if getattr(allow_receipt, "decision", None) != "allow":
-            raise RefusedActuation("no gate allow — the effector will not act")
+            raise RefusedActuation("no gate allow -- the effector will not act")
         request = getattr(allow_receipt, "request", {}) or {}
         planned = request.get("planned_action", {}) if isinstance(request, dict) else {}
         if planned.get("action_kind") != plan.action_kind or planned.get("target") != plan.target:
@@ -134,7 +134,7 @@ class WebEffector:
             self._driver.navigate(action.url)
         elif action.kind == "fill":
             if self._driver.current_url() != action.url:
-                raise RefusedActuation("not on the target page — navigate (accountably) first")
+                raise RefusedActuation("not on the target page -- navigate (accountably) first")
             self._prior[plan.digest] = ("fill", action.selector, self._driver.field_value(action.selector))
             self._driver.fill(action.selector, action.value)
         elif action.kind == "submit":
@@ -168,7 +168,7 @@ class WebEffector:
             _, selector, prior = info
             self._driver.fill(selector, prior if prior is not None else "")
         elif info[0] == "submit":
-            raise RefusedActuation("submit is irreversible — nothing to roll back")
+            raise RefusedActuation("submit is irreversible -- nothing to roll back")
         return self.perceive(plan.target)
 
     def selftest(self) -> bool:
