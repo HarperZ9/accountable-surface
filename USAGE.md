@@ -65,6 +65,50 @@ MCP client example:
 }
 ```
 
+## Using The Browser Backend (JS-Capable SPAs)
+
+`WebEffector` drives server-rendered pages natively (stdlib, zero-dep) but runs no
+JavaScript. `BrowserEffector` adds a JS-capable edge: click by accessible label,
+follow cross-origin navigation, and run JS on a live single-page app -- all through
+the same gate + verify + rollback + journal contract.
+
+The browser backend is injectable. Tests and offline demos use the deterministic,
+zero-dependency `FakeBrowserDriver`; production injects the optional
+`PlaywrightDriver`.
+
+Tests (deterministic, offline -- the default):
+
+```python
+from accountable_surface import AccountableSurface, BrowserEffector, FakeBrowserDriver, BrowserAction
+
+driver = FakeBrowserDriver(start="https://app.test/")
+eff = BrowserEffector(driver, allowed_origins=["https://app.test"])
+AccountableSurface().actuate(
+    eff, target="https://app.test/",
+    content=BrowserAction("navigate", url="https://app.test/dashboard"),
+    authorization=grant,  # operator-loaded; no grant -> default-deny
+)
+```
+
+Production (real headless Chromium -- optional, lazily imported):
+
+```powershell
+python -m pip install "accountable-surface[browser]"
+python -m playwright install chromium
+```
+
+```python
+from accountable_surface.playwright_driver import PlaywrightDriver
+
+driver = PlaywrightDriver(headless=True, start="https://app.example.com/")
+eff = BrowserEffector(driver, allowed_origins=["https://app.example.com"])
+# ...same surface.actuate() contract, now with real JS execution.
+```
+
+Playwright is never a hard dependency: it is imported only when `PlaywrightDriver`
+is instantiated, so the default install and the whole test suite stay zero-dep.
+Run the offline SPA transcript with `python examples/spa_actuate_demo.py`.
+
 ## Boundary
 
 - No grant means default deny.
