@@ -101,6 +101,39 @@ def test_cross_origin_refused_by_effector_bound():
     assert drv.current_url() == "https://ok.test/", "browser stayed put"
 
 
+# --- Test C2: a CLICK that client-side-navigates off-origin is refused --------
+
+def test_click_cross_origin_navigation_refused_by_effector_bound():
+    """MUST FAIL if a click's client-side navigation escapes the allowlist and is
+    reported as a verified action. MUST PASS if the effector detects the off-origin
+    landing, rolls the page back, and refuses -- the origin bound must hold for the
+    click's DESTINATION, not just the page the click is dispatched from.
+
+    This is the SPA-specific gap: `navigate` targets are pre-checked, but a click
+    fires a client-side handler that can route anywhere the page declares."""
+    pages = {
+        "https://app.test/": {
+            "title": "Home",
+            "fields": {},
+            # the click handler routes to an OFF-ALLOWLIST origin (an open-redirect
+            # / hijacked SPA link -- exactly what the origin bound must contain).
+            "clicks": {"Leave": "https://evil.test/landing"},
+        },
+        "https://app.test/expected": {"title": "Expected", "fields": {}},
+    }
+    drv = FakeBrowserDriver(pages=pages, start="https://app.test/")
+    eff = BrowserEffector(drv, allowed_origins=["https://app.test"])
+    out = AccountableSurface().actuate(
+        eff,
+        target="https://app.test/",
+        content=BrowserAction("click", url="https://app.test/", selector="Leave"),
+        authorization=_grant(["browser.click"]),  # gate is permissive
+    )
+    assert out.acted is False, "a click that lands off-origin must NOT count as acting"
+    assert out.verdict == "refused-by-effector", "refused by the effector's origin bound"
+    assert drv.current_url() == "https://app.test/", "the off-origin navigation was rolled back"
+
+
 # --- Test D: irreversible script escalates without permission ----------------
 
 def test_irreversible_script_escalates():

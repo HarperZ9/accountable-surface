@@ -199,6 +199,18 @@ class BrowserEffector:
                 raise RefusedActuation("not on the target page -- navigate (accountably) first")
             self._prior[plan.digest] = ("click", before_digest)
             self._driver.click(action.selector)
+            # A click can fire a client-side handler that navigates ANYWHERE the page
+            # declares -- the origin bound must hold for the click's DESTINATION, not
+            # just the page it was dispatched from. If it escaped the allowlist, undo
+            # the navigation and refuse (the bound is a second gate, stricter than any
+            # grant), so the surface reports refused-by-effector and the page stays put.
+            landed = self._driver.current_url()
+            if not self._within_origin(landed):
+                self._driver.back()
+                del self._prior[plan.digest]
+                raise RefusedActuation(
+                    f"click navigated off the allowed origins {self._origins}: {landed!r}"
+                )
         elif action.kind == "fill":
             if self._driver.current_url() != action.url:
                 raise RefusedActuation("not on the target page -- navigate (accountably) first")
