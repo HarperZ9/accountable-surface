@@ -23,6 +23,12 @@ from .surface import (
     JournalEntry,
     Step,
 )
+from .browser_effector import (
+    BrowserAction,
+    BrowserDriver,
+    BrowserEffector,
+    FakeBrowserDriver,
+)
 from .web_effector import FakePageDriver, WebAction, WebEffector
 
 __all__ = [
@@ -39,6 +45,10 @@ __all__ = [
     "WebEffector",
     "WebAction",
     "FakePageDriver",
+    "BrowserEffector",
+    "BrowserAction",
+    "BrowserDriver",
+    "FakeBrowserDriver",
     "HttpDriver",
     "parse_html",
     "CommandEffector",

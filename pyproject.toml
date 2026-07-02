@@ -29,7 +29,8 @@ Repository = "https://github.com/HarperZ9/accountable-surface"
 Issues = "https://github.com/HarperZ9/accountable-surface/issues"
 
 [project.optional-dependencies]
-server = ["mcp>=1.0"]   # the live MCP server (accountable_surface.server)
+server = ["mcp>=1.0"]      # the live MCP server (accountable_surface.server)
+browser = ["playwright>=1.40"]  # the optional real headless-browser backend (PlaywrightDriver)
 test = ["pytest>=8"]
 
 [project.scripts]
