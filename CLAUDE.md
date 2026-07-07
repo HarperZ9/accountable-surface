@@ -9,10 +9,16 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
 - Perception is **witnessed** (provenance digest + a falsifiable selftest), never a screenshot.
 - **Awareness is not authority** -- the model never supplies its own authorization;
   only operator-loaded grants gate actions; no grant → default-deny.
-- The surface is **inert / advisory** today: it returns the gate's decision and
-  never executes. The forthcoming effector (actuation) must act **only on a gate
-  `allow`**, bounded by the operator grant, and **verify its own work** by
-  re-perceiving the result against the intended post-condition.
+- Actuation is **built and gated** (not inert): `propose` is advisory and never
+  executes, while `actuate` closes the loop through an effector that acts **only on
+  a gate `allow`** for that exact plan, bounded by the operator grant, and **verifies
+  its own work** by re-perceiving the result against the intended post-condition.
+  Shipped effectors: `FilesystemEffector`, `CommandEffector` (allowlist-only, argv,
+  `shell=False`), `WebEffector`, `BrowserEffector`. An irreversible path (e.g. an
+  `os.run` that cannot be undone) escalates to `needs-human` unless the operator
+  explicitly passes `allow_irreversible`; the effector's construction-bound refuses
+  even on a gate `allow` it was not built for. `needs-human` maps to UNVERIFIABLE,
+  never rounded up.
 - Append-only journal; the self-view is content-addressed and cannot silently drift.
 
 ## Boundaries
