@@ -1,13 +1,17 @@
-# Accountable Surface
+<p align="center"><img src=".github/assets/banner.svg" alt="accountable-surface: Perceive, gate, memory, three-channel actuation, grounding. A live surface in one zero-dependency package." width="100%"></p>
 
-![Accountable Surface hero](docs/brand/accountable-surface-hero.png)
+**Perceive, gate, memory, three-channel actuation, grounding. A live surface in one zero-dependency package.**
 
-> Gate agent actions with explicit grants, durable journals, and verification.
+![version](https://img.shields.io/badge/version-0.1.0-f8cc43?style=flat-square&labelColor=14041b) ![license](https://img.shields.io/badge/license-MIT-8f8095?style=flat-square&labelColor=14041b)
 
-Accountable Surface is a Python and MCP workbench for controlled agent action.
-It lets an agent perceive a bounded target, propose an action, pass that action
-through an operator-loaded grant, execute only when allowed, and verify the
-result afterward.
+Accountable Surface is a Python and MCP workbench for controlled agent action:
+
+- **Structured perception**: organs read a bounded target as content-addressed structure, not screenshots.
+- **Three actuation channels**: filesystem, native web (navigate, fill by label, submit, no browser needed), and OS commands, all bounded by construction.
+- **Grounding**: a reference cortex that scores relevance and admits "ungrounded" instead of guessing, with native arXiv lookup via the stdlib.
+- **Live MCP server** plus runnable example demos, in a zero-external-dependency package.
+
+Every action passes an operator-loaded gate, verifies its own result by re-perceiving, and leaves a durable journal entry you can re-check.
 
 ## Why it matters
 
