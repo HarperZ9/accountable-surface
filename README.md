@@ -1,21 +1,30 @@
-# Accountable Surface
+<p align="center"><img src=".github/assets/banner.svg" alt="accountable-surface: Perceive, gate, memory, three-channel actuation, grounding. A live surface in one zero-dependency package." width="100%"></p>
 
-![Accountable Surface hero](docs/brand/accountable-surface-hero.png)
+**Perceive, gate, memory, three-channel actuation, grounding. A live surface in one zero-dependency package.**
 
-> Gate agent actions with explicit grants, durable journals, and verification.
+![version](https://img.shields.io/badge/version-0.1.0-f8cc43?style=flat-square&labelColor=14041b) ![license](https://img.shields.io/badge/license-MIT-8f8095?style=flat-square&labelColor=14041b)
 
-Accountable Surface is a Python and MCP workbench for controlled agent action.
-It lets an agent perceive a bounded target, propose an action, pass that action
-through an operator-loaded grant, execute only when allowed, and verify the
-result afterward.
+Accountable Surface is a Python workbench for controlled agent action. An agent perceives a target as structure, proposes an action, passes an operator-loaded gate, acts through a bounded effector, verifies the result by re-perceiving, and records everything in a durable journal. The core is stdlib only: no browser binary, no HTTP client library, no framework.
 
-## Why it matters
+## Features
 
-Agent workflows need autonomy without silent authority. This repo gives
-developers a concrete loop for reviewable action: observe, propose, gate, act,
-verify, and record a receipt.
+- **Native web actuation, no browser.** `WebEffector` navigates, fills fields by their visible label, and submits forms on live server-rendered pages, driven by a stdlib HTTP and HTML parser backend (`HttpDriver`). Origin-bounded by construction.
+- **JS-capable browser actuation, optional.** `BrowserEffector` clicks by accessible label, follows navigation, and runs JavaScript on single-page apps. Tests and offline demos use the deterministic `FakeBrowserDriver`; production can inject `PlaywrightDriver` (the `[browser]` extra, lazily imported, never a hard dependency).
+- **OS command actuation.** `CommandEffector` runs allowlisted commands only, as argv with `shell=False`, in a bounded working directory. Irreversible commands escalate to needs-human.
+- **Filesystem actuation with rollback.** `FilesystemEffector` is bounded to a root, verifies its own writes by re-perceiving, and rolls back a reversible action that fails verification.
+- **Structured perception.** Organs read a target as a content-addressed structural observation with a falsifiable self-test, not a screenshot.
+- **Grounding.** A reference cortex (`ReferenceCortex`) scores reference relevance for a subject and reports "ungrounded" instead of guessing, with native arXiv lookup via the stdlib. An action can carry a justification; an ungrounded premise escalates to needs-human.
+- **Bounded autonomy.** `pursue` runs a multi-step plan under one grant envelope with no per-step prompt, halting the instant a step is denied or fails verification.
+- **Shared world server.** A zero-dependency live server (stdlib `http.server` plus SSE) where proposed actions run the real loop and stream to every open browser tab, with a small web UI in `web/`. Optional pilots connect a model (Claude or Ollama) to drive it.
+- **Durable memory and interoception.** An append-only JSONL journal that replays across sessions, and `interocept()`, a content-addressed view of the surface's own conduct.
+- **Live MCP server.** `perceive`, `propose`, `session_journal`, and `interocept` exposed over MCP stdio (the `[server]` extra).
+- **Action certificates.** `certify` composes the gate, effect, and grounding verdicts into one certificate token; a denial or failed effect makes the whole action REFUTED, and an escalation yields UNVERIFIABLE, never a rounded-up pass.
 
-## Try It
+The gate is default-deny: with no operator grant loaded, nothing acts. The model cannot supply its own authorization.
+
+## Install
+
+The core composes two sibling repos kept off PyPI. Clone them next to this one and put them on the path. coherence-membrane must include `WebDocumentOrgan` (branch `feat/web-and-external-organs` or later).
 
 ```powershell
 git clone https://github.com/HarperZ9/accountable-surface.git
@@ -24,120 +33,62 @@ git clone https://github.com/HarperZ9/proof-surface.git
 cd accountable-surface
 $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
 python -m pip install -e ".[test]"
-python examples/demo.py
-python -m pytest
 ```
 
-## What to test first
+Requires Python 3.10+. The package itself declares zero runtime dependencies.
 
-- Run `examples/demo.py` to see the basic accountable loop.
-- Run `examples/actuate_demo.py` for the actuation path.
-- Run `examples/smoke_mcp.py` before wiring it into an MCP client.
-
-## Current status
-
-Alpha package with local examples, Python tests, and an MCP server entry point.
-It depends on sibling package checkouts listed in the setup commands below.
-
-## Developer entry points
-
-- Python package: `src/accountable_surface/`
-- MCP server: `accountable_surface.server`
-- CLI script: `accountable-surface-server`
-- Tests: `tests/`
-- Usage guide: `USAGE.md`
-- Delivery contract: `project-docs/specs/SPEC-accountable-surface-forward-delivery.md`
-
-## Existing technical notes
-
-> *Senses and sensibility are what lead to the new frontier. Machines learning to hold themselves accountable.*
-
-A live seam where a model **perceives** and **acts** only through accountability --
-witnessed perception, a pre-execution gate, and a tamper-evident, durable memory --
-under human stewardship. Composed from existing audited parts:
-[coherence-membrane](https://github.com/HarperZ9/coherence-membrane) organs
-(witnessed perception) and [proof-surface](https://github.com/HarperZ9/proof-surface)'s
-gate (allow / deny / needs-human). It does **not** touch ORCA.
-
-## Why
-
-A parallel agent that drives a browser with Playwright and reads **screenshots**
-is guessing at pixels. This surface perceives **structure** -- a witnessed,
-content-addressed reading with a falsifiable self-test -- and gates every action
-through an explicit, revocable operator grant. Perception you can audit; action
-you can refuse *before* it happens. That is the substrate for safe autonomy: the
-danger of "skip every permission" is bounded when every step is witnessed, gated,
-and self-checked.
-
-## The loop
-
-```
-perceive  ->  gate (allow / deny / needs-human)  ->  act (effector)  ->  verify  ->  witness
-  afferent          proof-surface                    fs · web · OS       re-perceive   journal
-```
-
-- **Perceive** -- organs emit witnessed `Observation`s (provenance digest + a
-  falsifiable `selftest`), never screenshots.
-- **Gate** -- every proposed action is checked against the **operator's** grant by
-  proof-surface's pre-execution gate. *The model cannot supply its own authorization.*
-- **Witness** -- every perception and decision is journaled; `interocept()` is the
-  surface's witnessed, content-addressed view of its own conduct, durable across
-  sessions (append-only JSONL + replay).
-
-## Doctrine
-
-- Perception is **witnessed**, never a screenshot.
-- **Awareness is not authority** -- the model perceives freely but cannot authorize its own actions.
-- **Accountable over time** -- the journal is append-only and replayed; the self-view
-  is content-addressed, so the record cannot silently drift.
-- **Action only on `allow`, and verified** -- `propose` is advisory; `actuate`
-  closes the loop: it acts ONLY on a gate `allow`, through an effector bounded by
-  construction, then **verifies the effect by re-perceiving** and rolls back a
-  failed reversible action. Nothing is assumed-done.
-
-## Layout
-
-- `src/accountable_surface/surface.py` -- `AccountableSurface`: `perceive`, `propose`
-  (gated), `actuate` (the full accountable-actuation loop), `interocept` (witnessed
-  self-view), a durable journal.
-- `src/accountable_surface/effector.py` -- the efferent arm: the `Effector` contract +
-  `FilesystemEffector` (inert until authorized; bounded; reversible; self-verifying).
-- `src/accountable_surface/web_effector.py` -- native web actuation: `WebEffector`
-  (navigate / fill by label / submit, origin-bounded; **no browser, no external deps**).
-- `src/accountable_surface/os_effector.py` -- OS actuation: `CommandEffector`
-  (allowlisted commands, bounded cwd, no shell; irreversible → needs-human).
-- `src/accountable_surface/reference.py` -- the **reference cortex**: a grounding organ
-  (witnessed, relevance-scored references; admits "ungrounded"; native arXiv via stdlib).
-- `src/accountable_surface/http_driver.py` -- the real native backend: stdlib
-  `html.parser` + the witnessed clean GET/POST; drives live server-rendered pages.
-- `src/accountable_surface/server.py` -- a FastMCP **live MCP server** exposing
-  `perceive`, `propose`, `session_journal`, `interocept`.
-- `tests/` -- 90 tests. `examples/`: `demo.py`, `actuate_demo.py`,
-  `web_actuate_demo.py` (native web actuation vs a real localhost server),
-  `goal_demo.py` (bounded autonomy), `grounding_demo.py` (the reference cortex admitting
-  when it can't ground), `grounded_actuate_demo.py` (an action that must cite grounded
-  references), `smoke_mcp.py` (a real MCP stdio round-trip).
-- `docs/` -- design specs (interoception, persistence, actuation).
-
-## Install And Run
-
-This composes two sibling repos kept off PyPI; put them on the path (or
-editable-install them). **coherence-membrane must include `WebDocumentOrgan`**
-(branch `feat/web-and-external-organs` or later).
+## Quickstart
 
 ```powershell
-$env:PYTHONPATH = "src;C:\dev\public\coherence-membrane\src;C:\dev\public\proof-surface\src"
-
-python -m pytest             # pytest adds ./src
-python examples/demo.py      # runnable transcript
-python examples/smoke_mcp.py # live MCP round-trip (needs mcp)
-
-# the live MCP server
-python -m pip install -e ".[server]"          # adds mcp
-python -m accountable_surface.server
+python examples/demo.py        # perceive, gate allow, gate deny, journal
+python examples/actuate_demo.py  # the full act-verify-rollback loop
+python -m pytest               # the test suite (223 tests)
 ```
 
-## Wire into an MCP client
+`demo.py` prints a witnessed structural reading of a local page (title, links, sha256 digest), then a gate ALLOW for an action inside the grant, a gate DENY for one outside it, and the journal of every perception and decision.
+
+More transcripts: `web_actuate_demo.py` (native web actuation against a real localhost server), `spa_actuate_demo.py` (the JS-capable browser path, offline), `goal_demo.py` (bounded autonomy), `grounding_demo.py` and `grounded_actuate_demo.py` (the reference cortex), `smoke_mcp.py` (a real MCP stdio round-trip).
+
+## Worked example
+
+An operator grant is a plain JSON object. The surface acts only when the gate allows the exact plan, then verifies the effect on disk.
+
+```python
+from accountable_surface import AccountableSurface, FilesystemEffector
+
+grant = {
+    "authorization_version": "0.1",
+    "receipt_id": "rcpt-example",
+    "kind": "authorization-grant",
+    "principal": {"id": "operator-1", "role": "operator"},
+    "agent": {"id": "example-agent"},
+    "intent": "write the report file",
+    "scope": {"allowed_actions": ["fs.write"], "allowed_targets": []},
+    "granted_at": "2026-06-19T00:00:00+00:00",
+    "expires_at": "2030-01-01T00:00:00+00:00",
+    "revoked": False,
+}
+
+surface = AccountableSurface()
+out = surface.actuate(
+    FilesystemEffector("/path/to/sandbox"),
+    target="/path/to/sandbox/report.txt",
+    content=b"written natively, verified by re-perceiving",
+    authorization=grant,
+)
+print(out.acted, out.decision, out.verified)  # True allow True
+```
+
+With `authorization={}` the same call returns `acted=False, decision="deny"` and the file is never created. A faulty effector that writes the wrong bytes is caught at verification and rolled back; `examples/actuate_demo.py` shows both paths.
+
+## Run as an MCP server
+
+```powershell
+python -m pip install -e ".[server]"   # adds mcp
+python -m accountable_surface.server   # or: accountable-surface-server
+```
+
+Client configuration:
 
 ```json
 {
@@ -155,55 +106,49 @@ python -m accountable_surface.server
 }
 ```
 
-### Operator grants (`ACCOUNTABLE_SURFACE_GRANTS`)
-A JSON file with one authorization-grant or a list. **The model cannot supply its
-own authorization** -- only operator-loaded grants gate actions; with none loaded,
-the gate is **default-deny**. The grant is the autonomy envelope: its
-`scope.allowed_actions` / `allowed_targets` bound what the surface may do.
+`ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant or a list; with none loaded the gate is default-deny. `ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the journal replays on launch so the witnessed self-view spans sessions.
 
-### Durable memory (`ACCOUNTABLE_SURFACE_JOURNAL`)
-A path to an append-only JSONL file. When set, the journal replays on launch and
-appends every perception/decision -- so the witnessed self-view spans sessions.
+## Shared world server
 
-## Roadmap
+A live surface you can watch in a browser: proposed actions run the real perceive-gate-act-verify loop and stream over SSE to every open subscriber.
 
-**Built (v0):** witnessed perception · pre-execution gate · interoception · durable
-memory · live MCP server · **the efferent arm** -- accountable actuation with **three
-native backends** (`FilesystemEffector`; `WebEffector` on a real stdlib HTTP/HTML
-driver -- navigate, fill by label, submit; `CommandEffector` for allowlisted OS
-commands), acting on *structure* not pixels, through the perceive→plan→gate→act→
-re-perceive→verify loop with rollback. **Irreversible** actions (a POST, a command)
-escalate to needs-human unless the operator passes `allow_irreversible`. Built to
-*surpass* Playwright for server-rendered web -- no browser binary. **Goal/task mode**
-(`pursue`) runs a multi-step plan as **bounded autonomy** -- one grant envelope, no
-per-step prompt -- halting the instant a step is denied or fails verification. A plan
-(even a model's plan) is not authority; each step earns it. The **reference cortex**
-(`ground`) returns witnessed, relevance-scored references for a subject and flags
-**ungrounded** rather than surface an irrelevant citation -- grounding that can't launder
-a bad source. It is **wired into actuation**: an action may carry a *justification*; an
-**ungrounded premise escalates to needs-human** (evidence gated like authority), and the
-references ride along on the outcome as the action's citation.
+```powershell
+python -m accountable_surface.world.server 8808
+```
 
-**Next:** richer goal **planning** (decompose a goal into steps, each still gated); a
-larger curated/internal corpus behind the reference cortex; and a native protocol option
-for the live surface. **Zero external dependencies
-in the core** -- stdlib + the sibling-native repos; the optional MCP server (`[server]`
-extra) is the lone edge-adapter. Four pillars: **Accountability, Usability,
-Accessibility, Efficiency**.
+It serves the web UI from `web/` and binds to localhost by default. Grants are operator-supplied at startup; the built-in fallback is an explicit sandbox-scoped demo grant, and default-deny still holds.
+
+## Layout
+
+- `src/accountable_surface/surface.py`: `AccountableSurface` with `perceive`, `propose`, `actuate`, `pursue`, `interocept`, and the durable journal.
+- `effector.py`, `web_effector.py`, `browser_effector.py`, `os_effector.py`: the four effectors and their drivers.
+- `http_driver.py`: the stdlib HTTP and HTML backend behind native web actuation.
+- `playwright_driver.py`: the optional JS-capable browser driver.
+- `reference.py`: the grounding cortex, `certify.py`: action certificates, `grant.py`: grant helpers.
+- `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
+- `tests/`: 223 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
+- `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
+
+## Status
+
+Alpha, version 0.1.0. The API is settling and may change between 0.x releases. CI runs the Python suite and the Node web tests on every push and pull request, with sibling checkouts of coherence-membrane and proof-surface. Local verification:
+
+```powershell
+$env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
+python -m pytest
+node --test web/*.test.mjs
+```
+
+## Related repos
+
+- [coherence-membrane](https://github.com/HarperZ9/coherence-membrane): the perception organs and certificate types this surface composes.
+- [proof-surface](https://github.com/HarperZ9/proof-surface): the pre-execution gate (allow, deny, needs-human).
+- [USAGE.md](USAGE.md): the operational guide, including the browser backend.
+
+## Why the gate and the journal
+
+Agent autonomy without silent authority: every action here is checked against an operator grant before it runs, verified against its intended effect after it runs, and recorded in a journal you can replay and re-check. The receipt is the floor; the features above are the point.
 
 ## License
 
 MIT (c) 2026 Zain Dana Harper
-
-## For developers
-
-Keep the public README, package metadata, and examples aligned with current
-behavior. Before opening a PR or pushing a release, run the local package
-verification path.
-
-```powershell
-$env:PYTHONPATH = "src;C:\dev\public\coherence-membrane\src;C:\dev\public\proof-surface\src"
-python -m pip install -e ".[test]"
-python -m pytest
-node --test web/*.test.mjs
-```
