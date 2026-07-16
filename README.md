@@ -16,7 +16,7 @@ Accountable Surface is a Python workbench for controlled agent action. An agent 
 - **Grounding.** A reference cortex (`ReferenceCortex`) scores reference relevance for a subject and reports "ungrounded" instead of guessing, with native arXiv lookup via the stdlib. An action can carry a justification; an ungrounded premise escalates to needs-human.
 - **Bounded autonomy.** `pursue` runs a multi-step plan under one grant envelope with no per-step prompt, halting the instant a step is denied or fails verification.
 - **Shared world server.** A zero-dependency live server (stdlib `http.server` plus SSE) where proposed actions run the real loop and stream to every open browser tab, with a small web UI in `web/`. Optional pilots connect a model (Claude or Ollama) to drive it.
-- **Durable memory and interoception.** An append-only JSONL journal that replays across sessions, and `interocept()`, a content-addressed view of the surface's own conduct.
+- **Durable, tamper-evident memory.** An append-only JSONL journal that replays across sessions, hash-chained so an edited, deleted, or reordered entry is caught on reload even though it still parses (corruption and tamper are counted separately, never conflated). `verify_journal()` re-derives the chain and returns the verdict; `interocept()` is a content-addressed view of the surface's own conduct.
 - **Live MCP server.** `perceive`, `propose`, `session_journal`, and `interocept` exposed over MCP stdio (the `[server]` extra).
 - **Action certificates.** `certify` composes the gate, effect, and grounding verdicts into one certificate token; a denial or failed effect makes the whole action REFUTED, and an escalation yields UNVERIFIABLE, never a rounded-up pass.
 
