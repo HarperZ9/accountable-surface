@@ -33,6 +33,7 @@ from coherence_membrane.organs.web import WebDocumentOrgan
 
 from accountable_surface.certify import action_certificate
 from accountable_surface.effector import RefusedActuation
+from accountable_surface.journal_chain import GENESIS, entry_hash, read_journal
 
 
 @dataclass(frozen=True)
@@ -115,35 +116,48 @@ class AccountableSurface:
         self.journal: list[JournalEntry] = []
         self._journal_path: Path | None = Path(journal_path) if journal_path else None
         self.replay_errors: int = 0
+        self.journal_tamper: int = 0   # chain breaks found on replay: edit / delete / reorder
+        self._chain_head: str = GENESIS
         if self._journal_path is not None:
             self._replay()
 
     def _replay(self) -> None:
-        """Load an existing append-only journal into memory. Blank lines are
-        skipped; a line that does not parse is counted in `replay_errors` (a
-        tamper/corruption signal) and never silently dropped. An absent file is
-        an empty journal, not an error."""
-        path = self._journal_path
-        if path is None or not path.exists():
-            return
-        for line in path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if not stripped:
-                continue
-            try:
-                self.journal.append(JournalEntry.from_dict(json.loads(stripped)))
-            except (ValueError, KeyError, TypeError):
-                self.replay_errors += 1
+        """Load an existing append-only journal into memory and chain-verify it. A line
+        that does not parse is counted in `replay_errors`; an entry whose hash chain is
+        broken (edited, deleted, or reordered) is counted in `journal_tamper`. Both are
+        surfaced, never silently dropped; an absent file is an empty journal, not an error."""
+        result = read_journal(self._journal_path)
+        self.journal = [JournalEntry.from_dict(record) for record in result["records"]]
+        self.replay_errors = result["replay_errors"]
+        self.journal_tamper = result["tamper_count"]
+        self._chain_head = result["head"]
 
     def _record(self, entry: JournalEntry) -> None:
         """Append an entry to the in-memory journal and, when persisting, to the
-        append-only JSONL file (one compact JSON object per line). The surface
-        only ever appends -- it never rewrites or truncates the record."""
+        append-only JSONL file (one compact JSON object per line) carrying its hash
+        chain fields. The surface only ever appends -- it never rewrites or truncates."""
         self.journal.append(entry)
         if self._journal_path is not None:
-            line = json.dumps(entry.to_dict(), sort_keys=True, separators=(",", ":"))
+            content = entry.to_dict()
+            h = entry_hash(self._chain_head, content)
+            line = json.dumps({**content, "_prev": self._chain_head, "_hash": h},
+                              sort_keys=True, separators=(",", ":"))
             with self._journal_path.open("a", encoding="utf-8") as handle:
                 handle.write(line + "\n")
+            self._chain_head = h
+
+    def verify_journal(self) -> dict:
+        """Re-derive the persisted journal's hash chain and report whether it is intact.
+        Catches an edited, deleted, or reordered entry that still parses. An in-memory
+        surface (no path) has nothing persisted to tamper, so it is trivially chain_ok."""
+        if self._journal_path is None or not self._journal_path.exists():
+            return {"chain_ok": True, "tamper_count": 0, "replay_errors": 0,
+                    "entries": len(self.journal)}
+        result = read_journal(self._journal_path)
+        return {"chain_ok": result["tamper_count"] == 0 and result["replay_errors"] == 0,
+                "tamper_count": result["tamper_count"],
+                "replay_errors": result["replay_errors"],
+                "entries": len(result["records"])}
 
     def perceive(self, subject: Any) -> Observation:
         """Perceive a subject (URL, bytes, or path) into a witnessed Observation
