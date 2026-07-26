@@ -24,7 +24,7 @@ bounded by effectors, and verification happens after each permitted action.
 From this repo, with sibling checkouts available:
 
 ```powershell
-$env:PYTHONPATH = "src;C:\dev\public\coherence-membrane\src;C:\dev\public\proof-surface\src"
+$env:PYTHONPATH = "src;../coherence-membrane/src;../proof-surface/src"   # sibling checkouts
 python -m pip install -e ".[test]"
 python -m pytest
 node --test web/*.test.mjs
