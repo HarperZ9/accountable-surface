@@ -18,3 +18,7 @@ venv/
 .warden-safe-cache/
 *.session.jsonl
 journals/
+
+# direnv environment files (can hold exported secrets)
+.envrc
+.envrc.local
