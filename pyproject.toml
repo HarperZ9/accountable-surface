@@ -8,13 +8,13 @@ version = "0.1.0"
 description = "Gate AI-agent actions with explicit grants, durable journals, MCP server support, and verification."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "LicenseRef-FSL-1.1-MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Zain Dana Harper" }]
 keywords = ["accountability", "perception", "actuation", "witness", "gate", "agent", "mcp", "stewardship"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Software Development :: Quality Assurance",
