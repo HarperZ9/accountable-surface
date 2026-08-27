@@ -33,6 +33,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from accountable_surface import __version__
 from accountable_surface.grant import action_authorization
 from accountable_surface.surface import AccountableSurface
 
@@ -152,6 +153,33 @@ def interocept() -> dict:
     what it has perceived and what the gate decided (counts + a journal digest).
     The model sensing itself -- it grants no authority and mutates nothing."""
     return _surface.interocept().to_dict()
+
+
+def _status_payload() -> dict:
+    return {"ok": True, "server": "accountable-surface", "version": __version__}
+
+
+def _doctor_payload() -> dict:
+    return {"ok": True, "server": "accountable-surface", "version": __version__,
+            "grants_loaded": len(_grants),
+            "journal_persistent": load_journal_path() is not None,
+            "tools": ["perceive", "propose", "session_journal", "interocept",
+                      "status", "doctor"]}
+
+
+@mcp.tool()
+def status() -> dict:
+    """Liveness and identity of the Accountable Surface MCP server. Network-free:
+    no perception, no gate, no actuation -- a fast health probe (the Flywheel lane
+    roster marks the lane live only when this answers)."""
+    return _status_payload()
+
+
+@mcp.tool()
+def doctor() -> dict:
+    """Readiness: identity, the exposed tools, whether operator grants are loaded,
+    and whether the journal is durable. No perception, no actuation."""
+    return _doctor_payload()
 
 
 def main() -> None:
