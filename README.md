@@ -2,7 +2,7 @@
 
 **Perceive, gate, memory, three-channel actuation, grounding. A live surface in one zero-dependency package.**
 
-![version](https://img.shields.io/badge/version-0.1.0-f8cc43?style=flat-square&labelColor=14041b) ![license](https://img.shields.io/badge/license-MIT-8f8095?style=flat-square&labelColor=14041b)
+![version](https://img.shields.io/badge/version-0.1.0-f8cc43?style=flat-square&labelColor=14041b) ![license](https://img.shields.io/badge/license-FSL--1.1--MIT-8f8095?style=flat-square&labelColor=14041b)
 
 Accountable Surface is a Python workbench for controlled agent action. An agent perceives a target as structure, proposes an action, passes an operator-loaded gate, acts through a bounded effector, verifies the result by re-perceiving, and records everything in a durable journal. The core is stdlib only: no browser binary, no HTTP client library, no framework.
 
@@ -151,7 +151,7 @@ Agent autonomy without silent authority: every action here is checked against an
 
 ## License
 
-MIT (c) 2026 Zain Dana Harper
+FSL-1.1-MIT. Copyright (c) 2026 Zain Dana Harper. See [LICENSE](LICENSE).
 
 ## What this believes
 
