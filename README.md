@@ -1,10 +1,41 @@
-<p align="center"><img src=".github/assets/zentropy-banner.png" alt="accountable-surface: Perceive, gate, memory, three-channel actuation, grounding. A live surface in one zero-dependency package." width="100%"></p>
+<p align="center"><img src=".github/assets/zentropy-banner.png" alt="Accountable Surface" width="100%"></p>
 
-**Perceive, gate, memory, three-channel actuation, grounding. A live surface in one zero-dependency package.**
+# Accountable Surface
+
+Accountable Surface lets an AI agent take only the file, command, web, or
+browser action a person has approved. It checks the request and authorization,
+blocks or pauses when needed, verifies the outcome, rolls back reversible
+failures, and records decisions and outcomes in a journal. Persisted journals
+are hash-chained so later edits, deletions, or reordering are detected.
 
 ![version](https://img.shields.io/badge/version-0.1.0-f8cc43?style=flat-square&labelColor=14041b) ![license](https://img.shields.io/badge/license-FSL--1.1--MIT-8f8095?style=flat-square&labelColor=14041b)
 
-Accountable Surface is a Python workbench for controlled agent action. An agent perceives a target as structure, proposes an action, passes an operator-loaded gate, acts through a bounded effector, verifies the result by re-perceiving, and records everything in a durable journal. The core is stdlib only: no browser binary, no HTTP client library, no framework.
+The Python core uses only the standard library. Browser automation is an
+optional extra.
+
+## Try it
+
+After [cloning the three repositories and installing Accountable
+Surface](#install), run the complete local file-action example:
+
+```powershell
+python examples/actuate_demo.py
+```
+
+The example refuses an unapproved write, performs an approved write, detects a
+wrong result, restores the previous file, and prints the journal entries.
+
+## Verified today
+
+Verified on 2026-08-31 against commit
+[`3e4b342`](https://github.com/HarperZ9/accountable-surface/commit/3e4b342cf7e8c25eb43ebc5a30c4fa194012c25e):
+
+- `python -m pytest`: 233 Python tests passed.
+- `node --test web/*.test.mjs`: 5 browser-interface tests passed.
+
+These checks cover the repository's deterministic local paths. They do not
+establish safety in every host environment or validate every third-party
+browser, website, or model provider.
 
 ## Features
 
@@ -42,7 +73,7 @@ Requires Python 3.10+. The package itself declares zero runtime dependencies.
 ```powershell
 python examples/demo.py        # perceive, gate allow, gate deny, journal
 python examples/actuate_demo.py  # the full act-verify-rollback loop
-python -m pytest               # the test suite (223 tests)
+python -m pytest               # the test suite (233 tests)
 ```
 
 `demo.py` prints a witnessed structural reading of a local page (title, links, sha256 digest), then a gate ALLOW for an action inside the grant, a gate DENY for one outside it, and the journal of every perception and decision.
@@ -126,7 +157,7 @@ It serves the web UI from `web/` and binds to localhost by default. Grants are o
 - `playwright_driver.py`: the optional JS-capable browser driver.
 - `reference.py`: the grounding cortex, `certify.py`: action certificates, `grant.py`: grant helpers.
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
-- `tests/`: 223 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
+- `tests/`: 233 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
 
 ## Status
@@ -144,6 +175,12 @@ node --test web/*.test.mjs
 - [coherence-membrane](https://github.com/HarperZ9/coherence-membrane): the perception organs and certificate types this surface composes.
 - [proof-surface](https://github.com/HarperZ9/proof-surface): the pre-execution gate (allow, deny, needs-human).
 - [USAGE.md](USAGE.md): the operational guide, including the browser backend.
+
+## Development disclosure
+
+Zain Dana Harper maintains this repository. AI-assisted tools are used for
+parts of development and documentation. Public source, tests, and release
+artifacts are the evidence for what ships; AI output is not treated as proof.
 
 ## Why the gate and the journal
 
