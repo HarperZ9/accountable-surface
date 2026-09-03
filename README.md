@@ -1,4 +1,4 @@
-<p align="center"><img src=".github/assets/zentropy-banner.png" alt="Accountable Surface" width="100%"></p>
+<p align="center"><img src="docs/art/accountable-surface-header.svg" alt="Accountable Surface" width="100%"></p>
 
 # Accountable Surface
 
@@ -112,6 +112,14 @@ print(out.acted, out.decision, out.verified)  # True allow True
 
 With `authorization={}` the same call returns `acted=False, decision="deny"` and the file is never created. A faulty effector that writes the wrong bytes is caught at verification and rolled back; `examples/actuate_demo.py` shows both paths.
 
+<img src="docs/art/actuation-lane.svg" alt="Eight stages of one actuation: perceive, preview, gate, act, re-perceive, verify, roll back, journal. The target is read first, so there is a witnessed record of what it looked like before anything ran. The preview describes the intended write and content-addresses it, with no side effect. The gate answers allow, deny, or needs a human, against the operator's grant. The effector acts only on an allow that names this exact plan, and only inside the root it was constructed with. The target is then read back off disk. Verification compares what landed against the digest that was authorized. A reversible action that fails verification is undone, and the target is read once more. The journal records both digests, the decision and the verdict. Three outcomes: acted and verified, not acted, and rolled back." width="100%">
+
+## What each verdict contributes
+
+One actuation produces up to three verdicts: what the gate decided, what the re-read found, and how well the premise was grounded. They are composed into a single certificate by a lattice meet, so a worse step can never be laundered into a better result.
+
+<img src="docs/art/verdict-composition.svg" alt="Ten rows mapping each verdict the surface produces onto what it contributes to the composed certificate. A gate allow, a passing effect and a grounded premise each contribute verified. A gate denial, a failed effect, a refusal by the effector and an ungrounded premise each contribute refuted, and one refuted input makes the whole certificate refuted. An escalation to a human and a weak premise contribute unverifiable, which pulls a verified result down without making it false. The last row is accented: a verdict string none of the maps recognizes becomes unverifiable rather than raising." width="100%">
+
 ## Run as an MCP server
 
 ```powershell
@@ -159,6 +167,7 @@ It serves the web UI from `web/` and binds to localhost by default. Grants are o
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
 - `tests/`: 233 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
+- `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `.github/assets/zentropy-banner.png`.
 
 ## Status
 
@@ -185,6 +194,10 @@ artifacts are the evidence for what ships; AI output is not treated as proof.
 ## Why the gate and the journal
 
 Agent autonomy without silent authority: every action here is checked against an operator grant before it runs, verified against its intended effect after it runs, and recorded in a journal you can replay and re-check. The receipt is the floor; the features above are the point.
+
+A journal that can be quietly rewritten records nothing worth reading. Each entry is chained to the one before it, so an edit breaks the entry's own hash and a delete or a reorder breaks the link to its neighbour. `verify_journal.py` re-derives the whole chain with no import from this package, which means a stranger holding only the JSONL file can check it.
+
+<img src="docs/art/journal-chain-lane.svg" alt="Eight stages of the journal chain: entry, canonical, chain hash, append, reload, edit, move, verdict. An entry is a kind, a summary and a detail, and nothing outside those three is hashed. The entry is serialized one way only, with sorted keys and no spaces, so the same content always produces the same bytes. Its chain hash is taken over the previous entry's hash together with those bytes. The line is appended as one compact JSON object. On reload every line is parsed and rechained from the genesis anchor. An edited field no longer hashes to the record that carries it. A deleted or reordered entry breaks the link to the running head. The verdict counts unparseable lines separately from chain breaks, and never merges the two. Three outcomes: match, drift, and unverifiable." width="100%">
 
 ## License
 

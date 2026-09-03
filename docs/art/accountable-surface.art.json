@@ -1,0 +1,214 @@
+{
+  "header": {
+    "name": "accountable-surface",
+    "role": "gated action with a journal",
+    "tagline": "An agent acts only on a grant, and the record cannot be edited.",
+    "words": [
+      "grant",
+      "gate",
+      "journal",
+      "chain",
+      "rollback"
+    ]
+  },
+  "flows": [
+    {
+      "file": "actuation-lane.svg",
+      "kicker": "one action, eight steps",
+      "title": "What stands between a proposed action and a changed file",
+      "footnote": "The gate decides, the effector acts, and the surface checks that work by reading the target back rather than by trusting a return value.",
+      "alt": "Eight stages of one actuation: perceive, preview, gate, act, re-perceive, verify, roll back, journal. The target is read first, so there is a witnessed record of what it looked like before anything ran. The preview describes the intended write and content-addresses it, with no side effect. The gate answers allow, deny, or needs a human, against the operator's grant. The effector acts only on an allow that names this exact plan, and only inside the root it was constructed with. The target is then read back off disk. Verification compares what landed against the digest that was authorized. A reversible action that fails verification is undone, and the target is read once more. The journal records both digests, the decision and the verdict. Three outcomes: acted and verified, not acted, and rolled back.",
+      "stages": [
+        {
+          "title": "Perceive",
+          "note": "Read the target first, and witness it."
+        },
+        {
+          "title": "Preview",
+          "note": "Describe the write. Nothing happens yet."
+        },
+        {
+          "title": "Gate",
+          "note": "Allow, deny, or needs a human."
+        },
+        {
+          "title": "Act",
+          "note": "Only on allow, only this exact plan."
+        },
+        {
+          "title": "Re-perceive",
+          "note": "Read the target back off disk."
+        },
+        {
+          "title": "Verify",
+          "note": "Does what landed match the plan?"
+        },
+        {
+          "title": "Roll back",
+          "note": "A reversible failure is undone."
+        },
+        {
+          "title": "Journal",
+          "note": "Both digests, the decision, the verdict."
+        }
+      ],
+      "returns": [
+        {
+          "from": 6,
+          "to": 4,
+          "label": "AN UNDONE WRITE IS READ BACK A SECOND TIME"
+        }
+      ],
+      "outcomes": [
+        {
+          "label": "ACTED AND VERIFIED",
+          "note": "the disk matches the authorized plan",
+          "tone": "verified"
+        },
+        {
+          "label": "NOT ACTED",
+          "note": "the gate said deny or needs a human",
+          "tone": "none"
+        },
+        {
+          "label": "ROLLED BACK",
+          "note": "the write landed wrong and was undone",
+          "tone": "drift"
+        }
+      ]
+    },
+    {
+      "file": "journal-chain-lane.svg",
+      "kicker": "append once, verify offline",
+      "title": "How an edited, deleted or reordered entry gives itself away",
+      "footnote": "Nothing is checked at write time. A break is found when the file is read back, which is also all a stranger holding only the file has to do.",
+      "alt": "Eight stages of the journal chain: entry, canonical, chain hash, append, reload, edit, move, verdict. An entry is a kind, a summary and a detail, and nothing outside those three is hashed. The entry is serialized one way only, with sorted keys and no spaces, so the same content always produces the same bytes. Its chain hash is taken over the previous entry's hash together with those bytes. The line is appended as one compact JSON object. On reload every line is parsed and rechained from the genesis anchor. An edited field no longer hashes to the record that carries it. A deleted or reordered entry breaks the link to the running head. The verdict counts unparseable lines separately from chain breaks, and never merges the two. Three outcomes: match, drift, and unverifiable.",
+      "stages": [
+        {
+          "title": "Entry",
+          "note": "A kind, a summary, and a detail."
+        },
+        {
+          "title": "Canonical",
+          "note": "Sorted keys, no spaces, one form."
+        },
+        {
+          "title": "Chain hash",
+          "note": "Over the previous hash and this entry."
+        },
+        {
+          "title": "Append",
+          "note": "One compact JSON object, one line."
+        },
+        {
+          "title": "Reload",
+          "note": "Every line parsed and rechained."
+        },
+        {
+          "title": "Edit",
+          "note": "A changed field breaks its own hash."
+        },
+        {
+          "title": "Move",
+          "note": "A delete or reorder breaks the link."
+        },
+        {
+          "title": "Verdict",
+          "note": "Corrupt lines and breaks counted apart."
+        }
+      ],
+      "returns": [
+        {
+          "from": 6,
+          "to": 4,
+          "label": "A BREAK IS FOUND ON RELOAD, NOT ON WRITE"
+        }
+      ],
+      "outcomes": [
+        {
+          "label": "MATCH",
+          "note": "every entry rechains from genesis",
+          "tone": "verified"
+        },
+        {
+          "label": "DRIFT",
+          "note": "a hash or a link does not re-derive",
+          "tone": "drift"
+        },
+        {
+          "label": "UNVERIFIABLE",
+          "note": "a line will not parse into an entry",
+          "tone": "none"
+        }
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "file": "verdict-composition.svg",
+      "kicker": "three sources, one certificate",
+      "title": "What each verdict contributes to the certificate an action carries",
+      "source": "python examples/actuate_demo.py",
+      "heads": [
+        "input verdict",
+        "becomes",
+        "why"
+      ],
+      "fields": [
+        {
+          "key": "gate allow",
+          "value": "VERIFIED",
+          "note": "The operator's grant covers this exact action and target, so the pre-execution gate raises nothing against it."
+        },
+        {
+          "key": "gate deny",
+          "value": "REFUTED",
+          "note": "No grant covers the action. Nothing downstream can compose a denial away, so the whole certificate is refuted."
+        },
+        {
+          "key": "gate needs-human",
+          "value": "UNVERIFIABLE",
+          "note": "The gate escalated rather than deciding. An escalation never rounds up to a pass, so the certificate stays open."
+        },
+        {
+          "key": "effect pass",
+          "value": "VERIFIED",
+          "note": "The surface read the target back after acting, and what landed matches the digest it authorized."
+        },
+        {
+          "key": "effect failed",
+          "value": "REFUTED",
+          "note": "The re-read does not match the plan. A reversible action is undone, and the certificate says so either way."
+        },
+        {
+          "key": "effector refusal",
+          "value": "REFUTED",
+          "note": "The effector declined a gate allow, because the target sat outside its bound or the content did not match the preview."
+        },
+        {
+          "key": "grounding grounded",
+          "value": "VERIFIED",
+          "note": "The premise the action cited resolved to supporting references, and their digest is carried in the evidence."
+        },
+        {
+          "key": "grounding weak",
+          "value": "UNVERIFIABLE",
+          "note": "References were found, but thin. A weak premise pulls a verified effect down instead of passing through it."
+        },
+        {
+          "key": "grounding ungrounded",
+          "value": "REFUTED",
+          "note": "Nothing supports the premise. The action does not run at all, it escalates, and the certificate is refuted."
+        },
+        {
+          "key": "anything else",
+          "value": "UNVERIFIABLE",
+          "tone": "drift",
+          "note": "A verdict string none of the three maps knows degrades to unverifiable and never raises. A typo reads as caution rather than as an error."
+        }
+      ],
+      "alt": "Ten rows mapping each verdict the surface produces onto what it contributes to the composed certificate. A gate allow, a passing effect and a grounded premise each contribute verified. A gate denial, a failed effect, a refusal by the effector and an ungrounded premise each contribute refuted, and one refuted input makes the whole certificate refuted. An escalation to a human and a weak premise contribute unverifiable, which pulls a verified result down without making it false. The last row is accented: a verdict string none of the maps recognizes becomes unverifiable rather than raising.",
+      "footnote": "The composition is a lattice meet proven commutative, associative and monotone, so no arrangement of steps turns a worse verdict into a better one. Refuted absorbs, unverifiable attenuates, and only an unbroken run of verified inputs composes to verified."
+    }
+  ]
+}
