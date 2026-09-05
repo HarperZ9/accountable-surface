@@ -13,6 +13,8 @@ What each control puts pressure on:
   WebEffector         the service accepts the request and silently drops the write
                       (the 200-that-did-nothing). Verify has to read the resource.
   BrowserEffector     an action that dispatched cleanly and changed nothing.
+  ApiEffector         a 201 Created for a member the service never stored. Only a
+                      re-read of the collection tells the difference.
 
 Open nulls, stated rather than tested green. `CommandEffector.verify` reads the
 runner's exit code, so a command that exits 0 without doing its work still passes.
@@ -26,11 +28,18 @@ contract does not take yet.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 from coherence_membrane.observation import Observation, Provenance, Status
 
+from accountable_surface.api_effector import (
+    GITHUB_ISSUE_COMMENTS,
+    ApiCall,
+    ApiEffector,
+    FakeApiDriver,
+)
 from accountable_surface.browser_effector import BrowserAction, BrowserEffector, FakeBrowserDriver
 from accountable_surface.effector import FilesystemEffector
 from accountable_surface.os_effector import CommandEffector
@@ -178,3 +187,34 @@ def test_a_script_that_returns_nothing_does_not_verify():
                                        allow_irreversible=True)
     assert out.acted is True
     assert out.verified is False
+
+
+# --- ApiEffector: 201 Created for a member the service never stored ----------
+
+
+class _EchoingApiDriver(FakeApiDriver):
+    """Answers 201 with the created member, id and all, and stores nothing. This is
+    the shape of a write that a permissive backend accepts and then discards, and a
+    verify that read the response instead of the resource would call it a success."""
+
+    def request(self, method, url, headers, body):
+        if method != "POST":
+            return super().request(method, url, headers, body)
+        self.requests.append({"method": method, "url": url, "headers": dict(headers), "body": body})
+        member = dict(json.loads(body or b"{}"))
+        member["id"] = 1
+        return {"status": 201, "body": json.dumps(member, sort_keys=True,
+                                                  separators=(",", ":")).encode("utf-8")}
+
+
+def test_a_201_for_a_member_the_service_never_stored_does_not_verify(monkeypatch):
+    monkeypatch.setenv(GITHUB_ISSUE_COMMENTS.auth_env, "fake-token-for-tests-only")
+    thread = "/repos/octo/demo/issues/7/comments"
+    driver = _EchoingApiDriver({thread: []})
+    out = AccountableSurface().actuate(ApiEffector(driver, GITHUB_ISSUE_COMMENTS), target=thread,
+                                       content=ApiCall("post_comment", {"body": "hello"}),
+                                       authorization=_grant(["api.post"]))
+    assert out.acted is True           # the request left and came back 201
+    assert out.verified is False       # the collection does not carry it
+    assert out.certificate["verdict"] == "refuted"
+    assert driver._collections[thread] == []

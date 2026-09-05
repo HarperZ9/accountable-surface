@@ -16,7 +16,8 @@ crosses that boundary.
 Coverage is containment, never equality of convenience:
   * a path facet is covered by the granted path itself or any ancestor of the
     effector's path, so a WIDER effector root stops matching a narrower grant;
-  * a set facet is covered when the effector's set is a SUBSET of the granted set;
+  * a set facet (commands, origins, intents) is covered when the effector's set is a
+    SUBSET of the granted set;
   * a facet the granted entry does not mention is not covered, and neither is a
     facet name this module does not know. Fail-closed in both directions.
 
@@ -30,7 +31,7 @@ from __future__ import annotations
 from pathlib import PurePosixPath
 
 PATH_FACETS = frozenset({"root", "cwd"})
-SET_FACETS = frozenset({"commands", "origins"})
+SET_FACETS = frozenset({"commands", "origins", "intents"})
 
 
 def bound_of(effector) -> dict | None:

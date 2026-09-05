@@ -39,6 +39,7 @@ browser, website, or model provider.
 
 ## Features
 
+- **Third-party API actuation.** `ApiEffector` writes through a service's official API under the same contract as the rest. The caller hands in an intent and a body; the host, method, route shape, and credential belong to the effector, so an agent can ask to post a comment and cannot reach an admin route or read the token back. Verification re-reads the resource, so a service that answers 201 and stores nothing is refuted rather than believed. `FakeApiDriver` makes the whole path testable with no network and no credential.
 - **Native web actuation, no browser.** `WebEffector` navigates, fills fields by their visible label, and submits forms on live server-rendered pages, driven by a stdlib HTTP and HTML parser backend (`HttpDriver`). Origin-bounded by construction.
 - **JS-capable browser actuation, optional.** `BrowserEffector` clicks by accessible label, follows navigation, and runs JavaScript on single-page apps. Tests and offline demos use the deterministic `FakeBrowserDriver`; production can inject `PlaywrightDriver` (the `[browser]` extra, lazily imported, never a hard dependency).
 - **OS command actuation.** `CommandEffector` runs allowlisted commands only, as argv with `shell=False`, in a bounded working directory. Irreversible commands escalate to needs-human.

@@ -11,6 +11,15 @@ MCP server (`server`) additionally needs `mcp` (the `[server]` extra).
 
 from __future__ import annotations
 
+from .api_effector import (
+    GITHUB_ISSUE_COMMENTS,
+    ApiCall,
+    ApiEffector,
+    ApiOperation,
+    ApiService,
+    FakeApiDriver,
+)
+from .credentials import MissingCredential, has_secret, require_secret
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
 from .http_driver import HttpDriver, parse_html
 from .os_effector import CommandEffector, SubprocessRunner
@@ -53,6 +62,15 @@ __all__ = [
     "parse_html",
     "CommandEffector",
     "SubprocessRunner",
+    "ApiEffector",
+    "ApiCall",
+    "ApiOperation",
+    "ApiService",
+    "FakeApiDriver",
+    "GITHUB_ISSUE_COMMENTS",
+    "MissingCredential",
+    "require_secret",
+    "has_secret",
     "ReferenceCortex",
     "Reference",
     "Grounding",
