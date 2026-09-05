@@ -186,17 +186,22 @@ class UiaEffector:
     def _verify_expectation(self, expect: dict, after: Observation) -> Verdict:
         elements = after.data.get("elements", [])
         wanted = str(expect.get("element") or "")
-        present = match_element(elements, wanted)["status"] == "ok"
+        chosen = match_element(elements, wanted)
         kind = expect.get("kind")
+        if chosen["status"] == "ambiguous" and kind in ("appears", "disappears"):
+            # A label on two controls settles neither presence nor absence. Read as a
+            # plain not-found it would call a dialog closed because two are open.
+            return Verdict("failed",
+                           f"{wanted!r} names more than one control, so the "
+                           f"post-condition is not settled: {chosen.get('candidates')}")
+        present = chosen["status"] == "ok"
         if kind == "appears":
             if present:
                 return Verdict("pass", f"{wanted!r} is present, as the plan expected")
             return Verdict("failed", f"{wanted!r} is absent: the invoke did not land")
         if kind == "disappears":
-            if after.data.get("truncated"):
-                # The one check a partial tree would read as success. A control missing
-                # from a clipped tree may be sitting in the part that was cut.
-                return Verdict("failed", "the tree was truncated, so absence is not established")
+            if not after.data.get("settles_absence"):
+                return Verdict("failed", _unsettled_absence(after))
             if present:
                 return Verdict("failed", f"{wanted!r} is still present: the invoke did not land")
             return Verdict("pass", f"{wanted!r} is gone, as the plan expected")
@@ -225,6 +230,19 @@ class UiaEffector:
 
 def _payload(command: UiaCommand) -> dict:
     return {"intent": command.intent, "text": command.text, "expect": command.expect}
+
+
+def _unsettled_absence(after: Observation) -> str:
+    """Why a listing cannot say a control is gone.
+
+    Two views read as success without seeing the window. A clipped tree may have cut
+    the control. A walk that finished with nothing named cannot tell a window that
+    closed from a window that would not open its tree, and that one is the quiet
+    case, since nothing about it looks partial.
+    """
+    if after.data.get("truncated"):
+        return "the tree was truncated, so absence is not established"
+    return "the tree came back with nothing named, so absence is not established"
 
 
 def _check_expectation(expect: Any) -> None:

@@ -42,3 +42,7 @@ If a change touches the Windows escalation ladder (`uia.py`, `uia_effector.py`,
 `uia_transport.py`), add or update a test proving verification re-reads the window
 rather than reading the instrument's own report of its work. That instrument answers
 `ok` for an act it merely dispatched.
+
+If a change touches the escalator, add or update a test proving a rung that fell does
+not set the answer. The perception a deeper rung returns carries a full digest and a
+perceptual hash, which is exactly what makes it tempting to read as a result.

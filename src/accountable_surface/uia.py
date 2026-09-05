@@ -21,14 +21,22 @@ carrying a verb and the positional arguments `uia.ps1` declares (`tree <window>
 <element> <text>`) and returning that script's parsed answer. Every answer carries
 `ok`; a failure carries `error`.
 
-Two limits of a structural read, both kept rather than rounded up:
+Two listings read UNVERIFIED, because neither can establish that a control is absent:
 
   * A TRUNCATED tree is a partial view. An element that exists can read as absent, so
-    the observation's status is UNVERIFIED and any check resting on absence has to
-    refuse instead of passing.
-  * Exact-name resolution takes the first match. `uia.ps1` reports ambiguity only for
-    a substring match, so two controls sharing an accessible name resolve to whichever
-    the tree walk reached first, silently. An AutomationId is the way past that.
+    any check resting on absence has to refuse instead of passing. This one announces
+    itself.
+  * An OPAQUE tree is the quiet one. The walk finished, nothing was cut, and nothing
+    it saw carried a name, which is the same answer a window with no such control
+    gives. Nothing about it looks partial.
+
+`uia.ps1` states a `settlesAbsence` of its own and the organ derives the same bit
+from the facts. The instrument's claim is taken as a veto and never as a promotion,
+so the thing being measured cannot decide that the measurement counts.
+
+A label two controls carry is refused on every rung, matching the instrument. An
+AutomationId is the way past it, and a plan that names one thing twice is a plan
+that has not said what it means to act on.
 """
 
 from __future__ import annotations
@@ -59,9 +67,14 @@ def element_facts(raw: Any) -> dict:
 
 def match_element(elements: list, needle: str) -> dict:
     """The resolution ladder `uia.ps1` uses, mirrored so a plan resolves the same way
-    offline as it does against a live window: exact name, then exact AutomationId, then
-    a UNIQUE substring of a name. Every comparison ignores case, because PowerShell's
-    `-eq` on strings does.
+    offline as it does against a live window: UNIQUE exact name, then UNIQUE exact
+    AutomationId, then a unique substring of a name. Every comparison ignores case,
+    because PowerShell's `-eq` on strings does.
+
+    A label carried by two controls is refused on every rung. Taking the first hit
+    would resolve a plan that the live rung refuses, which is worse than either
+    behaviour on its own: the offline answer would say a control is reachable and the
+    window would say it is not.
 
     Returns `{"status": "ok", "index": .., "how": ..}` or a refusal carrying `status`
     "ambiguous", "none", or "invalid".
@@ -69,20 +82,30 @@ def match_element(elements: list, needle: str) -> dict:
     if not needle:
         return {"status": "invalid", "reason": "empty match"}
     folded = needle.lower()
-    for index, element in enumerate(elements):
-        if str(element.get("name") or "").lower() == folded:
-            return {"status": "ok", "index": index, "how": "name-exact"}
-    for index, element in enumerate(elements):
-        ident = str(element.get("automationId") or "")
-        if ident and ident.lower() == folded:
-            return {"status": "ok", "index": index, "how": "automationid-exact"}
+    for how, field in (("name-exact", "name"), ("automationid-exact", "automationId")):
+        hits = [i for i, e in enumerate(elements)
+                if str(e.get(field) or "").lower() == folded]
+        chosen = _one_of(elements, hits, how)
+        if chosen is not None:
+            return chosen
     hits = [i for i, e in enumerate(elements) if folded in str(e.get("name") or "").lower()]
+    chosen = _one_of(elements, hits, "name-substring-unique", ambiguous_as="name-substring")
+    return chosen if chosen is not None else {"status": "none"}
+
+
+def _one_of(elements: list, hits: list, how: str, *,
+            ambiguous_as: str | None = None) -> dict | None:
+    """One hit resolves, several refuse, none defers to the next rung.
+
+    Candidates are named rather than counted, because the caller's next move is to
+    pick a label that separates them and a count cannot be acted on.
+    """
     if len(hits) == 1:
-        return {"status": "ok", "index": hits[0], "how": "name-substring-unique"}
+        return {"status": "ok", "index": hits[0], "how": how}
     if hits:
-        return {"status": "ambiguous", "how": "name-substring",
+        return {"status": "ambiguous", "how": ambiguous_as or how,
                 "candidates": [elements[i].get("name") for i in hits[:10]]}
-    return {"status": "none"}
+    return None
 
 
 @dataclass
@@ -133,9 +156,11 @@ class FakeUiaDriver:
         elements = [element_facts(e) for e in window.elements]
         limit = self._truncate_at
         shown = elements if limit is None else elements[:limit]
+        truncated = limit is not None and len(elements) > limit
         return {"ok": True, "window": title, "count": len(shown),
                 "descendants": len(elements), "max": limit,
-                "truncated": limit is not None and len(elements) > limit,
+                "truncated": truncated, "opaque": not shown,
+                "settlesAbsence": bool(shown) and not truncated,
                 "elements": shown}
 
     def _value(self, title: str, window: FakeWindow, rest: list) -> dict:
@@ -202,31 +227,50 @@ class UiaStructureOrgan:
         answer = self._driver.run("tree", [window, str(self._max)])
         elements = [element_facts(e) for e in (answer.get("elements") or [])]
         truncated = bool(answer.get("truncated"))
-        settled = bool(answer.get("ok")) and not truncated
+        # A walk that finished and saw nothing named is the quiet way a read fails. It
+        # is shaped exactly like a window holding no such control, and nothing in the
+        # answer tells the two apart, so on its own it settles nothing.
+        opaque = bool(answer.get("ok")) and not elements
+        settled = bool(answer.get("ok")) and not truncated and not opaque
+        # `uia.ps1` states its own settlesAbsence. Reading it verbatim would let the
+        # instrument's claim stand in for the facts, so it is taken as a veto and never
+        # as a promotion: the claim and the derivation have to agree.
+        claimed = answer.get("settlesAbsence")
+        if claimed is not None:
+            settled = settled and bool(claimed)
         if answer.get("ok"):
             summary = f"{window}: {len(elements)} controls"
             if truncated:
                 summary += " (TRUNCATED -- absence is not established)"
+            elif opaque:
+                summary += " (OPAQUE -- absence is not established)"
         else:
             summary = f"{window}: {answer.get('error') or 'unreadable'}"
         return Observation(
             organ=self.name,
             subject=f"{SCHEME}{window}",
             summary=summary,
-            # A partial tree is a partial view: a control that exists can read as
-            # absent, so nothing about absence is settled by one.
+            # A partial tree is a partial view, and an opaque one is a view of
+            # nothing: either way a control that exists can read as absent, so
+            # neither settles anything about absence.
             status=Status.PASS if settled else Status.UNVERIFIED,
             provenance=Provenance.witness_bytes(
                 f"{SCHEME}{window}", canon(elements), "high" if settled else "moderate",
                 command=f"uia.ps1 tree {window} {self._max}",
             ),
             data={"window": window, "ok": bool(answer.get("ok")), "elements": elements,
-                  "truncated": truncated, "descendants": answer.get("descendants"),
+                  "truncated": truncated, "opaque": opaque,
+                  "settles_absence": settled,
+                  "descendants": answer.get("descendants"),
                   "sha256": sha256_hex(canon(elements))},
         )
 
     def selftest(self) -> bool:
-        """Falsifiable: a partial tree must not come back as a settled read.
+        """Falsifiable: neither a clipped tree nor an empty one is a settled read.
+
+        The empty case is here because it is the one that looks fine. A clipped read
+        announces itself; a read that came back whole with nothing named announces
+        nothing at all, and reads as a window with no controls.
 
         Probes `type(self)` rather than this class by name, so an organ that wraps or
         replaces the read cannot inherit a green selftest for behaviour it does not
@@ -235,4 +279,6 @@ class UiaStructureOrgan:
         probe = type(self)
         full = probe(FakeUiaDriver({"probe": window})).observe("probe")
         clipped = probe(FakeUiaDriver({"probe": window}, truncate_at=2)).observe("probe")
-        return full.status is Status.PASS and clipped.status is Status.UNVERIFIED
+        blind = probe(FakeUiaDriver({"probe": FakeWindow()})).observe("probe")
+        return (full.status is Status.PASS and clipped.status is Status.UNVERIFIED
+                and blind.status is Status.UNVERIFIED)

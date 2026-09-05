@@ -45,6 +45,7 @@ browser, website, or model provider.
 - **OS command actuation.** `CommandEffector` runs allowlisted commands only, as argv with `shell=False`, in a bounded working directory. Irreversible commands escalate to needs-human.
 - **Filesystem actuation with rollback.** `FilesystemEffector` is bounded to a root, verifies its own writes by re-perceiving, and rolls back a reversible action that fails verification.
 - **Windows application actuation, by label not by pixel.** `UiaEffector` reads a window's control tree and acts on one control by its accessible name: press a button, set a field. It is built for a single window and refuses a target naming another. A click cannot be undone, so the caller declares what should follow it (a control appears, disappears, or carries some text) and a plan without that is refused before anything is touched. Verification re-reads the window, so an application that accepts a click and does nothing with it is refuted rather than believed. `FakeUiaDriver` runs the whole path on any operating system, with no window open.
+- **A ladder that says what it cost.** Reaching a desktop application starts with the control tree and falls to pixels only when the cheap instrument cannot answer. The escalator asks each rung in that rung's own terms and records why it fell: the tree was clipped, the label named two controls, the window did not read. Falling does not buy an answer. When the ladder runs out you get NEEDS_HUMAN, the whole trace, and the witnessed sight the deepest rung produced, because a perceptual hash is a real receipt for an image and no answer at all about a control named `Save`.
 - **Structured perception.** Organs read a target as a content-addressed structural observation with a falsifiable self-test, not a screenshot.
 - **Grounding.** A reference cortex (`ReferenceCortex`) scores reference relevance for a subject and reports "ungrounded" instead of guessing, with native arXiv lookup via the stdlib. An action can carry a justification; an ungrounded premise escalates to needs-human.
 - **Bounded autonomy.** `pursue` runs a multi-step plan under one grant envelope with no per-step prompt, halting the instant a step is denied or fails verification.
@@ -178,7 +179,7 @@ It serves the web UI from `web/` and binds to localhost by default. Grants are o
 - `playwright_driver.py`: the optional JS-capable browser driver.
 - `reference.py`: the grounding cortex, `certify.py`: action certificates, `grant.py`: grant helpers.
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
-- `tests/`: 353 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
+- `tests/`: 369 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
 - `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `.github/assets/zentropy-banner.png`.
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-05 - The Escalator That Records Why It Fell
+
+- Added `escalator.py`: rungs are climbed in cost order and each fall is recorded with
+  the reason that justified paying for the next one. `Ascent.trace()` prints the whole
+  climb, one line per rung.
+- A question travels the ladder, not a plan. Each probe restates it in its own nouns or
+  declines, which keeps the rungs from acquiring a shared verb vocabulary they do not
+  have.
+- A rung that fell never sets the answer. When the ladder runs out the ascent is
+  NEEDS_HUMAN, carries `rederivable = "none"`, and hands over the perception from the
+  deepest rung that produced one.
+- Added `StructureProbe` (rung 0) and `PixelProbe` (rung 3). A whole control tree
+  settles absence as a result; a clipped one falls instead. Pixels never resolve a
+  label, and the decline is the probe's honest outcome.
+- Rungs 1 and 2 carry no probe. An escalator that acted to find something out would be
+  an actuation no grant authorized, and a test asserts a full climb sends nothing but
+  read verbs.
+- Added a false-success control for the ladder: a rung-3 sight with a content digest, a
+  perceptual hash, and a coarse description reads like an answer and settles nothing.
+
 ## 2026-09-05 - An Escalation Ladder For Windows Applications
 
 - Added `UiaStructureOrgan` (rung 0): reads a window's control tree through a driver

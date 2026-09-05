@@ -232,6 +232,38 @@ live window, and a running application. Swap `PowerShellUiaDriver` for `FakeUiaD
 to run the whole path on any operating system with no window open, the way the test
 suite does, and treat a first real call as unproven.
 
+## Choosing A Rung
+
+`structure_ladder` climbs from the control tree to the screen and records why it
+fell:
+
+```python
+from accountable_surface.escalator import Question, structure_ladder
+from accountable_surface.uia import UiaStructureOrgan
+
+ladder = structure_ladder(UiaStructureOrgan(driver), "Notepad", capture)
+ascent = ladder.resolve(Question("present", "Save"))
+print(ascent.answer)      # True, False, or None when nothing settled it
+print(ascent.trace())
+```
+
+A whole control tree settles the question either way: the label resolves, or it does
+not and the tree was complete. A clipped tree falls instead, because a control that
+exists can be sitting past the cut.
+
+```
+rung 0 structure (low cost): fell -- the walk clipped the tree at the 400-control limit, so absence is not established
+rung 3 pixels (high cost): fell -- pixels carry no control names, so 'Save' cannot be resolved from them; the sight is witnessed at phash <16 hex chars>
+```
+
+When the ladder runs out, `ascent.status` is NEEDS_HUMAN, `ascent.rederivable` is
+`"none"`, and `ascent.witness` carries the sight the deepest rung produced. That sight
+has a content digest and a perceptual hash and answers nothing about a control named
+`Save`. Reading it is a person's job.
+
+The escalator only reads. Rungs 1 and 2 act, and acting stays with the effectors and
+the grants that bound them, so nothing here presses a control to find out what it does.
+
 ## Boundary
 
 - No grant means default deny.

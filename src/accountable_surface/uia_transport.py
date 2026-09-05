@@ -14,6 +14,12 @@ Honest null: the subprocess path has no test coverage. Exercising it needs Windo
 live window, and a running application, and the suite has none of those by design, so
 `FakeUiaDriver` is what the tests drive. The verb refusal above IS covered, because it
 happens before anything is spawned. Treat a first real call as unproven and watch it.
+
+A second null rides on the first. `FakeUiaDriver` answers in the shape `uia.ps1`
+answers in, and nothing here checks that the two still agree. The script lives in
+another repo and no copy is vendored, so a field added or renamed there goes unseen
+until a real call is made. A field the fake supplies and the script does not is read
+as absent, which the organ treats as an unstated claim rather than as a promotion.
 """
 
 from __future__ import annotations
