@@ -131,6 +131,10 @@ class BrowserEffector:
         self._origins = [o.rstrip("/") for o in allowed_origins]
         self._prior: dict[str, Any] = {}  # plan.digest -> rollback info
 
+    def bound(self) -> dict:
+        """The origins this effector can reach, whatever a gate allows."""
+        return {"kind": "browser", "origins": sorted(self._origins)}
+
     # --- perception ----------------------------------------------------------
 
     def perceive(self, target: str = "") -> Observation:

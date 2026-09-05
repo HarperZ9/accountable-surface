@@ -19,6 +19,15 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
   explicitly passes `allow_irreversible`; the effector's construction-bound refuses
   even on a gate `allow` it was not built for. `needs-human` maps to UNVERIFIABLE,
   never rounded up.
+- The **grant** can bound the effector's reach, not only the action kind. An
+  effector declares its construction bound through `bound()`, the journal records
+  that bound on every actuation, and a grant carrying `scope.allowed_bounds` refuses
+  an effector built wider than what the operator granted. Absent that field the grant
+  says nothing about reach, which is an honest null rather than enforcement.
+- Every effector carries a **false-success control**: a test that deliberately
+  produces a wrong result a passing verify could accept, asserting the verdict is not
+  a pass (`tests/test_false_success.py`). Where a verify still reads the actor's own
+  account rather than an independent witness, that limit is written down beside it.
 - Append-only journal; the self-view is content-addressed and cannot silently drift.
 
 ## Boundaries
@@ -30,7 +39,7 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
 
 ## Dev
 
-- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 34 tests.
+- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 275 tests.
 - coherence-membrane must include `WebDocumentOrgan` (branch
   `feat/web-and-external-organs` or later).
 - Quality gates: no file > 300 lines, no function > 50 lines, every test asserts
