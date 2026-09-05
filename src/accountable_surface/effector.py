@@ -54,6 +54,10 @@ class FilesystemEffector:
         self._root = Path(allowed_root).resolve()
         self._backups: dict[str, bytes | None] = {}
 
+    def bound(self) -> dict:
+        """The construction bound a gate allow can never travel outside of."""
+        return {"kind": "fs", "root": self._root.as_posix()}
+
     # --- perception of the effector's own target type (fs state) -------------
 
     def perceive(self, target: str) -> Observation:

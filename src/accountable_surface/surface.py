@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -31,8 +32,10 @@ from coherence_membrane.membrane import build_gate_request, decide
 from coherence_membrane.observation import Observation, Provenance, Status, sha256_hex
 from coherence_membrane.organs.web import WebDocumentOrgan
 
+from accountable_surface.bounds import bound_of, bound_refusal, render_bound
 from accountable_surface.certify import action_certificate
 from accountable_surface.effector import RefusedActuation
+from accountable_surface.grant import action_authorization
 from accountable_surface.journal_chain import GENESIS, entry_hash, read_journal
 
 
@@ -256,42 +259,14 @@ class AccountableSurface:
         reversible actuation. Every step is journaled."""
         before = effector.perceive(target)
         plan = effector.preview(target, content, before)
-        outcome = self.propose(
-            action_kind=plan.action_kind,
-            target=plan.target,
-            authorization=authorization,
-            observation=before,
-            expected_digest=expected_digest,
+        bound = bound_of(effector)
+        refusal, outcome, grounding = self._preflight(
+            plan, effector=effector, authorization=authorization, before=before, bound=bound,
+            expected_digest=expected_digest, allow_irreversible=allow_irreversible,
+            justification=justification, cortex=cortex,
         )
-        if outcome.decision != "allow":
-            return self._record_actuation(
-                plan, acted=False, decision=outcome.decision, verdict="not-acted",
-                verified=False, rolled_back=False, reasons=outcome.reasons,
-                before=before, after=None,
-            )
-        grounding = None
-        if justification is not None and cortex is not None:
-            grounding = self.ground(justification, cortex)
-            if grounding.confidence == "ungrounded":
-                # An action must cite grounded references -- an ungrounded premise is not
-                # actionable autonomously; escalate for human review. Evidence is gated
-                # like authority.
-                return self._record_actuation(
-                    plan, acted=False, decision="needs-human", verdict="ungrounded-premise",
-                    verified=False, rolled_back=False,
-                    reasons=[f"action premise {justification!r} is ungrounded -- no supporting references"],
-                    before=before, after=None, grounding=grounding,
-                )
-        if not plan.reversible and not allow_irreversible:
-            # Irreversible action: the gate allowed it, but it cannot be undone, so a
-            # bare grant is not enough -- escalate to needs-human unless the operator
-            # pre-authorized irreversibility (an explicit, separate session policy).
-            return self._record_actuation(
-                plan, acted=False, decision="needs-human", verdict="irreversible-needs-human",
-                verified=False, rolled_back=False,
-                reasons=["irreversible action needs explicit allow_irreversible in the grant, or human approval"],
-                before=before, after=None, grounding=grounding,
-            )
+        if refusal is not None:
+            return refusal
         try:
             effector.act(plan, outcome, content)
         except RefusedActuation as exc:
@@ -300,7 +275,7 @@ class AccountableSurface:
             return self._record_actuation(
                 plan, acted=False, decision=outcome.decision, verdict="refused-by-effector",
                 verified=False, rolled_back=False, reasons=[str(exc)],
-                before=before, after=None, grounding=grounding,
+                before=before, after=None, grounding=grounding, bound=bound,
             )
         after = effector.perceive(target)
         verdict = effector.verify(plan, after)
@@ -314,11 +289,58 @@ class AccountableSurface:
             plan, acted=True, decision="allow", verdict=verdict.status,
             verified=verified, rolled_back=rolled_back,
             reasons=[verdict.detail] if verdict.detail else [],
-            before=before, after=after, grounding=grounding,
+            before=before, after=after, grounding=grounding, bound=bound,
         )
 
+    def _preflight(
+        self, plan, *, effector, authorization, before, bound, expected_digest,
+        allow_irreversible, justification, cortex,
+    ):
+        """Everything that has to hold before the effector is allowed to act.
+
+        Returns `(refusal, gate_outcome, grounding)`. A non-None `refusal` is already
+        journaled and is the final outcome, so the caller must not act.
+        """
+        refuse = partial(self._record_actuation, plan, acted=False, verified=False,
+                         rolled_back=False, before=before, after=None, bound=bound)
+        reason = bound_refusal(authorization, effector)
+        if reason is not None:
+            # The grant names the effector bounds it covers and this effector's reach is
+            # not among them. Refuse before the gate: a bound the operator never granted
+            # is an absence of authority, not something to escalate.
+            return refuse(decision="deny", verdict="bound-not-granted", reasons=[reason]), None, None
+        outcome = self.propose(
+            action_kind=plan.action_kind,
+            target=plan.target,
+            authorization=action_authorization(authorization),
+            observation=before,
+            expected_digest=expected_digest,
+        )
+        if outcome.decision != "allow":
+            return refuse(decision=outcome.decision, verdict="not-acted",
+                          reasons=outcome.reasons), None, None
+        grounding = None
+        if justification is not None and cortex is not None:
+            grounding = self.ground(justification, cortex)
+            if grounding.confidence == "ungrounded":
+                # An action must cite grounded references. An ungrounded premise is not
+                # actionable autonomously, so evidence is gated like authority.
+                return refuse(
+                    decision="needs-human", verdict="ungrounded-premise", grounding=grounding,
+                    reasons=[f"action premise {justification!r} is ungrounded -- no supporting references"],
+                ), None, None
+        if not plan.reversible and not allow_irreversible:
+            # The gate allowed it, and it still cannot be undone, so a bare grant is not
+            # enough: escalate unless the operator pre-authorized irreversibility.
+            return refuse(
+                decision="needs-human", verdict="irreversible-needs-human", grounding=grounding,
+                reasons=["irreversible action needs explicit allow_irreversible in the grant, or human approval"],
+            ), None, None
+        return None, outcome, grounding
+
     def _record_actuation(
-        self, plan, *, acted, decision, verdict, verified, rolled_back, reasons, before, after, grounding=None
+        self, plan, *, acted, decision, verdict, verified, rolled_back, reasons, before, after,
+        grounding=None, bound=None,
     ) -> ActuationOutcome:
         """Journal an actuation outcome (a witnessed before/after digest pair) and
         return it. The surface attests to what it did, not merely that it tried."""
@@ -340,6 +362,10 @@ class AccountableSurface:
                     "verified": verified,
                     "verdict": verdict,
                     "rolled_back": rolled_back,
+                    # The effector's construction bound decides how far this allow
+                    # could travel, so the journal records it on EVERY actuation:
+                    # without it a narrow actuation and a wide one read identically.
+                    "effector_bound": render_bound(bound),
                     "before_sha256": before.data.get("sha256"),
                     "after_sha256": after.data.get("sha256") if after is not None else None,
                     "grounding": ({"confidence": grounding.confidence, "digest": grounding.digest}

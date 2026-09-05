@@ -14,7 +14,6 @@ from pathlib import Path
 
 from ..surface import AccountableSurface
 from ..effector import FilesystemEffector, RefusedActuation
-from ..grant import action_authorization
 from .sight import sight_of
 from .reel import load_reel
 
@@ -95,8 +94,10 @@ class WorldSession:
         except RefusedActuation as exc:
             return _refused(kind, target, justification, str(exc), reasoning)
         try:
+            # The grant goes in WHOLE: actuate reads accountable-surface's own scope
+            # fields (allowed_bounds) and strips them itself before the gate sees it.
             out = self.surface.actuate(self.fs, target=tpath, content=content.encode("utf-8"),
-                                       authorization=action_authorization(self.grant), justification=justification or None)
+                                       authorization=self.grant, justification=justification or None)
         except RefusedActuation as exc:
             return _refused(kind, tpath, justification, str(exc), reasoning)
         if out.acted and out.verified:

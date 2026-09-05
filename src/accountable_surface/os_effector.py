@@ -31,7 +31,15 @@ class SubprocessRunner:
 
 class CommandEffector:
     """Runs ONLY allowlisted command names, in a bounded cwd, only on a gate allow for
-    the exact plan. Commands are irreversible by construction (`reversible=False`)."""
+    the exact plan. Commands are irreversible by construction (`reversible=False`).
+
+    Honest null on verification: `verify` reads the exit code the runner reported,
+    which is the actor's own account of what happened, not an independent witness of
+    the command's effect. A command that exits 0 and does nothing verifies as a pass.
+    Closing that needs a post-condition the caller supplies, which this effector does
+    not yet take; until then `os.run` carries weaker evidence than `fs.write`, whose
+    verify re-reads the file the surface itself perceives.
+    """
 
     name = "command-effector"
     action_kind = "os.run"
@@ -41,6 +49,10 @@ class CommandEffector:
         self._allowed = set(allowed_commands)
         self._cwd = Path(cwd).resolve()
         self._last: dict = {}
+
+    def bound(self) -> dict:
+        """cwd AND the allowlist: both decide how far a gate allow can travel."""
+        return {"kind": "os", "cwd": self._cwd.as_posix(), "commands": sorted(self._allowed)}
 
     def perceive(self, target: str = "") -> Observation:
         payload = f"{self._cwd}|{target}|{self._last.get('exit_code')}".encode("utf-8")
@@ -71,6 +83,10 @@ class CommandEffector:
             raise RefusedActuation(f"command {command[:1]} not in the allowlist {sorted(self._allowed)}")
         if sha256_hex(" ".join(command).encode("utf-8")) != plan.content_sha256:
             raise RefusedActuation("command does not match the previewed (authorized) plan")
+        # Drop the prior run FIRST: a runner that raises must not leave the previous
+        # command's exit code standing, where a re-perceive would read it as this
+        # command's success.
+        self._last = {}
         self._last = self._runner.run(list(command), str(self._cwd))
         return self.perceive(plan.target)
 
