@@ -37,3 +37,8 @@ grant, effect, verification, rollback, or refusal behavior.
 If a change touches what a remote caller can reach, add or update a test in
 `tests/test_mcp_actuate.py` proving the registry refuses an unexposed action kind
 before any grant is read.
+
+If a change touches the Windows escalation ladder (`uia.py`, `uia_effector.py`,
+`uia_transport.py`), add or update a test proving verification re-reads the window
+rather than reading the instrument's own report of its work. That instrument answers
+`ok` for an act it merely dispatched.

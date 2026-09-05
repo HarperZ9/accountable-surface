@@ -15,6 +15,12 @@ What each control puts pressure on:
   BrowserEffector     an action that dispatched cleanly and changed nothing.
   ApiEffector         a 201 Created for a member the service never stored. Only a
                       re-read of the collection tells the difference.
+  UiaEffector         an invoke the window reported and did nothing with, and an
+                      absence read off a tree that was clipped before the control.
+
+`UiaEffector` is the one rung whose caller declares the post-condition, so its
+control asserts the declared condition is checked against a fresh read of the window
+rather than against the instrument's own `ok`.
 
 Open nulls, stated rather than tested green. `CommandEffector.verify` reads the
 runner's exit code, so a command that exits 0 without doing its work still passes.
@@ -22,8 +28,10 @@ runner's exit code, so a command that exits 0 without doing its work still passe
 nonce would make every click look effective. `web.submit` checks the response page
 the service returned, which is closer to the resource than the request's status but
 is still the service's own account rather than an independent re-read of what it
-stored. Each of those wants a caller-supplied post-condition, which the effector
-contract does not take yet.
+stored. Moving those three onto a declared post-condition is open work. The UIA rung
+carries an open null of its own: two controls sharing an accessible name resolve to
+whichever the tree walk reached first, silently, because `uia.ps1` reports ambiguity
+only for a substring match.
 """
 
 from __future__ import annotations
@@ -44,6 +52,8 @@ from accountable_surface.browser_effector import BrowserAction, BrowserEffector,
 from accountable_surface.effector import FilesystemEffector
 from accountable_surface.os_effector import CommandEffector
 from accountable_surface.surface import AccountableSurface
+from accountable_surface.uia import SCHEME, FakeUiaDriver, FakeWindow
+from accountable_surface.uia_effector import UiaCommand, UiaEffector
 from accountable_surface.web_effector import FakePageDriver, WebAction, WebEffector
 
 
@@ -218,3 +228,45 @@ def test_a_201_for_a_member_the_service_never_stored_does_not_verify(monkeypatch
     assert out.verified is False       # the collection does not carry it
     assert out.certificate["verdict"] == "refuted"
     assert driver._collections[thread] == []
+
+
+# --- UiaEffector: dispatched to the window, and nothing happened -------------
+
+
+def _dialog_window():
+    return FakeWindow(elements=[{"name": "Save", "type": "Button"},
+                                {"name": "Field", "type": "Edit"},
+                                {"name": "Dialog", "type": "Window"}])
+
+
+def test_an_invoke_the_window_ignored_does_not_verify():
+    """`uia.ps1` answers `ok` for an invoke it dispatched, whatever the application
+    did with it. A disabled control, a modal that swallowed the click, and a handler
+    that threw all look identical from there, so the verdict has to come from the
+    window."""
+    driver = FakeUiaDriver({"Notepad": _dialog_window()})   # no effect declared
+    out = AccountableSurface().actuate(
+        UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Save",
+        content=UiaCommand("invoke", expect={"kind": "appears", "element": "Saved"}),
+        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+    assert out.acted is True
+    assert [r["verb"] for r in driver.requests].count("invoke") == 1
+    assert out.verified is False
+    assert out.certificate["verdict"] == "refuted"
+    assert "did not land" in " ".join(out.reasons)
+
+
+def test_an_absence_read_off_a_truncated_tree_does_not_verify():
+    """The one post-condition a partial view would read as success. `Dialog` sits past
+    the cut, so a check that only asked whether the control was in the elements it got
+    back would call an unclosed dialog closed."""
+    driver = FakeUiaDriver({"Notepad": _dialog_window()}, truncate_at=2)
+    out = AccountableSurface().actuate(
+        UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Save",
+        content=UiaCommand("invoke", expect={"kind": "disappears", "element": "Dialog"}),
+        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+    assert out.acted is True
+    assert "Dialog" not in [e["name"] for e in driver.windows["Notepad"].elements[:2]]
+    assert any(e["name"] == "Dialog" for e in driver.windows["Notepad"].elements)
+    assert out.verified is False
+    assert "truncated" in " ".join(out.reasons)
