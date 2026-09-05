@@ -47,6 +47,13 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
   unmeasured: that rung 0 is cheaper than rung 3 is a claim about what each instrument
   returns, not a timing. A truncated tree reads UNVERIFIED and cannot establish that a
   control is absent.
+- The **escalator** (`escalator.py`) chooses between the rungs and records why it fell.
+  A QUESTION travels down the ladder, never a plan, and each probe restates it in its
+  own nouns or declines with a reason. A rung that fell never sets the answer: when the
+  ladder runs out, the ascent is NEEDS_HUMAN carrying the trace and whatever perception
+  the deepest rung produced. A rung-3 sight has a content digest and a perceptual hash
+  and still answers no structural question. The escalator only reads; acting stays with
+  the effectors and their grants.
 - Every effector carries a **false-success control**: a test that deliberately
   produces a wrong result a passing verify could accept, asserting the verdict is not
   a pass (`tests/test_false_success.py`). Where a verify still reads the actor's own
@@ -67,7 +74,7 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
 
 ## Dev
 
-- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 353 tests.
+- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 369 tests.
 - coherence-membrane must include `WebDocumentOrgan` (branch
   `feat/web-and-external-organs` or later).
 - Quality gates: no file > 300 lines, no function > 50 lines, every test asserts

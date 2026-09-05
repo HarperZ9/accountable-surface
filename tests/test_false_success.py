@@ -17,6 +17,8 @@ What each control puts pressure on:
                       re-read of the collection tells the difference.
   UiaEffector         an invoke the window reported and did nothing with, and an
                       absence read off a tree that was clipped before the control.
+  Escalator           a rung-3 sight whose provenance is fully formed, read as
+                      though the structural question had been answered.
 
 `UiaEffector` is the one rung whose caller declares the post-condition, so its
 control asserts the declared condition is checked against a fresh read of the window
@@ -41,6 +43,7 @@ from pathlib import Path
 
 import pytest
 from coherence_membrane.observation import Observation, Provenance, Status
+from coherence_membrane.pngencode import encode_png
 
 from accountable_surface.api_effector import (
     GITHUB_ISSUE_COMMENTS,
@@ -50,9 +53,10 @@ from accountable_surface.api_effector import (
 )
 from accountable_surface.browser_effector import BrowserAction, BrowserEffector, FakeBrowserDriver
 from accountable_surface.effector import FilesystemEffector
+from accountable_surface.escalator import Question, structure_ladder
 from accountable_surface.os_effector import CommandEffector
 from accountable_surface.surface import AccountableSurface
-from accountable_surface.uia import SCHEME, FakeUiaDriver, FakeWindow
+from accountable_surface.uia import SCHEME, FakeUiaDriver, FakeWindow, UiaStructureOrgan
 from accountable_surface.uia_effector import UiaCommand, UiaEffector
 from accountable_surface.web_effector import FakePageDriver, WebAction, WebEffector
 
@@ -270,3 +274,26 @@ def test_an_absence_read_off_a_truncated_tree_does_not_verify():
     assert any(e["name"] == "Dialog" for e in driver.windows["Notepad"].elements)
     assert out.verified is False
     assert "truncated" in " ".join(out.reasons)
+
+
+# --- Escalator: a strong receipt for a question nobody answered --------------
+
+
+def test_a_witnessed_sight_is_not_an_answer_to_a_structural_question():
+    """The ladder's false success. When rung 0 cannot settle a label, rung 3 comes
+    back with a real perception: a content digest, a perceptual hash, a coarse
+    description that reads like confidence. A caller checking whether an Observation
+    with provenance came back would accept it. None of that resolves a control name,
+    so the ascent has to stay unanswered while still handing the sight over."""
+    driver = FakeUiaDriver({"Notepad": _dialog_window()}, truncate_at=2)
+    png = encode_png(8, 8, bytes([180, 180, 180] * 64), channels=3)
+    ascent = structure_ladder(UiaStructureOrgan(driver), "Notepad",
+                              lambda: png).resolve(Question("present", "Dialog"))
+    sight = ascent.witness
+    assert sight is not None and sight.organ == "pixel-sight"
+    assert sight.provenance.digest.startswith("sha256:")   # a full, honest receipt
+    assert len(sight.data["phash"]) == 16
+    assert sight.status is Status.NEEDS_HUMAN               # and it settles nothing
+    assert ascent.answer is None
+    assert ascent.rederivable == "none"
+    assert all(a.outcome == "fell" for a in ascent.attempts)
