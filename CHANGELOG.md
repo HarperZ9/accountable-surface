@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-05 - Actuation Over MCP Behind A Capability Registry
+
+- Added the `actuate` MCP tool. A remote caller now closes the whole loop: perceive
+  the target, plan, check the operator's gate, act, re-perceive, verify against the
+  plan, and roll back a reversible action that did not verify.
+- Added `registry.load_effectors`. The operator names a JSON spec file in
+  `ACCOUNTABLE_SURFACE_EFFECTORS` and gets exactly the effectors it lists. With the
+  variable unset nothing is actuable over MCP, whatever the grants say.
+- The spec file refuses `command`, `browser`, and `web` by name, each with the
+  reason. `doctor` reports every entry it turned down, so an empty registry never
+  leaves a typo looking like a deliberate choice.
+- The server reads the registry before the grants, so an action kind the operator
+  never exposed causes no grant read and no journal entry.
+- A caller's receipt carries the journal entry for its own action and nothing else
+  from the journal. A refusal has the same shape as a success, so a caller cannot
+  read success out of the structure of the response.
+- Honest null: when more than one loaded grant names the action kind, the first one
+  runs and the receipt says that it did.
+
 ## 2026-09-05 - API Actuation And False-Success Controls
 
 - Added `ApiEffector`: writes through one declared third-party API under the

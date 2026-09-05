@@ -65,6 +65,40 @@ MCP client example:
 }
 ```
 
+## Exposing An Effector Over MCP
+
+`perceive`, `propose`, `session_journal`, and `interocept` are always available.
+`actuate` writes, so it reaches only what the operator has exposed. Point
+`ACCOUNTABLE_SURFACE_EFFECTORS` at a JSON file:
+
+```json
+{"effectors": [
+  {"action_kind": "fs.write", "type": "filesystem", "root": "/srv/agent-sandbox"},
+  {"action_kind": "api.post", "type": "api", "service": "github"}
+]}
+```
+
+A caller then asks for one action kind at a time:
+
+```json
+{"action_kind": "fs.write", "target": "/srv/agent-sandbox/notes.md", "content": "hello"}
+```
+
+`content` is the text for a file write. For an api entry it is
+`{"intent": "post_comment", "body": {...}}`, so the caller names an operation the
+service declares and never a host, a header, or a route.
+
+The reply carries the gate decision, the verify verdict, the composed certificate,
+and the journal entry for that one call. The rest of the journal stays with the
+operator, and `session_journal` is where the operator reads it.
+
+Two decisions guard the call and both have to agree. This file says what a caller
+can reach at all; the grant says what may be done with it. Leave the variable unset
+and `actuate` refuses everything, however wide the grants are. The file refuses
+`command`, `browser`, and `web` by name, each with the reason. Run `doctor` to see
+the exposed set, the reach of each entry, and the entries it turned down, so nobody
+has to guess at an empty registry.
+
 ## Using The Browser Backend (JS-Capable SPAs)
 
 `WebEffector` drives server-rendered pages natively (stdlib, zero-dep) but runs no
@@ -152,6 +186,9 @@ no network and no credential, the way the test suite does.
 
 - No grant means default deny.
 - The model cannot provide its own authorization.
+- Over MCP, an effector the operator has not exposed cannot be reached under any grant.
+- Over MCP, an irreversible action stays `needs-human`. No argument a remote caller
+  passes reaches `allow_irreversible`.
 - Journals are append-only local records.
 - Operator grant files and session journals are runtime inputs, not source files.
 - Irreversible actions require explicit grant handling and verification.

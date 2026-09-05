@@ -33,3 +33,7 @@ node --test web/*.test.mjs
 If a change touches MCP serving, run the server smoke path with the `[server]`
 extra. If a change touches actuation, add or update a test that proves the
 grant, effect, verification, rollback, or refusal behavior.
+
+If a change touches what a remote caller can reach, add or update a test in
+`tests/test_mcp_actuate.py` proving the registry refuses an unexposed action kind
+before any grant is read.

@@ -23,6 +23,7 @@ from .credentials import MissingCredential, has_secret, require_secret
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
 from .http_driver import HttpDriver, parse_html
 from .os_effector import CommandEffector, SubprocessRunner
+from .registry import EffectorRegistry, Exposed, load_effectors
 from .reference import ArxivSource, FakeSource, Grounding, Reference, ReferenceCortex, parse_arxiv_atom
 from .surface import (
     AccountableSurface,
@@ -71,6 +72,9 @@ __all__ = [
     "MissingCredential",
     "require_secret",
     "has_secret",
+    "EffectorRegistry",
+    "Exposed",
+    "load_effectors",
     "ReferenceCortex",
     "Reference",
     "Grounding",
