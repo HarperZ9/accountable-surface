@@ -139,7 +139,7 @@ Client configuration:
       "command": "python",
       "args": ["-m", "accountable_surface.server"],
       "env": {
-        "PYTHONPATH": "C:/dev/public/accountable-surface/src;C:/dev/public/coherence-membrane/src;C:/dev/public/proof-surface/src",
+        "PYTHONPATH": "C:/path/to/accountable-surface/src;C:/path/to/coherence-membrane/src;C:/path/to/proof-surface/src",
         "ACCOUNTABLE_SURFACE_GRANTS": "C:/path/to/operator-grants.json",
         "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl"
       }
