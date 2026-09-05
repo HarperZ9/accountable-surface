@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-09-05 - An Escalation Ladder For Windows Applications
+
+- Added `UiaStructureOrgan` (rung 0): reads a window's control tree through a driver
+  and witnesses only what re-derives by name and role. A walk that had to clip the
+  tree reads UNVERIFIED, because a partial tree cannot establish that a control is
+  absent.
+- Added `UiaEffector` (rung 1): invokes or sets one control inside one window, under
+  the same effector contract as the other five. The construction bound is the window
+  title, the journal records it, and a target naming a second window is refused
+  before anything is touched.
+- An `invoke` cannot be undone, so the caller declares what should follow it
+  (`appears`, `disappears`, `value_is`) and a plan without one is refused at preview
+  time. `set_value` is the reversible intent: the prior value is read before the
+  write and put back when verification fails.
+- Verification re-reads the window. The instrument answers `ok` for an act it
+  dispatched, which says nothing about what the application did with it, so its own
+  account is never consulted. Two false-success controls hold that line.
+- Added `uia_transport.PowerShellUiaDriver`, which refuses the blind keystroke verbs
+  `input` and `type` by name before it spawns anything. Honest null: the subprocess
+  path has no test coverage; `FakeUiaDriver` drives the whole path offline instead.
+- `uia` is refused by name over MCP. It acts on a window belonging to whoever is at
+  the machine, and reaching that from off the machine is a separate decision.
+- `scope.allowed_bounds` now treats the window facet as a set, so a grant naming
+  several windows covers an effector built for any one of them.
+
 ## 2026-09-05 - Actuation Over MCP Behind A Capability Registry
 
 - Added the `actuate` MCP tool. A remote caller now closes the whole loop: perceive

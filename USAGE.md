@@ -95,7 +95,7 @@ operator, and `session_journal` is where the operator reads it.
 Two decisions guard the call and both have to agree. This file says what a caller
 can reach at all; the grant says what may be done with it. Leave the variable unset
 and `actuate` refuses everything, however wide the grants are. The file refuses
-`command`, `browser`, and `web` by name, each with the reason. Run `doctor` to see
+`command`, `browser`, `web`, and `uia` by name, each with the reason. Run `doctor` to see
 the exposed set, the reach of each entry, and the entries it turned down, so nobody
 has to guess at an empty registry.
 
@@ -182,11 +182,63 @@ answers 201 and stores nothing comes back REFUTED.
 Swap `UrllibApiDriver` for `FakeApiDriver` to exercise the whole path offline with
 no network and no credential, the way the test suite does.
 
+## Acting On A Windows Application
+
+`UiaEffector` reaches a desktop application through its control tree rather than
+through the screen. The effector is built for one window and reads only that window:
+
+```python
+from accountable_surface import AccountableSurface
+from accountable_surface.uia_effector import UiaCommand, UiaEffector
+from accountable_surface.uia_transport import PowerShellUiaDriver
+
+eff = UiaEffector(PowerShellUiaDriver(path_to_uia_script), "Notepad")
+AccountableSurface().actuate(
+    eff,
+    target="uia://Notepad/Message",
+    content=UiaCommand("set_value", text="the text to type into that field"),
+    authorization=grant,  # scope.allowed_actions must carry "uia.set_value"
+)
+```
+
+Two intents, so a grant can carry the reversible one on its own. `set_value` reads
+the control's prior value first and puts it back when verification fails. `invoke`
+presses the control and cannot be undone, so it stays `needs-human` unless the
+operator passes `allow_irreversible`, and it needs a declared post-condition:
+
+```python
+UiaCommand("invoke", expect={"kind": "appears", "element": "Saved"})
+```
+
+The other two post-conditions are `disappears` and `value_is`. A plan carrying none
+of them is refused at preview time, because a press nobody can check is a press
+nobody can authorize. Verification re-reads the window; the instrument reports `ok`
+for anything it dispatched, so its own account of its work is never consulted.
+
+A control tree the walk had to clip comes back UNVERIFIED, and a `disappears` check
+against a clipped tree fails rather than reading the missing control as gone. Two
+controls sharing one accessible name resolve to whichever the walk reached first,
+which is an open null recorded in `tests/test_false_success.py`.
+
+What this repo ships is the driver contract, the two rungs above it, and
+`FakeUiaDriver`. The PowerShell script itself is supplied by the operator: it answers
+JSON on stdout for `tree`, `value`, `invoke`, and `setvalue`, and exits 0 whatever
+happened, so a refusal arrives as data. The transport refuses the blind keystroke
+verbs `input` and `type` by name before it spawns anything, because they name no
+control and nothing about them can be verified by re-reading a tree.
+
+Honest null: the subprocess path has no test coverage. Exercising it needs Windows, a
+live window, and a running application. Swap `PowerShellUiaDriver` for `FakeUiaDriver`
+to run the whole path on any operating system with no window open, the way the test
+suite does, and treat a first real call as unproven.
+
 ## Boundary
 
 - No grant means default deny.
 - The model cannot provide its own authorization.
 - Over MCP, an effector the operator has not exposed cannot be reached under any grant.
+- `uia` is not exposable over MCP at all. It acts on a window belonging to whoever
+  is at the machine, and reaching that from off the machine is a separate decision.
 - Over MCP, an irreversible action stays `needs-human`. No argument a remote caller
   passes reaches `allow_irreversible`.
 - Journals are append-only local records.

@@ -24,11 +24,12 @@ The spec file (`ACCOUNTABLE_SURFACE_EFFECTORS`) is a JSON object:
      {"action_kind": "api.post", "type": "api", "service": "github"}
   ]}
 
-Deliberate null: `command`, `browser`, and `web` are NOT constructible here. Each
-reaches past a bounded file root or one declared API operation, and none of them
-has been through a review for a caller the operator cannot see. A spec naming one
-is refused BY NAME and the refusal is reported by `doctor`, so a capability never
-appears or disappears silently.
+Deliberate null: `command`, `browser`, `web`, and `uia` are NOT constructible here.
+Each reaches past a bounded file root or one declared API operation, and none of
+them has been through a review for a caller the operator cannot see. `uia` acts on
+a window belonging to whoever is at the machine, which is the furthest reach of the
+four. A spec naming one is refused BY NAME and the refusal is reported by `doctor`,
+so a capability never appears or disappears silently.
 
 Fail-closed is not enough on its own: a registry that emptied itself on a typo
 would read exactly like an operator who exposed nothing on purpose. Every reason
@@ -54,6 +55,7 @@ NOT_EXPOSED = {
     "command": "it runs a program on the operator's machine",
     "browser": "it drives a real browser session, carrying the operator's cookies",
     "web": "it posts to an origin the caller names",
+    "uia": "it acts on a window belonging to whoever is at the machine",
 }
 
 

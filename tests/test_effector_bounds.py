@@ -18,6 +18,8 @@ from accountable_surface.browser_effector import BrowserEffector, FakeBrowserDri
 from accountable_surface.effector import FilesystemEffector
 from accountable_surface.os_effector import CommandEffector
 from accountable_surface.surface import AccountableSurface
+from accountable_surface.uia import FakeUiaDriver, FakeWindow
+from accountable_surface.uia_effector import UiaCommand, UiaEffector
 from accountable_surface.web_effector import FakePageDriver, WebEffector
 
 
@@ -199,3 +201,22 @@ def test_a_bounded_command_grant_does_not_cover_a_wider_allowlist(tmp_path):
     out = AccountableSurface().actuate(wide, target="probe", content=["echo", "hi"],
                                        authorization=grant, allow_irreversible=True)
     assert out.decision == "deny" and out.verdict == "bound-not-granted"
+
+
+def test_a_uia_window_bound_is_a_set_the_grant_can_name_more_of():
+    """The window facet is a set of one, so a grant naming several windows covers an
+    effector built for any of them, and a grant naming only another window covers none."""
+    driver = FakeUiaDriver({"Notepad": FakeWindow(elements=[{"name": "Field"}],
+                                                  values={"Field": "before"})})
+    effector = UiaEffector(driver, "Notepad")
+    command = UiaCommand("set_value", text="after")
+    elsewhere = _grant(["uia.set_value"], bounds=[{"kind": "uia", "windows": ["Calculator"]}])
+    refused = AccountableSurface().actuate(effector, target="uia://Notepad/Field",
+                                           content=command, authorization=elsewhere)
+    assert refused.decision == "deny" and refused.verdict == "bound-not-granted"
+    both = _grant(["uia.set_value"],
+                  bounds=[{"kind": "uia", "windows": ["Calculator", "Notepad"]}])
+    allowed = AccountableSurface().actuate(effector, target="uia://Notepad/Field",
+                                           content=command, authorization=both)
+    assert allowed.acted is True
+    assert driver.windows["Notepad"].values["Field"] == "after"

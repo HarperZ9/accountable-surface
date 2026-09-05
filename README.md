@@ -44,6 +44,7 @@ browser, website, or model provider.
 - **JS-capable browser actuation, optional.** `BrowserEffector` clicks by accessible label, follows navigation, and runs JavaScript on single-page apps. Tests and offline demos use the deterministic `FakeBrowserDriver`; production can inject `PlaywrightDriver` (the `[browser]` extra, lazily imported, never a hard dependency).
 - **OS command actuation.** `CommandEffector` runs allowlisted commands only, as argv with `shell=False`, in a bounded working directory. Irreversible commands escalate to needs-human.
 - **Filesystem actuation with rollback.** `FilesystemEffector` is bounded to a root, verifies its own writes by re-perceiving, and rolls back a reversible action that fails verification.
+- **Windows application actuation, by label not by pixel.** `UiaEffector` reads a window's control tree and acts on one control by its accessible name: press a button, set a field. It is built for a single window and refuses a target naming another. A click cannot be undone, so the caller declares what should follow it (a control appears, disappears, or carries some text) and a plan without that is refused before anything is touched. Verification re-reads the window, so an application that accepts a click and does nothing with it is refuted rather than believed. `FakeUiaDriver` runs the whole path on any operating system, with no window open.
 - **Structured perception.** Organs read a target as a content-addressed structural observation with a falsifiable self-test, not a screenshot.
 - **Grounding.** A reference cortex (`ReferenceCortex`) scores reference relevance for a subject and reports "ungrounded" instead of guessing, with native arXiv lookup via the stdlib. An action can carry a justification; an ungrounded premise escalates to needs-human.
 - **Bounded autonomy.** `pursue` runs a multi-step plan under one grant envelope with no per-step prompt, halting the instant a step is denied or fails verification.
@@ -157,7 +158,7 @@ Client configuration:
 ]}
 ```
 
-Two operator decisions guard `actuate` and both have to agree. This file says what a caller can reach at all, and the grant says what may be done with it. With the variable unset, the file empty, or the action kind missing from it, `actuate` refuses before it reads a grant. The file refuses `command`, `browser`, and `web` by name, each with the reason. Ask `doctor` for the exposed set, the reach of each entry, and the entries it turned down.
+Two operator decisions guard `actuate` and both have to agree. This file says what a caller can reach at all, and the grant says what may be done with it. With the variable unset, the file empty, or the action kind missing from it, `actuate` refuses before it reads a grant. The file refuses `command`, `browser`, `web`, and `uia` by name, each with the reason. Ask `doctor` for the exposed set, the reach of each entry, and the entries it turned down.
 
 ## Shared world server
 
@@ -172,12 +173,12 @@ It serves the web UI from `web/` and binds to localhost by default. Grants are o
 ## Layout
 
 - `src/accountable_surface/surface.py`: `AccountableSurface` with `perceive`, `propose`, `actuate`, `pursue`, `interocept`, and the durable journal.
-- `effector.py`, `web_effector.py`, `browser_effector.py`, `os_effector.py`: the four effectors and their drivers.
+- `effector.py`, `web_effector.py`, `browser_effector.py`, `os_effector.py`, `api_effector.py`, `uia_effector.py`: the six effectors and their drivers.
 - `http_driver.py`: the stdlib HTTP and HTML backend behind native web actuation.
 - `playwright_driver.py`: the optional JS-capable browser driver.
 - `reference.py`: the grounding cortex, `certify.py`: action certificates, `grant.py`: grant helpers.
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
-- `tests/`: 233 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
+- `tests/`: 353 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
 - `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `.github/assets/zentropy-banner.png`.
 

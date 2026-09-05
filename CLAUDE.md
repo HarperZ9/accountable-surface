@@ -15,7 +15,8 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
   its own work** by re-perceiving the result against the intended post-condition.
   Shipped effectors: `FilesystemEffector`, `CommandEffector` (allowlist-only, argv,
   `shell=False`), `WebEffector`, `BrowserEffector`, `ApiEffector` (one declared
-  service, intent-named operations, official API only). An irreversible path (e.g. an
+  service, intent-named operations, official API only), `UiaEffector` (one window,
+  one control named by its accessible label). An irreversible path (e.g. an
   `os.run` that cannot be undone) escalates to `needs-human` unless the operator
   explicitly passes `allow_irreversible`; the effector's construction-bound refuses
   even on a gate `allow` it was not built for. `needs-human` maps to UNVERIFIABLE,
@@ -32,11 +33,20 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
   other, so an exposed effector with no matching grant still denies. The server reads
   the registry first, so an action kind the operator never exposed is refused before
   any grant is consulted and before any attempt reaches the journal. The registry
-  refuses `command`, `browser`, and `web` by name, and `doctor` reports every spec
-  entry it turned down, so a typo cannot read as an operator who exposed nothing on
-  purpose. `allow_irreversible` is absent from the remote path by construction: no
+  refuses `command`, `browser`, `web`, and `uia` by name, and `doctor` reports every
+  spec entry it turned down, so a typo cannot read as an operator who exposed nothing
+  on purpose. `allow_irreversible` is absent from the remote path by construction: no
   argument a caller can pass reaches it. A caller's receipt carries the journal entry
   for its own action and no other part of the journal.
+- Reaching a Windows application runs through an **escalation ladder** rather than
+  straight to pixels. Rung 0 (`UiaStructureOrgan`) reads the window's control tree and
+  witnesses only what re-derives by name and role. Rung 1 (`UiaEffector`) acts on one
+  control by its accessible label. Rung 2 is the allowlisted argv of `CommandEffector`
+  and rung 3 is pixel perception in `world/sight.py`. Each rung has its own nouns, so a
+  plan written for one cannot be carried down to another. The ordering is proposed and
+  unmeasured: that rung 0 is cheaper than rung 3 is a claim about what each instrument
+  returns, not a timing. A truncated tree reads UNVERIFIED and cannot establish that a
+  control is absent.
 - Every effector carries a **false-success control**: a test that deliberately
   produces a wrong result a passing verify could accept, asserting the verdict is not
   a pass (`tests/test_false_success.py`). Where a verify still reads the actor's own
@@ -57,7 +67,7 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
 
 ## Dev
 
-- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 319 tests.
+- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 353 tests.
 - coherence-membrane must include `WebDocumentOrgan` (branch
   `feat/web-and-external-organs` or later).
 - Quality gates: no file > 300 lines, no function > 50 lines, every test asserts
