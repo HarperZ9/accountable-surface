@@ -89,6 +89,23 @@ def test_a_clipped_tree_falls_rather_than_reading_a_missing_control_as_gone():
     assert camera.calls == 1
 
 
+def test_a_tree_with_nothing_named_falls_and_says_which_way_it_failed():
+    """The clipped tree announces itself. This one does not: the walk finished, nothing
+    was cut, and the listing is the same shape a window with no such control returns.
+    Reading it as a settled negative is the quiet false success, so the fall carries
+    which of the two ways the listing failed rather than one reason for both."""
+    camera = _Camera()
+    ascent = _ladder(_driver(FakeWindow(elements=[], values={})), camera).resolve(ASK)
+    assert ascent.answer is None
+    assert ascent.status is Status.NEEDS_HUMAN
+    fell = ascent.attempts[0]
+    assert fell.outcome == "fell"
+    assert "nothing it saw carried a name" in fell.reason
+    assert "absence is not established" in fell.reason
+    assert "clipped" not in fell.reason
+    assert camera.calls == 1  # the ladder paid for rung 3 rather than guessing
+
+
 def test_a_label_naming_two_controls_falls_and_names_them():
     driver = _driver(_window(names=("Save draft", "Save and close")))
     ascent = _ladder(driver, _Camera()).resolve(ASK)

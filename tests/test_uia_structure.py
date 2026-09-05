@@ -63,7 +63,52 @@ def test_a_truncated_tree_is_not_a_settled_read():
     assert observed.status is Status.UNVERIFIED
     assert observed.data["truncated"] is True
     assert observed.data["descendants"] == 2
+    assert observed.data["settles_absence"] is False
     assert "TRUNCATED" in observed.summary
+
+
+def test_a_tree_that_came_back_with_nothing_named_is_not_a_settled_read():
+    """The quiet failure. Nothing was clipped and the walk finished, so the answer is
+    shaped exactly like a window holding no such control. Nothing in it separates a
+    window with no named controls from one that would not open its tree, so the read
+    settles nothing and says so where an operator reads it."""
+    observed = UiaStructureOrgan(_driver(FakeWindow())).observe(WINDOW)
+    assert observed.status is Status.UNVERIFIED
+    assert observed.data["opaque"] is True
+    assert observed.data["truncated"] is False
+    assert observed.data["settles_absence"] is False
+    assert "OPAQUE" in observed.summary
+
+
+class _ClaimingDriver(FakeUiaDriver):
+    """A driver whose tree answer states a settlesAbsence of its own choosing."""
+
+    def __init__(self, windows, claim, **kwargs):
+        super().__init__(windows, **kwargs)
+        self._claim = claim
+
+    def run(self, verb, args):
+        answer = super().run(verb, args)
+        if verb == "tree" and answer.get("ok"):
+            answer["settlesAbsence"] = self._claim
+        return answer
+
+
+def test_the_instruments_claim_can_veto_a_settled_read_and_cannot_grant_one():
+    """`uia.ps1` states settlesAbsence too. Reading it verbatim would let the thing
+    being measured decide whether the measurement counts, so the organ derives the bit
+    from the facts and the claim only subtracts. A driver saying a whole tree settles
+    nothing is believed. A driver saying an empty one does is not."""
+    vetoed = UiaStructureOrgan(
+        _ClaimingDriver({WINDOW: _window()}, False)).observe(WINDOW)
+    assert vetoed.status is Status.UNVERIFIED
+    assert vetoed.data["settles_absence"] is False
+
+    flattered = UiaStructureOrgan(
+        _ClaimingDriver({WINDOW: FakeWindow()}, True)).observe(WINDOW)
+    assert flattered.status is Status.UNVERIFIED
+    assert flattered.data["settles_absence"] is False
+    assert flattered.data["opaque"] is True
 
 
 def test_a_window_that_does_not_resolve_is_unverified_and_carries_the_reason():
@@ -111,6 +156,25 @@ def test_the_resolution_ladder_matches_the_instruments_own_order():
     assert match_element(elements, "sav")["status"] == "ambiguous"
     assert match_element(elements, "Print")["status"] == "none"
     assert match_element(elements, "")["status"] == "invalid"
+
+
+def test_a_label_two_controls_carry_is_refused_on_every_rung():
+    """`Select-Candidate` in `uia.ps1` refuses a duplicate on the exact rungs, not only
+    on the substring one. Taking the first hit here would resolve offline what the live
+    window refuses, and a plan that passes rung 0 and is turned away at rung 1 is worse
+    than either answer alone."""
+    twins = [{"name": "Save", "automationId": "a"}, {"name": "Save", "automationId": "b"}]
+    chosen = match_element(twins, "Save")
+    assert chosen["status"] == "ambiguous"
+    assert chosen["how"] == "name-exact"
+    assert chosen["candidates"] == ["Save", "Save"]
+
+    shared_id = [{"name": "Left", "automationId": "same"},
+                 {"name": "Right", "automationId": "same"}]
+    by_id = match_element(shared_id, "same")
+    assert by_id["status"] == "ambiguous"
+    assert by_id["how"] == "automationid-exact"
+    assert by_id["candidates"] == ["Left", "Right"]   # what separates them, not a count
 
 
 def test_resolution_ignores_case_the_way_the_instrument_does():

@@ -30,10 +30,7 @@ runner's exit code, so a command that exits 0 without doing its work still passe
 nonce would make every click look effective. `web.submit` checks the response page
 the service returned, which is closer to the resource than the request's status but
 is still the service's own account rather than an independent re-read of what it
-stored. Moving those three onto a declared post-condition is open work. The UIA rung
-carries an open null of its own: two controls sharing an accessible name resolve to
-whichever the tree walk reached first, silently, because `uia.ps1` reports ambiguity
-only for a substring match.
+stored. Moving those three onto a declared post-condition is open work.
 """
 
 from __future__ import annotations
@@ -274,6 +271,47 @@ def test_an_absence_read_off_a_truncated_tree_does_not_verify():
     assert any(e["name"] == "Dialog" for e in driver.windows["Notepad"].elements)
     assert out.verified is False
     assert "truncated" in " ".join(out.reasons)
+
+
+def test_an_absence_read_off_a_tree_with_nothing_named_does_not_verify():
+    """The same false success with nothing to notice. Invoking `Close` empties this
+    window, so the tree comes back whole, uncut, and carrying no names. That answer is
+    identical to one from a window that refused to open its tree, and a check that
+    only asked whether `Dialog` was in the elements it got back would read it as a
+    dialog that closed."""
+    window = _dialog_window()
+    window.elements.append({"name": "Close", "type": "Button"})
+    window.effects = {"Close": {"remove": ["Save", "Field", "Dialog", "Close"]}}
+    driver = FakeUiaDriver({"Notepad": window})
+    out = AccountableSurface().actuate(
+        UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Close",
+        content=UiaCommand("invoke", expect={"kind": "disappears", "element": "Dialog"}),
+        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+    assert out.acted is True
+    assert driver.windows["Notepad"].elements == []   # the read is not partial
+    assert out.verified is False
+    assert out.certificate["verdict"] == "refuted"
+    assert "nothing named" in " ".join(out.reasons)
+
+
+def test_a_label_two_controls_carry_does_not_verify_as_gone():
+    """Refusing a duplicate label is what creates this one. A resolution that answers
+    `ambiguous` reads as not-found to any caller checking for a match, and a
+    disappearance check would then call the dialog closed with two of them on screen.
+    Ambiguity has to be its own outcome rather than a failure to resolve."""
+    window = _dialog_window()
+    window.elements.append({"name": "Dialog", "type": "Window", "automationId": "dlg-2"})
+    driver = FakeUiaDriver({"Notepad": window})
+    out = AccountableSurface().actuate(
+        UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Save",
+        content=UiaCommand("invoke", expect={"kind": "disappears", "element": "Dialog"}),
+        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+    assert out.acted is True
+    assert len([e for e in driver.windows["Notepad"].elements
+                if e["name"] == "Dialog"]) == 2   # both still on screen
+    assert out.verified is False
+    assert out.certificate["verdict"] == "refuted"
+    assert "more than one control" in " ".join(out.reasons)
 
 
 # --- Escalator: a strong receipt for a question nobody answered --------------

@@ -120,11 +120,18 @@ class StructureProbe:
                 observed)
         if status == "invalid":
             return self._fell("an empty label resolves nothing", observed)
-        if data.get("truncated"):
-            # The one case a partial tree would read as a settled negative.
-            return self._fell(
-                f"the walk clipped the tree at the {len(elements)}-control limit, so "
-                "absence is not established", observed)
+        if not data.get("settles_absence"):
+            # Two listings read as a settled negative without being one. The clipped
+            # tree is the obvious one. The opaque tree is the dangerous one: the walk
+            # finished, nothing was cut, and the answer is indistinguishable from a
+            # window that genuinely holds no such control.
+            if data.get("truncated"):
+                why = (f"the walk clipped the tree at the {len(elements)}-control "
+                       "limit, so absence is not established")
+            else:
+                why = ("the walk finished and nothing it saw carried a name, so "
+                       "absence is not established")
+            return self._fell(why, observed)
         return Attempt(self.rung, "answered",
                        "no control carries that label, and the tree was whole",
                        answer=False, observation=observed)
