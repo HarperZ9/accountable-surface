@@ -109,6 +109,45 @@ Playwright is never a hard dependency: it is imported only when `PlaywrightDrive
 is instantiated, so the default install and the whole test suite stay zero-dep.
 Run the offline SPA transcript with `python examples/spa_actuate_demo.py`.
 
+## Writing Through A Third-Party API
+
+`ApiEffector` covers the case where the work belongs on someone else's service and
+that service has an official write API. The agent names an intent, never a route:
+
+```python
+from accountable_surface import (
+    AccountableSurface, ApiCall, ApiEffector, GITHUB_ISSUE_COMMENTS,
+)
+from accountable_surface.api_transport import UrllibApiDriver
+
+eff = ApiEffector(UrllibApiDriver(), GITHUB_ISSUE_COMMENTS)
+AccountableSurface().actuate(
+    eff,
+    target="/repos/octo/demo/issues/7/comments",
+    content=ApiCall("post_comment", {"body": "found a repro, steps below"}),
+    authorization=grant,  # scope.allowed_actions must carry "api.post"
+)
+```
+
+The service object declares every write that is possible at all. An intent it does
+not list is refused, and a target the intent's path shape does not match is refused,
+so `post_comment` cannot reach a collaborator or settings route on the same host.
+
+The credential is a variable name in the service definition. Its value is read from
+the environment at the moment of the call and sent in a header, so it never appears
+in a Plan, an Observation, the journal, or an error message. Set it before the run:
+
+```powershell
+$env:ACCOUNTABLE_SURFACE_GITHUB_TOKEN = "<a token with the narrowest scope that works>"
+```
+
+Verification re-reads the collection and looks for a member carrying the body that
+was authorized. The response to the write is never consulted, so a service that
+answers 201 and stores nothing comes back REFUTED.
+
+Swap `UrllibApiDriver` for `FakeApiDriver` to exercise the whole path offline with
+no network and no credential, the way the test suite does.
+
 ## Boundary
 
 - No grant means default deny.
