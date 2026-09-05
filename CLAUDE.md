@@ -25,6 +25,18 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
   that bound on every actuation, and a grant carrying `scope.allowed_bounds` refuses
   an effector built wider than what the operator granted. Absent that field the grant
   says nothing about reach, which is an honest null rather than enforcement.
+- Reaching an effector from **off the machine** takes two operator decisions, and
+  both have to agree. The registry (`ACCOUNTABLE_SURFACE_EFFECTORS`) says which
+  effectors a remote caller can reach at all, and it is empty unless the operator
+  names a spec file. The grant says what may be done with one. Neither widens the
+  other, so an exposed effector with no matching grant still denies. The server reads
+  the registry first, so an action kind the operator never exposed is refused before
+  any grant is consulted and before any attempt reaches the journal. The registry
+  refuses `command`, `browser`, and `web` by name, and `doctor` reports every spec
+  entry it turned down, so a typo cannot read as an operator who exposed nothing on
+  purpose. `allow_irreversible` is absent from the remote path by construction: no
+  argument a caller can pass reaches it. A caller's receipt carries the journal entry
+  for its own action and no other part of the journal.
 - Every effector carries a **false-success control**: a test that deliberately
   produces a wrong result a passing verify could accept, asserting the verdict is not
   a pass (`tests/test_false_success.py`). Where a verify still reads the actor's own
@@ -45,7 +57,7 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
 
 ## Dev
 
-- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 296 tests.
+- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 319 tests.
 - coherence-membrane must include `WebDocumentOrgan` (branch
   `feat/web-and-external-organs` or later).
 - Quality gates: no file > 300 lines, no function > 50 lines, every test asserts

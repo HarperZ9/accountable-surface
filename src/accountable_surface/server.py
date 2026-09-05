@@ -10,11 +10,21 @@ Exposes the accountable surface as MCP tools a model calls in-session:
                                pre-execution gate (allow / deny / needs-human).
                                The model CANNOT supply its own authorization --
                                will-from-a-human is not a signal the model emits.
+  * actuate(action_kind,target,content)
+                             -- the loop closed: perceive, plan, gate, ACT,
+                               re-perceive, verify. Two operator decisions have
+                               to agree first. The registry says which effectors
+                               a caller can reach at all (empty by default), and
+                               a grant says what may be done with one. The caller
+                               gets back the journal entry for its own action.
   * session_journal()        -- every perception and decision, recorded.
 
 Operator grants load at launch from the JSON file named in
 ACCOUNTABLE_SURFACE_GRANTS (one grant or a list). With none loaded the gate is
 default-deny: the surface perceives freely but authorizes nothing.
+
+The exposed effectors load from ACCOUNTABLE_SURFACE_EFFECTORS (see `registry`).
+Unset → nothing is actuable, whatever the grants say.
 
 The session journal persists to the append-only JSONL file named in
 ACCOUNTABLE_SURFACE_JOURNAL when set, and replays on launch -- so the witnessed
@@ -35,6 +45,8 @@ from mcp.server.fastmcp import FastMCP
 
 from accountable_surface import __version__
 from accountable_surface.grant import action_authorization
+from accountable_surface.registry import load_effectors
+from accountable_surface.remote_actuation import actuate_impl
 from accountable_surface.surface import AccountableSurface
 
 
@@ -119,6 +131,7 @@ def propose_impl(
 
 _surface = AccountableSurface(journal_path=load_journal_path())
 _grants = load_operator_grants()
+_registry = load_effectors()
 mcp = FastMCP("accountable-surface")
 
 
@@ -137,6 +150,21 @@ def propose(action_kind: str, target: str, expected_digest: str | None = None) -
     needs-human). The model cannot supply authorization; the surface never
     executes -- it returns the advisory decision for the operator to enforce."""
     return propose_impl(_surface, _grants, action_kind, target, expected_digest)
+
+
+@mcp.tool()
+def actuate(action_kind: str, target: str, content: str,
+            expected_digest: str | None = None, justification: str | None = None) -> dict:
+    """Actually perform an action and verify it landed: perceive the target, plan,
+    check the operator's gate, act, re-perceive, verify against the plan, and roll
+    back a reversible action that did not verify.
+
+    Reaches only the effectors the operator exposed (none by default) and only
+    under a grant naming this action_kind. `content` is text for a file write, or
+    {"intent": "...", "body": {...}} for an API call. Returns the decision, the
+    verdict, and this call's journal entry -- no part of the rest of the journal."""
+    return actuate_impl(_surface, _grants, _registry, action_kind, target, content,
+                        expected_digest=expected_digest, justification=justification)
 
 
 @mcp.tool()
@@ -163,8 +191,9 @@ def _doctor_payload() -> dict:
     return {"ok": True, "server": "accountable-surface", "version": __version__,
             "grants_loaded": len(_grants),
             "journal_persistent": load_journal_path() is not None,
-            "tools": ["perceive", "propose", "session_journal", "interocept",
-                      "status", "doctor"]}
+            "effectors": _registry.describe(),
+            "tools": ["perceive", "propose", "actuate", "session_journal",
+                      "interocept", "status", "doctor"]}
 
 
 @mcp.tool()
@@ -178,7 +207,8 @@ def status() -> dict:
 @mcp.tool()
 def doctor() -> dict:
     """Readiness: identity, the exposed tools, whether operator grants are loaded,
-    and whether the journal is durable. No perception, no actuation."""
+    which effectors are actuable (with the reach of each and every spec entry that
+    was refused), and whether the journal is durable. No perception, no actuation."""
     return _doctor_payload()
 
 

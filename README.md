@@ -49,7 +49,7 @@ browser, website, or model provider.
 - **Bounded autonomy.** `pursue` runs a multi-step plan under one grant envelope with no per-step prompt, halting the instant a step is denied or fails verification.
 - **Shared world server.** A zero-dependency live server (stdlib `http.server` plus SSE) where proposed actions run the real loop and stream to every open browser tab, with a small web UI in `web/`. Optional pilots connect a model (Claude or Ollama) to drive it.
 - **Durable, tamper-evident memory.** An append-only JSONL journal that replays across sessions, hash-chained so an edited, deleted, or reordered entry is caught on reload even though it still parses (corruption and tamper are counted separately, never conflated). `verify_journal()` re-derives the chain and returns the verdict; `interocept()` is a content-addressed view of the surface's own conduct.
-- **Live MCP server.** `perceive`, `propose`, `session_journal`, and `interocept` exposed over MCP stdio (the `[server]` extra).
+- **Live MCP server.** `perceive`, `propose`, `actuate`, `session_journal`, and `interocept` exposed over MCP stdio (the `[server]` extra). `actuate` reaches only the effectors the operator exposed, and nothing is exposed by default.
 - **Action certificates.** `certify` composes the gate, effect, and grounding verdicts into one certificate token; a denial or failed effect makes the whole action REFUTED, and an escalation yields UNVERIFIABLE, never a rounded-up pass.
 
 The gate is default-deny: with no operator grant loaded, nothing acts. The model cannot supply its own authorization.
@@ -147,6 +147,17 @@ Client configuration:
 ```
 
 `ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant or a list; with none loaded the gate is default-deny. `ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the journal replays on launch so the witnessed self-view spans sessions.
+
+`ACCOUNTABLE_SURFACE_EFFECTORS` points to a JSON file naming which effectors a remote caller may reach:
+
+```json
+{"effectors": [
+  {"action_kind": "fs.write", "type": "filesystem", "root": "/srv/agent-sandbox"},
+  {"action_kind": "api.post", "type": "api", "service": "github"}
+]}
+```
+
+Two operator decisions guard `actuate` and both have to agree. This file says what a caller can reach at all, and the grant says what may be done with it. With the variable unset, the file empty, or the action kind missing from it, `actuate` refuses before it reads a grant. The file refuses `command`, `browser`, and `web` by name, each with the reason. Ask `doctor` for the exposed set, the reach of each entry, and the entries it turned down.
 
 ## Shared world server
 
