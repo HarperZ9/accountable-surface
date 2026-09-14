@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-13 - First Release Recovery
+
+- Refreshed the README verification block from the old `3e4b342` checkpoint to
+  current public `main` at `a0bafe6`.
+- Added the first-release checklist in `docs/RELEASE.md`: it records the exact
+  test, build, Twine, and proof-install commands for a GitHub source release and
+  optional package-registry upload.
+- Publication remains a separate reviewed action. This update prepares evidence
+  and documentation; it does not create a tag, GitHub release, PyPI project, or
+  registry upload.
+
 ## 2026-09-05 - The Escalator That Records Why It Fell
 
 - Added `escalator.py`: rungs are climbed in cost order and each fall is recorded with

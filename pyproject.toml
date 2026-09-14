@@ -27,6 +27,8 @@ dependencies = []
 Homepage = "https://harperz9.github.io"
 Repository = "https://github.com/HarperZ9/accountable-surface"
 Issues = "https://github.com/HarperZ9/accountable-surface/issues"
+Changelog = "https://github.com/HarperZ9/accountable-surface/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/HarperZ9/accountable-surface/blob/main/USAGE.md"
 
 [project.optional-dependencies]
 server = ["mcp>=1.0,<2"]   # the live MCP server (accountable_surface.server); pin <2 (mcp 2.x renamed FastMCP -> MCPServer)
