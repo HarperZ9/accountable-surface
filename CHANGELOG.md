@@ -2,12 +2,16 @@
 
 ## Unreleased
 
+- Bug fix: remote `perceive`, `session_journal`, and `actuate` now require
+  explicit scoped read grants. Remote writes fail closed unless their required
+  before/backup/after/rollback read phases match a known filesystem or API
+  target contract, and grants are reloaded just before mutation.
 - Bug fix: `actuate(expected_digest=...)` now refuses before effect when the
   supplied precondition cannot be bound to an explicit observation identity, and
   filesystem/API/browser preconditions reach the gate as state checks instead of
   silently becoming `not-applicable`.
-- Limit: this does not redesign read authority or fix filesystem TOCTOU/symlink
-  hardening.
+- Limit: this does not harden filesystem TOCTOU/symlink races, interrupt
+  revocation mid-method, or gate local `surface.actuate()` reads.
 
 ## 2026-09-13 - First Release Recovery
 
