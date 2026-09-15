@@ -58,7 +58,7 @@ MCP client example:
       "env": {
         "PYTHONPATH": "C:/path/to/accountable-surface/src;C:/path/to/coherence-membrane/src;C:/path/to/proof-surface/src",
         "ACCOUNTABLE_SURFACE_GRANTS": "C:/path/to/operator-grants.json",
-        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl"
+        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl", "ACCOUNTABLE_SURFACE_AUTHORITY_STATE": "C:/path/to/authority-state.sqlite3"
       }
     }
   }
@@ -118,7 +118,7 @@ caller can reach at all; the grant says what may be done with it; `allowed_reads
 says which state reads may be used. Leave the variable unset and `actuate`
 refuses everything, however wide the grants are. The file refuses `command`,
 `browser`, `web`, and `uia` by name, each with the reason. Run `doctor` to see the
-exposed set, the reach of each entry, and the entries it turned down.
+exposed set, the reach of each entry, and the entries it turned down; see `docs/durable-authority.md` for durable revocation, usage, idempotency, and recovery state.
 
 ## Using The Browser Backend (JS-Capable SPAs)
 

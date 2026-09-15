@@ -146,7 +146,8 @@ Client configuration:
       "env": {
         "PYTHONPATH": "C:/path/to/accountable-surface/src;C:/path/to/coherence-membrane/src;C:/path/to/proof-surface/src",
         "ACCOUNTABLE_SURFACE_GRANTS": "C:/path/to/operator-grants.json",
-        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl"
+        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl",
+        "ACCOUNTABLE_SURFACE_AUTHORITY_STATE": "C:/path/to/authority-state.sqlite3"
       }
     }
   }
@@ -160,6 +161,8 @@ server still refuses until `allowed_reads` covers the target state phases it mus
 read (`before`, `backup`, `after`, and `rollback` for filesystem writes).
 `ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the
 journal replays on launch so the witnessed self-view spans sessions.
+
+`ACCOUNTABLE_SURFACE_AUTHORITY_STATE` points to an optional stdlib-SQLite state file for durable revocation, atomic usage reservations, and idempotency. With it set, remote `actuate` requires an `idempotency_key`, refuses protected grant/state/journal paths even under broad filesystem grants, and keeps unresolved precommit reservations unavailable until operator recovery. See [docs/durable-authority.md](docs/durable-authority.md).
 
 `ACCOUNTABLE_SURFACE_EFFECTORS` points to a JSON file naming which effectors a remote caller may reach:
 

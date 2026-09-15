@@ -13,14 +13,9 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
-from accountable_surface.effector import RefusedActuation
-from accountable_surface.read_authority import (
-    AuthorizedRead,
-    filesystem_target_for,
-    grant_digest,
-    select_read_envelope,
-)
+from accountable_surface.read_authority import grant_digest, select_read_envelope
 from accountable_surface.registry import EffectorRegistry
+from accountable_surface.remote_durable import run_authorized_remote_actuation
 from accountable_surface.surface import AccountableSurface
 
 
@@ -89,14 +84,13 @@ def actuate_impl(
     content: str,
     expected_digest: str | None = None,
     justification: str | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     """Act through an exposed effector, or say why not."""
     exposed = registry.get(action_kind)
     if exposed is None:
-        return _refused(
-            f"action_kind {action_kind!r} is not exposed by this server",
-            exposed_action_kinds=registry.action_kinds(),
-        )
+        return _refused(f"action_kind {action_kind!r} is not exposed by this server",
+                        exposed_action_kinds=registry.action_kinds())
     try:
         payload = exposed.decode(content)
     except ValueError as exc:
@@ -105,37 +99,39 @@ def actuate_impl(
     if read_requests is None:
         return _refused(reason)
     store = _authority_store(authority)
-    state = store.load_for_remote_call()
+    reason, protected_digest = _protected_path_reason(store, read_requests)
+    if reason is not None:
+        return _refused(reason)
+    state = _load_for_actuation(store)
     grant, notes = _grant_for(state.grants, action_kind)
     if grant is None:
         return _refused(state.reason or f"no operator grant names {action_kind!r} -- default-deny; the model cannot self-authorize")
     envelope, reason = select_read_envelope(state.grants, read_requests)
     if envelope is None:
         return _refused(f"read authority denied: {reason}")
-    before_request = read_requests[0]
-    before_decision = envelope.decision_for(before_request)
-    if before_decision is None:
-        return _refused("read authority denied: before phase is absent")
-    effector_target = _effector_target(target, before_request)
-    before = exposed.effector.perceive(effector_target)
-    selection = {"action_kind": action_kind, "action_grant_digest": grant_digest(grant), "read_envelope": envelope}
-    since = len(surface.journal)
-    try:
-        outcome = surface._actuate_with_authorized_read(
-            exposed.effector, target=effector_target, content=payload, authorization=grant,
-            authorized_before=AuthorizedRead(before_request, before_decision, before),
-            read_envelope=envelope, expected_digest=expected_digest, justification=justification,
-            confirm_authority=lambda: store.reload_and_confirm(selection),
-        )
-    except RefusedActuation as exc:
-        return _refused(f"the effector refused the plan before acting: {exc}")
-    return _receipt(surface, outcome, notes, since)
+    return run_authorized_remote_actuation(
+        surface, store, exposed, action_kind, target, payload, expected_digest,
+        justification, idempotency_key, grant, notes, read_requests, envelope, protected_digest,
+    )
 
 
 def _authority_store(authority: Any) -> Any:
     if hasattr(authority, "load_for_remote_call"):
         return authority
     return _StaticAuthority(authority if isinstance(authority, list) else [])
+
+
+def _load_for_actuation(store: Any):
+    try:
+        return store.load_for_remote_call(include_durable_revoked=True)
+    except TypeError:
+        return store.load_for_remote_call()
+
+
+def _protected_path_reason(store: Any, read_requests: list[Any]) -> tuple[str | None, str]:
+    if not hasattr(store, "protected_path_reason"):
+        return None, ""
+    return store.protected_path_reason([request.subject for request in read_requests])
 
 
 def _read_requests(exposed: Any, target: str, payload: Any) -> tuple[list[Any] | None, str]:
@@ -147,9 +143,3 @@ def _read_requests(exposed: Any, target: str, payload: Any) -> tuple[list[Any] |
         return [exposed.describe_read(target, payload, phase, f"{rid}:{phase}") for phase in phases], ""
     except ValueError as exc:
         return None, f"read authority cannot describe this target: {exc}"
-
-
-def _effector_target(target: str, before_request: Any) -> str:
-    if before_request.observation_kind == "fs.bytes":
-        return filesystem_target_for(before_request)
-    return target
