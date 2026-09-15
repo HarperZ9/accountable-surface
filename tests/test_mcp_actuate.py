@@ -18,20 +18,16 @@ import pytest
 
 from accountable_surface.api_effector import GITHUB_ISSUE_COMMENTS, FakeApiDriver
 from accountable_surface.effector import FilesystemEffector
-from accountable_surface.registry import (
-    EffectorRegistry,
-    Exposed,
-    _decode_bytes,
-    load_effectors,
-)
+from accountable_surface.registry import EffectorRegistry, load_effectors
 from accountable_surface.remote_actuation import _receipt, actuate_impl
 from accountable_surface.server import _doctor_payload
 from accountable_surface.surface import AccountableSurface, ActuationOutcome
+from read_authority_helpers import api_reads, fs_exposed, fs_reads
 
 THREAD = "/repos/octo/demo/issues/7/comments"
 
 
-def _grant(actions, targets=()):
+def _grant(actions, targets=(), reads=()):
     return {
         "authorization_version": "0.1",
         "receipt_id": "rcpt-actuate-1",
@@ -39,7 +35,7 @@ def _grant(actions, targets=()):
         "principal": {"id": "operator-1", "role": "operator"},
         "agent": {"id": "mcp-caller"},
         "intent": "mcp actuation test",
-        "scope": {"allowed_actions": list(actions), "allowed_targets": list(targets)},
+        "scope": {"allowed_actions": list(actions), "allowed_targets": list(targets), "allowed_reads": list(reads)},
         "granted_at": "2026-06-19T00:00:00+00:00",
         "expires_at": "2030-01-01T00:00:00+00:00",
         "revoked": False,
@@ -150,7 +146,7 @@ def test_the_grant_that_runs_is_the_one_naming_this_action(tmp_path):
     the grant for its own action kind rather than whichever was loaded first, or an
     unrelated grant would decide every action's fate."""
     target = tmp_path / "note.txt"
-    grants = [_grant(["summarize"]), _grant(["fs.write"])]
+    grants = [_grant(["summarize"]), _grant(["fs.write"], reads=fs_reads(tmp_path))]
     out = actuate_impl(AccountableSurface(), grants, _fs_registry(tmp_path),
                        "fs.write", str(target), "hello")
     assert out["decision"] == "allow"
@@ -159,7 +155,7 @@ def test_the_grant_that_runs_is_the_one_naming_this_action(tmp_path):
 
 def test_a_granted_write_lands_and_verifies(tmp_path):
     target = tmp_path / "note.txt"
-    out = actuate_impl(AccountableSurface(), [_grant(["fs.write"])], _fs_registry(tmp_path),
+    out = actuate_impl(AccountableSurface(), [_grant(["fs.write"], reads=fs_reads(tmp_path))], _fs_registry(tmp_path),
                        "fs.write", str(target), "hello")
     assert out["decision"] == "allow"
     assert out["acted"] is True
@@ -168,17 +164,16 @@ def test_a_granted_write_lands_and_verifies(tmp_path):
 
 
 def test_a_target_outside_the_registered_root_is_refused_by_the_effector(tmp_path):
-    """The grant names the action, the registry names the reach. A write one level
-    above the registered root has a gate allow and still does not happen."""
+    """A write one level above the registered root is refused before the first read."""
     outside = tmp_path.parent / "escaped.txt"
     inner = tmp_path / "sandbox"
     inner.mkdir()
     registry = load_effectors(_spec(tmp_path, [{"action_kind": "fs.write", "type": "filesystem",
                                                 "root": str(inner)}]))
-    out = actuate_impl(AccountableSurface(), [_grant(["fs.write"])], registry,
+    out = actuate_impl(AccountableSurface(), [_grant(["fs.write"], reads=fs_reads(inner))], registry,
                        "fs.write", str(outside), "escaped")
     assert out["acted"] is False
-    assert out["verdict"] == "refused-by-effector"
+    assert out["verdict"] == "refused-before-actuation"
     assert not outside.exists()
 
 
@@ -188,7 +183,7 @@ def test_a_target_outside_the_registered_root_is_refused_by_the_effector(tmp_pat
 def test_the_receipt_carries_only_this_calls_journal_entry(tmp_path):
     """The journal is the operator's record of everything. A caller gets back the
     entry for the action it just caused, and no view of anyone else's."""
-    surface, registry, grants = AccountableSurface(), _fs_registry(tmp_path), [_grant(["fs.write"])]
+    surface, registry, grants = AccountableSurface(), _fs_registry(tmp_path), [_grant(["fs.write"], reads=fs_reads(tmp_path))]
     first = tmp_path / "first.txt"
     second = tmp_path / "second.txt"
     actuate_impl(surface, grants, registry, "fs.write", str(first), "one")
@@ -208,7 +203,7 @@ def test_a_receipt_never_reaches_back_for_an_earlier_calls_entry(tmp_path):
     whoever called last, comes back as this caller's proof of work. Every path
     through `AccountableSurface.actuate` journals today, so `_receipt` is called
     directly here: it is the only way to reach the case the mark exists for."""
-    surface, registry, grants = AccountableSurface(), _fs_registry(tmp_path), [_grant(["fs.write"])]
+    surface, registry, grants = AccountableSurface(), _fs_registry(tmp_path), [_grant(["fs.write"], reads=fs_reads(tmp_path))]
     earlier = actuate_impl(surface, grants, registry, "fs.write", str(tmp_path / "earlier.txt"), "one")
     assert earlier["journal_entry"] is not None
 
@@ -232,9 +227,9 @@ def test_a_write_that_did_not_land_reports_acted_without_verified(tmp_path):
             path.write_bytes(content + b" (drifted)")
 
     effector = _DriftingEffector(tmp_path)
-    registry = EffectorRegistry({"fs.write": Exposed("fs.write", effector, _decode_bytes, "test")}, [])
+    registry = EffectorRegistry({"fs.write": fs_exposed("fs.write", effector, tmp_path)}, [])
     target = tmp_path / "note.txt"
-    out = actuate_impl(AccountableSurface(), [_grant(["fs.write"])], registry,
+    out = actuate_impl(AccountableSurface(), [_grant(["fs.write"], reads=fs_reads(tmp_path))], registry,
                        "fs.write", str(target), "hello")
     assert out["acted"] is True
     assert out["verified"] is False
@@ -246,7 +241,7 @@ def test_a_write_that_did_not_land_reports_acted_without_verified(tmp_path):
 def test_when_two_grants_name_the_action_the_receipt_says_which_was_used(tmp_path):
     """Honest null, stated in the receipt: the first matching grant is the one that
     runs, so a caller is never silently reaching under a grant it cannot see."""
-    grants = [_grant(["fs.write"]), _grant(["fs.write", "os.run"])]
+    grants = [_grant(["fs.write"], reads=fs_reads(tmp_path)), _grant(["fs.write", "os.run"], reads=fs_reads(tmp_path))]
     out = actuate_impl(AccountableSurface(), grants, _fs_registry(tmp_path),
                        "fs.write", str(tmp_path / "note.txt"), "hello")
     assert out["decision"] == "allow"
@@ -264,7 +259,7 @@ def _api_registry(tmp_path, driver):
 def test_a_granted_api_post_travels_through_the_registry(tmp_path, monkeypatch):
     monkeypatch.setenv(GITHUB_ISSUE_COMMENTS.auth_env, "fake-token-for-tests-only")
     driver = FakeApiDriver({THREAD: []})
-    out = actuate_impl(AccountableSurface(), [_grant(["api.post"])], _api_registry(tmp_path, driver),
+    out = actuate_impl(AccountableSurface(), [_grant(["api.post"], reads=api_reads())], _api_registry(tmp_path, driver),
                        "api.post", THREAD, '{"intent": "post_comment", "body": {"body": "hello"}}')
     assert out["decision"] == "allow"
     assert out["verified"] is True
@@ -292,7 +287,7 @@ def test_an_intent_the_service_does_not_declare_comes_back_as_a_receipt(tmp_path
                        "api.post", THREAD, '{"intent": "delete_repo", "body": {}}')
     assert out["decision"] == "deny"
     assert "is not declared by github" in out["reasons"][0]
-    assert [r["method"] for r in driver.requests] == ["GET"]  # the before-read, nothing else
+    assert driver.requests == []
 
 
 # --- what the server says about itself ---------------------------------------

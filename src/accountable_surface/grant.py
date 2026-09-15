@@ -7,6 +7,8 @@ same grant, and they have no meaning inside proof-surface's schema:
   ``allowed_perceptions``  which perceptions the operator permits.
   ``allowed_bounds``       which effector construction bounds the operator permits
                            (see ``bounds.py``).
+  ``allowed_reads``        which read scopes the remote MCP layer may use for
+                           preconditions, verification, rollback, and journal replay.
 
 Strip them before handing any grant to propose() or actuate() so the schema check
 never sees them.
@@ -17,7 +19,7 @@ boundary that calls into proof-surface (world/session.py, server.py, …).
 
 from __future__ import annotations
 
-LOCAL_SCOPE_FIELDS = ("allowed_perceptions", "allowed_bounds")
+LOCAL_SCOPE_FIELDS = ("allowed_perceptions", "allowed_bounds", "allowed_reads")
 
 
 def action_authorization(grant):

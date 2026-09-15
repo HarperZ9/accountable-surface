@@ -153,7 +153,13 @@ Client configuration:
 }
 ```
 
-`ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant or a list; with none loaded the gate is default-deny. `ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the journal replays on launch so the witnessed self-view spans sessions.
+`ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant
+or a list; with none loaded the gate is default-deny. Remote reads are scoped
+separately from writes: `allowed_actions` may name `fs.write`, but the remote
+server still refuses until `allowed_reads` covers the target state phases it must
+read (`before`, `backup`, `after`, and `rollback` for filesystem writes).
+`ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the
+journal replays on launch so the witnessed self-view spans sessions.
 
 `ACCOUNTABLE_SURFACE_EFFECTORS` points to a JSON file naming which effectors a remote caller may reach:
 
@@ -164,7 +170,15 @@ Client configuration:
 ]}
 ```
 
-Two operator decisions guard `actuate` and both have to agree. This file says what a caller can reach at all, and the grant says what may be done with it. With the variable unset, the file empty, or the action kind missing from it, `actuate` refuses before it reads a grant. The file refuses `command`, `browser`, `web`, and `uia` by name, each with the reason. Ask `doctor` for the exposed set, the reach of each entry, and the entries it turned down.
+Three operator decisions guard remote `actuate` and all have to agree: the
+registry exposes an effector, `allowed_actions` names the write, and
+`allowed_reads` names the state reads needed to precondition, verify, and roll
+back that write. With the variable unset, the file empty, or the action kind
+missing from it, `actuate` refuses before it reads a grant. The file refuses
+`command`, `browser`, `web`, and `uia` by name, each with the reason. Ask
+`doctor` for the exposed set, the reach of each entry, and the entries it turned
+down. MCP `perceive` likewise needs a `web.document` read grant, and full
+`session_journal` replay needs a `journal.session` read grant.
 
 ## Shared world server
 
