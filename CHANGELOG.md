@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added optional SQLite authority state for remote MCP actuation: durable
+  revocation, atomic finite-use reservations, idempotency, and local recovery
+  commands. Unresolved reservations remain unavailable until operator recovery.
+- With durable authority enabled, protected grant, journal, and state paths are
+  refused before access, including resolvable aliases and existing hardlinks.
+  This does not provide race-proof path access or rollback detection without an
+  external protected anchor. See `docs/durable-authority.md` for configuration
+  and the tested boundaries.
 - Bug fix: remote `perceive`, `session_journal`, and `actuate` now require
   explicit scoped read grants. Remote writes fail closed unless their required
   before/backup/after/rollback read phases match a known filesystem or API

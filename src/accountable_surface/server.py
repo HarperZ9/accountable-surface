@@ -6,15 +6,14 @@ for target state and journal replay. Fresh installs default-deny remote mutation
 
 from __future__ import annotations
 
-import json
 import os
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from accountable_surface import __version__
+from accountable_surface.authority_store import AuthorityState, AuthorityStore, load_operator_grants
 from accountable_surface.grant import action_authorization
 from accountable_surface.read_authority import (
     active_operator_grants,
@@ -26,87 +25,6 @@ from accountable_surface.read_authority import (
 from accountable_surface.registry import load_effectors
 from accountable_surface.remote_actuation import actuate_impl
 from accountable_surface.surface import AccountableSurface
-
-
-@dataclass(frozen=True)
-class AuthorityState:
-    grants: list[dict]
-    reason: str = ""
-
-
-class AuthorityStore:
-    """Server-internal grant loader. Remote callers never receive grant bodies."""
-
-    def __init__(self, path_str: str | None = None) -> None:
-        self._path_str = path_str or os.environ.get("ACCOUNTABLE_SURFACE_GRANTS")
-
-    def load_for_remote_call(self) -> AuthorityState:
-        if not self._path_str:
-            return AuthorityState([], "no operator grant is loaded -- default-deny")
-        data, reason = _load_grant_json(self._path_str)
-        if reason:
-            return AuthorityState([], reason)
-        if isinstance(data, dict):
-            grants = [data]
-        elif isinstance(data, list) and all(isinstance(grant, dict) for grant in data):
-            grants = data
-        else:
-            return AuthorityState([], "operator grant file has wrong top-level type")
-        active, reason = active_operator_grants(grants)
-        return AuthorityState(active, reason)
-
-    def reload_and_confirm(self, selection: dict[str, Any]) -> str | None:
-        state = self.load_for_remote_call()
-        if not state.grants:
-            return state.reason or "operator grant is no longer usable before mutation"
-        action_kind = selection.get("action_kind")
-        digest = selection.get("action_grant_digest")
-        action_ok = any(
-            _grant_names_action(grant, action_kind) and grant_digest(grant) == digest
-            for grant in state.grants
-        )
-        if not action_ok:
-            return "operator action grant was revoked, expired, or replaced before mutation"
-        for previous in getattr(selection.get("read_envelope"), "decisions", ()):
-            fresh = select_read_decision(state.grants, previous.request)
-            if fresh.verdict != "allow" or fresh.grant_digest != previous.grant_digest:
-                return "read authority was revoked, expired, or replaced before mutation"
-            if fresh.scope_digest != previous.scope_digest:
-                return "read authority scope changed before mutation"
-        return None
-
-
-def load_operator_grants(path_str: str | None = None) -> list[dict]:
-    """Load operator authorization grants from a JSON file (one grant or a list).
-    Absent/unreadable/invalid -> [] (default-deny). The grants are the operator's
-    will, supplied out-of-band; the model never provides them."""
-    path_str = path_str or os.environ.get("ACCOUNTABLE_SURFACE_GRANTS")
-    if not path_str:
-        return []
-    try:
-        data, reason = _load_grant_json(path_str)
-    except TypeError:
-        return []
-    if reason:
-        return []
-    if isinstance(data, dict):
-        return [data]
-    if isinstance(data, list):
-        return [g for g in data if isinstance(g, dict)]
-    return []
-
-
-def _load_grant_json(path_str: str) -> tuple[Any, str]:
-    try:
-        return json.loads(Path(path_str).read_text(encoding="utf-8")), ""
-    except OSError:
-        return None, "operator grant file is unreadable"
-    except ValueError:
-        return None, "operator grant file is invalid JSON"
-
-
-def _grant_names_action(grant: dict, action_kind: Any) -> bool:
-    return action_kind in ((grant.get("scope") or {}).get("allowed_actions") or [])
 
 
 def load_journal_path(path_str: str | None = None) -> Path | None:
@@ -242,7 +160,8 @@ def propose(action_kind: str, target: str, expected_digest: str | None = None) -
 
 @mcp.tool()
 def actuate(action_kind: str, target: str, content: str,
-            expected_digest: str | None = None, justification: str | None = None) -> dict:
+            expected_digest: str | None = None, justification: str | None = None,
+            idempotency_key: str | None = None) -> dict:
     """Actually perform an action and verify it landed: perceive the target, plan,
     check the operator's gate, act, re-perceive, verify against the plan, and roll
     back a reversible action that did not verify.
@@ -252,7 +171,8 @@ def actuate(action_kind: str, target: str, content: str,
     {"intent": "...", "body": {...}} for an API call. Returns the decision, the
     verdict, and this call's journal entry -- no part of the rest of the journal."""
     return actuate_impl(_surface, _authority, _registry, action_kind, target, content,
-                        expected_digest=expected_digest, justification=justification)
+                        expected_digest=expected_digest, justification=justification,
+                        idempotency_key=idempotency_key)
 
 
 @mcp.tool()
