@@ -7,7 +7,10 @@ a faulty actuation is caught by the surface's own re-perception and rolled back.
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
+
+from coherence_membrane.observation import Observation
 
 from accountable_surface.effector import FilesystemEffector
 from accountable_surface.surface import AccountableSurface
@@ -48,6 +51,141 @@ def test_authorized_actuation_acts_verifies_journals(tmp_path):
     assert out.verified is True
     assert Path(target).read_bytes() == b"hello"
     assert any(e.kind == "actuation" for e in s.journal)
+
+
+def test_wrong_filesystem_expected_digest_refuses_before_write(tmp_path):
+    """Catches the bug where expected_digest silently vanished for fs writes."""
+    s = AccountableSurface()
+    eff = FilesystemEffector(tmp_path)
+    target = tmp_path / "f.txt"
+    target.write_bytes(b"original")
+    wrong = hashlib.sha256(b"not the original file").hexdigest()
+
+    out = s.actuate(
+        eff,
+        target=str(target),
+        content=b"replacement",
+        authorization=_grant(["fs.write"]),
+        expected_digest=wrong,
+    )
+
+    assert out.acted is False
+    assert out.decision == "deny"
+    assert target.read_bytes() == b"original"
+    decision = [e for e in s.journal if e.kind == "decision"][-1]
+    assert decision.detail["checks"]["state"] == "fail"
+
+
+def test_matching_filesystem_expected_digest_allows_write(tmp_path):
+    s = AccountableSurface()
+    eff = FilesystemEffector(tmp_path)
+    target = tmp_path / "f.txt"
+    target.write_bytes(b"original")
+    expected = hashlib.sha256(b"original").hexdigest()
+
+    out = s.actuate(
+        eff,
+        target=str(target),
+        content=b"replacement",
+        authorization=_grant(["fs.write"]),
+        expected_digest=expected,
+    )
+
+    assert out.acted is True
+    assert out.verified is True
+    assert target.read_bytes() == b"replacement"
+    decision = [e for e in s.journal if e.kind == "decision"][-1]
+    assert decision.detail["checks"]["state"] == "pass"
+
+
+def test_absent_filesystem_target_cannot_satisfy_expected_digest(tmp_path):
+    s = AccountableSurface()
+    eff = FilesystemEffector(tmp_path)
+    target = tmp_path / "f.txt"
+    expected = hashlib.sha256(b"").hexdigest()
+
+    out = s.actuate(
+        eff,
+        target=str(target),
+        content=b"replacement",
+        authorization=_grant(["fs.write"]),
+        expected_digest=expected,
+    )
+
+    assert out.acted is False
+    assert out.decision == "deny"
+    assert out.verdict == "precondition-unverifiable"
+    assert not target.exists()
+
+
+class _OpaqueFilesystemEffector(FilesystemEffector):
+    def perceive(self, target: str) -> Observation:
+        observed = super().perceive(target)
+        return Observation(
+            organ="opaque-test-effector",
+            subject=observed.subject,
+            summary=observed.summary,
+            status=observed.status,
+            provenance=observed.provenance,
+            data={"exists": observed.data["exists"], "size": observed.data["size"]},
+        )
+
+
+def test_unknown_observation_identity_refuses_expected_digest_before_write(tmp_path):
+    s = AccountableSurface()
+    eff = _OpaqueFilesystemEffector(tmp_path)
+    target = tmp_path / "f.txt"
+    target.write_bytes(b"original")
+    expected = hashlib.sha256(b"original").hexdigest()
+
+    out = s.actuate(
+        eff,
+        target=str(target),
+        content=b"replacement",
+        authorization=_grant(["fs.write"]),
+        expected_digest=expected,
+    )
+
+    assert out.acted is False
+    assert out.decision == "deny"
+    assert out.verdict == "precondition-unverifiable"
+    assert target.read_bytes() == b"original"
+
+
+class _MalformedIdentityFilesystemEffector(FilesystemEffector):
+    def perceive(self, target: str) -> Observation:
+        observed = super().perceive(target)
+        data = dict(observed.data)
+        data["sha256"] = "sha256:" + data["sha256"]
+        return Observation(
+            organ=observed.organ,
+            subject=observed.subject,
+            summary=observed.summary,
+            status=observed.status,
+            provenance=observed.provenance,
+            data=data,
+        )
+
+
+def test_malformed_observation_identity_refuses_expected_digest_before_write(tmp_path):
+    s = AccountableSurface()
+    eff = _MalformedIdentityFilesystemEffector(tmp_path)
+    target = tmp_path / "f.txt"
+    target.write_bytes(b"original")
+    expected = hashlib.sha256(b"original").hexdigest()
+
+    out = s.actuate(
+        eff,
+        target=str(target),
+        content=b"replacement",
+        authorization=_grant(["fs.write"]),
+        expected_digest=expected,
+    )
+
+    assert out.acted is False
+    assert out.decision == "deny"
+    assert out.verdict == "precondition-unverifiable"
+    assert target.read_bytes() == b"original"
 
 
 def test_unauthorized_action_kind_denied(tmp_path):

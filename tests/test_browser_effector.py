@@ -241,6 +241,27 @@ def test_actuate_authorized_click_verifies_and_journals():
     assert any(e.kind == "actuation" for e in s.journal)
 
 
+def test_expected_digest_matches_browser_page_before_click():
+    drv = _spa()
+    effector = _eff(drv)
+    expected = effector.perceive("https://spa.test/").data["page_digest"]
+    s = AccountableSurface()
+
+    out = s.actuate(
+        effector,
+        target="https://spa.test/",
+        content=BrowserAction("click", url="https://spa.test/", selector="Open app"),
+        authorization=_grant(["browser.click"]),
+        expected_digest=expected,
+    )
+
+    assert out.acted is True
+    assert out.verified is True
+    assert drv.current_url() == "https://spa.test/app"
+    decision = [e for e in s.journal if e.kind == "decision"][-1]
+    assert decision.detail["checks"]["state"] == "pass"
+
+
 def test_actuate_multistep_spa_journey():
     # perceive home -> click into the app -> fill an email, all under one grant.
     drv = _spa()

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Bug fix: `actuate(expected_digest=...)` now refuses before effect when the
+  supplied precondition cannot be bound to an explicit observation identity, and
+  filesystem/API/browser preconditions reach the gate as state checks instead of
+  silently becoming `not-applicable`.
+- Limit: this does not redesign read authority or fix filesystem TOCTOU/symlink
+  hardening.
+
 ## 2026-09-13 - First Release Recovery
 
 - Refreshed the README verification block from the old `3e4b342` checkpoint to

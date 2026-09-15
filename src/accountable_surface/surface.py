@@ -37,6 +37,7 @@ from accountable_surface.certify import action_certificate
 from accountable_surface.effector import RefusedActuation
 from accountable_surface.grant import action_authorization
 from accountable_surface.journal_chain import GENESIS, entry_hash, read_journal
+from accountable_surface.preconditions import bind_state_precondition
 
 
 @dataclass(frozen=True)
@@ -305,16 +306,22 @@ class AccountableSurface:
                          rolled_back=False, before=before, after=None, bound=bound)
         reason = bound_refusal(authorization, effector)
         if reason is not None:
-            # The grant names the effector bounds it covers and this effector's reach is
-            # not among them. Refuse before the gate: a bound the operator never granted
-            # is an absence of authority, not something to escalate.
             return refuse(decision="deny", verdict="bound-not-granted", reasons=[reason]), None, None
+        gate_observation = before
+        gate_expected_digest = expected_digest
+        if expected_digest is not None:
+            precondition, reason = bind_state_precondition(before, expected_digest)
+            if precondition is None:
+                return refuse(decision="deny", verdict="precondition-unverifiable",
+                              reasons=[reason]), None, None
+            gate_observation = precondition.observation
+            gate_expected_digest = precondition.expected_digest
         outcome = self.propose(
             action_kind=plan.action_kind,
             target=plan.target,
             authorization=action_authorization(authorization),
-            observation=before,
-            expected_digest=expected_digest,
+            observation=gate_observation,
+            expected_digest=gate_expected_digest,
         )
         if outcome.decision != "allow":
             return refuse(decision=outcome.decision, verdict="not-acted",
@@ -323,15 +330,11 @@ class AccountableSurface:
         if justification is not None and cortex is not None:
             grounding = self.ground(justification, cortex)
             if grounding.confidence == "ungrounded":
-                # An action must cite grounded references. An ungrounded premise is not
-                # actionable autonomously, so evidence is gated like authority.
                 return refuse(
                     decision="needs-human", verdict="ungrounded-premise", grounding=grounding,
                     reasons=[f"action premise {justification!r} is ungrounded -- no supporting references"],
                 ), None, None
         if not plan.reversible and not allow_irreversible:
-            # The gate allowed it, and it still cannot be undone, so a bare grant is not
-            # enough: escalate unless the operator pre-authorized irreversibility.
             return refuse(
                 decision="needs-human", verdict="irreversible-needs-human", grounding=grounding,
                 reasons=["irreversible action needs explicit allow_irreversible in the grant, or human approval"],

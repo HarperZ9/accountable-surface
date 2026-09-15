@@ -50,6 +50,17 @@ Awareness is not authority; an allow is not *unchecked* action; action is not
 `FilesystemEffector` is the first backend (bounded text writes; reversible).
 Playwright (DOM / a11y tree) and OS effectors follow under the same contract.
 
+## State preconditions
+
+`expected_digest` is optional. When it is omitted, `actuate` preserves the legacy
+single-action loop. When it is supplied, it must be a raw lowercase SHA-256 hex
+digest, and the pre-action observation must expose a supported canonical identity
+for the same state domain. Existing filesystem targets use the current file bytes;
+absent filesystem targets have no content identity and fail closed. API resource
+observations use the canonical member set. Browser observations use the page
+snapshot digest. Other observation shapes fail closed until they define an
+identity contract instead of silently dropping the precondition.
+
 ## Proof (tests, offline -- `test_effector.py`, `test_actuate.py`)
 
 - act without an allow → refuses, writes nothing.

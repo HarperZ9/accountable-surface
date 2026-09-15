@@ -229,6 +229,26 @@ def test_a_granted_comment_is_posted_and_verified_against_the_resource(token):
     assert [r["method"] for r in driver.requests] == ["GET", "POST", "GET", "GET"]
 
 
+def test_expected_digest_matches_api_resource_before_post(token):
+    driver, effector = _effector({THREAD: [{"id": 1, "body": "old"}]})
+    expected = effector.perceive(THREAD).data["sha256"]
+    surface = AccountableSurface()
+
+    outcome = surface.actuate(
+        effector,
+        target=THREAD,
+        content=ApiCall("post_comment", {"body": "hello"}),
+        authorization=_grant(["api.post"]),
+        expected_digest=expected,
+    )
+
+    assert outcome.acted is True
+    assert outcome.verified is True
+    assert [m["body"] for m in driver._collections[THREAD]] == ["old", "hello"]
+    decision = [e for e in surface.journal if e.kind == "decision"][-1]
+    assert decision.detail["checks"]["state"] == "pass"
+
+
 def test_an_ungranted_action_kind_posts_nothing(token):
     driver, effector = _effector()
     outcome = AccountableSurface().actuate(effector, target=THREAD,
