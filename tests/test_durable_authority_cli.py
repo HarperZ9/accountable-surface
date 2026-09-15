@@ -15,7 +15,9 @@ from test_durable_authority_state import _grant
 def _env():
     env = os.environ.copy()
     root = Path(__file__).resolve().parents[1]
-    env["PYTHONPATH"] = os.pathsep.join([str(root / "src"), str(root / "tests")])
+    paths = [str(root / "src"), str(root / "tests")]
+    paths.extend(part for part in env.get("PYTHONPATH", "").split(os.pathsep) if part)
+    env["PYTHONPATH"] = os.pathsep.join(dict.fromkeys(paths))
     return env
 
 
@@ -27,6 +29,15 @@ def _run_cli(*args):
         text=True,
         env=_env(),
     )
+
+
+def test_cli_environment_preserves_configured_dependency_paths(monkeypatch, tmp_path):
+    dependencies = [str(tmp_path / "coherence"), str(tmp_path / "proof")]
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join(dependencies))
+
+    paths = _env()["PYTHONPATH"].split(os.pathsep)
+
+    assert paths[-2:] == dependencies
 
 
 def test_operator_cli_releases_precommit_reservation_without_grant_body(tmp_path):
