@@ -63,7 +63,22 @@ The gate is default-deny: with no operator grant loaded, nothing acts. The model
 
 ## Install
 
-The core composes two sibling repos kept off PyPI. Clone them next to this one and put them on the path. coherence-membrane must include `WebDocumentOrgan` (branch `feat/web-and-external-organs` or later).
+`accountable-surface` is not published on PyPI. Use the GitHub release asset for the v0.1.0 package, or use a source checkout when you need the current `main` branch features documented here.
+
+Released v0.1.0 wheel:
+
+```powershell
+$Version = "0.1.0"
+$Base = "https://github.com/HarperZ9/accountable-surface/releases/download/v$Version"
+Invoke-WebRequest "$Base/accountable-surface-010-release-SHA256SUMS.txt" -OutFile SHA256SUMS.txt
+Invoke-WebRequest "$Base/accountable_surface-$Version-py3-none-any.whl" -OutFile "accountable_surface-$Version-py3-none-any.whl"
+$Expected = (Select-String -Path SHA256SUMS.txt -Pattern "accountable_surface-$Version-py3-none-any.whl").Line.Split()[0]
+$Actual = (Get-FileHash "accountable_surface-$Version-py3-none-any.whl" -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($Actual -ne $Expected) { throw "SHA256 mismatch for accountable_surface-$Version-py3-none-any.whl" }
+python -m pip install "accountable_surface-$Version-py3-none-any.whl"
+```
+
+Current source checkout, including the durable-authority work that landed after v0.1.0:
 
 ```powershell
 git clone https://github.com/HarperZ9/accountable-surface.git
@@ -74,7 +89,7 @@ $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
 python -m pip install -e ".[test]"
 ```
 
-Requires Python 3.10+. The package itself declares zero runtime dependencies.
+Requires Python 3.10+. The package itself declares zero runtime dependencies. Do not use `pip install accountable-surface` until the PyPI project exists.
 
 ## Quickstart
 

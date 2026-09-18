@@ -20,10 +20,14 @@ cd accountable-surface
 
 ## Install For Development
 
+`accountable-surface` is not on PyPI. Work from a source checkout, with the sibling packages on `PYTHONPATH`:
+
 ```powershell
 $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
 python -m pip install -e ".[test]"
 ```
+
+Use the GitHub v0.1.0 wheel from the release page if you need the packaged release rather than the current source tree.
 
 ## Run The Local Checks
 
@@ -46,6 +50,15 @@ python -m pip install -e ".[server]"
 $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
 python -m accountable_surface.server
 ```
+
+The package also installs `accountable-surface-authority` from source. Its safe help path, checked without changing authority state, is:
+
+```powershell
+accountable-surface-authority --help
+# subcommands: revoke, recover-precommit, mark-ambiguous, doctor
+```
+
+Use those subcommands only against an operator-owned authority state file. The examples here do not grant, revoke, or recover authority.
 
 MCP client example:
 
@@ -148,7 +161,7 @@ AccountableSurface().actuate(
 Production (real headless Chromium -- optional, lazily imported):
 
 ```powershell
-python -m pip install "accountable-surface[browser]"
+python -m pip install -e ".[browser]"
 python -m playwright install chromium
 ```
 
