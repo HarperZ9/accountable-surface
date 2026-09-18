@@ -79,7 +79,7 @@ witnessed perception (coherence-membrane) + a pre-execution gate (proof-surface)
 
 ## Dev
 
-- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 375 tests.
+- `PYTHONPATH="<cm>/src;<ps>/src" python -m pytest` (pytest adds `./src`) -- 458 tests.
 - coherence-membrane must include `WebDocumentOrgan` (branch
   `feat/web-and-external-organs` or later).
 - Quality gates: no file > 300 lines, no function > 50 lines, every test asserts

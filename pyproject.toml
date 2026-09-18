@@ -33,7 +33,7 @@ Documentation = "https://github.com/HarperZ9/accountable-surface/blob/main/USAGE
 [project.optional-dependencies]
 server = ["mcp>=1.0,<2"]   # the live MCP server (accountable_surface.server); pin <2 (mcp 2.x renamed FastMCP -> MCPServer)
 browser = ["playwright>=1.40"]  # the optional real headless-browser backend (PlaywrightDriver)
-test = ["pytest>=8"]
+test = ["pytest>=8", "build>=1.0"]
 
 [project.scripts]
 accountable-surface-server = "accountable_surface.server:main"
@@ -43,3 +43,31 @@ accountable-surface-authority = "accountable_surface.authority_cli:main"
 addopts = "-q"
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/accountable_surface"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/AGENTS.md",
+  "/AUTHORS.md",
+  "/CHANGELOG.md",
+  "/CLAUDE.md",
+  "/CONTRIBUTING.md",
+  "/CREDO.md",
+  "/LICENSE",
+  "/README.md",
+  "/THEORY.md",
+  "/THESIS.md",
+  "/USAGE.md",
+  "/pyproject.toml",
+  "/verify_journal.py",
+  "/docs/**",
+  "/examples/**",
+  "/project-docs/**",
+  "/src/**",
+  "/tests/**",
+  "/tools/**",
+  "/web/**",
+]
