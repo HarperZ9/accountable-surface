@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+No changes yet.
+
+## 0.2.0 - Pending release
+
 - Added optional SQLite authority state for remote MCP actuation: durable
   revocation, atomic finite-use reservations, idempotency, and local recovery
   commands. Unresolved reservations remain unavailable until operator recovery.

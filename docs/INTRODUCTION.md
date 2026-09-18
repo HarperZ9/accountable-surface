@@ -134,5 +134,5 @@ python -m accountable_surface.world.server 8808
 - Peer repos: [coherence-membrane](https://github.com/HarperZ9/coherence-membrane)
   and [proof-surface](https://github.com/HarperZ9/proof-surface).
 
-The tool is alpha (0.1.0). The loop and the gate semantics are stable in
+The tool is alpha (0.2.0). The loop and the gate semantics are stable in
 intent; names and signatures may still move between 0.x releases.
