@@ -82,4 +82,4 @@ __all__ = [
     "ArxivSource",
     "parse_arxiv_atom",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"
