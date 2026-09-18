@@ -1,12 +1,13 @@
 # Accountable Surface Release Checklist
 
-This repository can support a reviewed GitHub source release and local package
-artifacts for version `0.2.0`. A package-registry upload is a separate release
-decision because `coherence-membrane` and `proof-surface` are documented sibling
-source dependencies, not PyPI dependencies.
+This repository ships a reviewed GitHub `v0.2.0` source release and local
+package artifacts from commit `b2ae9be77038753d9bdbda861e9908542883ff2c`. A
+package-registry upload is still a separate release decision because
+`coherence-membrane` and `proof-surface` are documented sibling source
+dependencies, not PyPI dependencies.
 
-Do not create a tag, GitHub release, PyPI project, or registry upload until the
-exact release head and the evidence below have been reviewed.
+Do not replace release assets, create a PyPI project, or add a registry upload
+until the exact release head and evidence below have been reviewed.
 
 ## Release Head
 
@@ -19,9 +20,10 @@ git pull --ff-only origin main
 git status --short --branch
 ```
 
-The release head must match the commit recorded in the release receipt. For this
-release candidate, the source metadata, README, usage guide, changelog, and this
-checklist must all name `0.2.0` before tagging.
+The `v0.2.0` GitHub release head is
+`b2ae9be77038753d9bdbda861e9908542883ff2c`. The source metadata, README, usage
+guide, changelog, and this checklist name `0.2.0`; later releases should repeat
+that consistency check before publishing.
 
 ## Verification
 
@@ -91,8 +93,10 @@ as the install proof.
 
 Current repository state has CI only. It does not ship a registry-publish workflow.
 
-For a GitHub source release, prepare release notes from `CHANGELOG.md`, attach the
-hash list if artifacts are included, and create the tag only after review.
+For the current GitHub source release, `v0.2.0` is published with
+`SHA256SUMS.txt`, the wheel, and the sdist attached. For later GitHub releases,
+prepare release notes from `CHANGELOG.md`, attach the hash list if artifacts are
+included, and create the tag only after review.
 
 For a package-registry release, either:
 
