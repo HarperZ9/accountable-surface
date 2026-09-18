@@ -27,7 +27,7 @@ $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
 python -m pip install -e ".[test]"
 ```
 
-Use the GitHub release wheel from the release page if you need the packaged release rather than the current source tree. The 0.2.0 source adds durable authority state; v0.1.0 is the older tagged package.
+Use the GitHub `v0.2.0` release wheel when you need the packaged release rather than the current source tree. Download `SHA256SUMS.txt` and the wheel from the release page, verify the wheel hash, and install the local file as shown in the README. The release remains off PyPI; `v0.1.0` is the older tagged package.
 
 ## Run The Local Checks
 

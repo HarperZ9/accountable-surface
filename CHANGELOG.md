@@ -4,7 +4,7 @@
 
 No changes yet.
 
-## 0.2.0 - Pending release
+## 0.2.0 - 2026-09-18
 
 - Added optional SQLite authority state for remote MCP actuation: durable
   revocation, atomic finite-use reservations, idempotency, and local recovery

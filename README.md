@@ -27,8 +27,17 @@ wrong result, restores the previous file, and prints the journal entries.
 
 ## Verified Today
 
-Verified for the 0.2.0 release candidate from a clean isolated worktree before
-tagging:
+The published GitHub `v0.2.0` release is available from commit
+`b2ae9be77038753d9bdbda861e9908542883ff2c`. Its release assets are:
+
+- `accountable_surface-0.2.0-py3-none-any.whl`
+  (`sha256:f2fb09ac66d00bb188da7fdd6fd1ba37485f5fe245c0596902adc355f6bccdfa`).
+- `accountable_surface-0.2.0.tar.gz`
+  (`sha256:47a126a821861ce49581b49eb67892220a61633de8b71323e41749e8fa6538c6`).
+- `SHA256SUMS.txt`
+  (`sha256:b7acee277353171f79865a32640bf64b48efcfbb919a4e7c2143a4a71c845855`).
+
+The release was verified from a clean isolated worktree with these checks:
 
 - `python -m pytest`: Python suite passed.
 - `node --test web/*.test.mjs`: browser-interface tests passed.
@@ -67,14 +76,14 @@ The gate is default-deny: with no operator grant loaded, nothing acts. The model
 
 `accountable-surface` is not published on PyPI. Use the GitHub release asset for the latest tagged package, or use a source checkout when you need current `main` branch features.
 
-Current release-candidate source is version 0.2.0. The v0.2.0 package assets should be cut only from the reviewed release tag; v0.1.0 remains the older tagged package.
+Current GitHub release: `v0.2.0`, published from `b2ae9be77038753d9bdbda861e9908542883ff2c`. `v0.1.0` remains the older tagged package. The package is still alpha; this release does not add PyPI availability or a registry-publish workflow.
 
-Released wheel pattern:
+Install the released wheel with the published checksum file:
 
 ```powershell
 $Version = "0.2.0"
 $Base = "https://github.com/HarperZ9/accountable-surface/releases/download/v$Version"
-Invoke-WebRequest "$Base/accountable-surface-020-release-SHA256SUMS.txt" -OutFile SHA256SUMS.txt
+Invoke-WebRequest "$Base/SHA256SUMS.txt" -OutFile SHA256SUMS.txt
 Invoke-WebRequest "$Base/accountable_surface-$Version-py3-none-any.whl" -OutFile "accountable_surface-$Version-py3-none-any.whl"
 $Expected = (Select-String -Path SHA256SUMS.txt -Pattern "accountable_surface-$Version-py3-none-any.whl").Line.Split()[0]
 $Actual = (Get-FileHash "accountable_surface-$Version-py3-none-any.whl" -Algorithm SHA256).Hash.ToLowerInvariant()
