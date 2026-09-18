@@ -81,14 +81,29 @@ Current GitHub release: `v0.2.0`, published from `b2ae9be77038753d9bdbda861e9908
 Install the released wheel with the published checksum file:
 
 ```powershell
-$Version = "0.2.0"
-$Base = "https://github.com/HarperZ9/accountable-surface/releases/download/v$Version"
-Invoke-WebRequest "$Base/SHA256SUMS.txt" -OutFile SHA256SUMS.txt
-Invoke-WebRequest "$Base/accountable_surface-$Version-py3-none-any.whl" -OutFile "accountable_surface-$Version-py3-none-any.whl"
-$Expected = (Select-String -Path SHA256SUMS.txt -Pattern "accountable_surface-$Version-py3-none-any.whl").Line.Split()[0]
-$Actual = (Get-FileHash "accountable_surface-$Version-py3-none-any.whl" -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($Actual -ne $Expected) { throw "SHA256 mismatch for accountable_surface-$Version-py3-none-any.whl" }
-python -m pip install "accountable_surface-$Version-py3-none-any.whl"
+& {
+  $ErrorActionPreference = 'Stop'
+
+  $Version = "0.2.0"
+  $Wheel = "accountable_surface-$Version-py3-none-any.whl"
+  $PinnedWheelSha256 = "f2fb09ac66d00bb188da7fdd6fd1ba37485f5fe245c0596902adc355f6bccdfa"
+  $Base = "https://github.com/HarperZ9/accountable-surface/releases/download/v$Version"
+
+  Invoke-WebRequest "$Base/SHA256SUMS.txt" -OutFile SHA256SUMS.txt
+  Invoke-WebRequest "$Base/$Wheel" -OutFile $Wheel
+
+  $WheelPattern = [regex]::Escape($Wheel)
+  $ChecksumRows = @(Select-String -Path SHA256SUMS.txt -Pattern "^\s*([0-9A-Fa-f]{64})\s+\*?$WheelPattern\s*$")
+  if ($ChecksumRows.Count -ne 1) { throw "Expected exactly one SHA256SUMS row for $Wheel; found $($ChecksumRows.Count)" }
+
+  $Expected = [regex]::Match($ChecksumRows[0].Line, "^\s*([0-9A-Fa-f]{64})\s+").Groups[1].Value.ToLowerInvariant()
+  if ($Expected -ne $PinnedWheelSha256) { throw "SHA256SUMS row for $Wheel did not match the pinned GitHub release hash" }
+
+  $Actual = (Get-FileHash $Wheel -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($Actual -ne $Expected) { throw "SHA256 mismatch for $Wheel" }
+
+  python -m pip install $Wheel
+}
 ```
 
 Current source checkout, including the durable-authority work in 0.2.0:
