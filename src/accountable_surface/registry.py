@@ -46,6 +46,7 @@ from typing import Any, Callable
 
 from accountable_surface.api_effector import GITHUB_ISSUE_COMMENTS, ApiCall, ApiEffector, ApiService
 from accountable_surface.effector import FilesystemEffector
+from accountable_surface.read_authority import describe_api_read, describe_filesystem_read
 
 ENV_VAR = "ACCOUNTABLE_SURFACE_EFFECTORS"
 
@@ -76,6 +77,8 @@ class Exposed:
     effector: Any
     decode: Callable[[str], Any]
     describe: str
+    describe_read: Callable[[str, Any, str, str], Any] | None = None
+    required_read_phases: Callable[[Any], tuple[str, ...]] | None = None
 
 
 class EffectorRegistry:
@@ -134,15 +137,19 @@ def _decode_api_call(content: str) -> ApiCall:
 # --- building one entry ------------------------------------------------------
 
 
-def _build_filesystem(entry: dict, api_driver: Any) -> tuple[Any, Callable, str, set[str]]:
+def _build_filesystem(entry: dict, api_driver: Any) -> tuple:
     root = entry.get("root")
     if not isinstance(root, str) or not root:
         raise SpecError("a filesystem entry needs a non-empty 'root'")
     describe = f"filesystem root={Path(root).resolve().as_posix()}"
-    return FilesystemEffector(root), _decode_bytes, describe, {FilesystemEffector.action_kind}
+
+    def read(target: str, payload: Any, phase: str, request_id: str):
+        return describe_filesystem_read(root, target, phase, request_id)
+
+    return FilesystemEffector(root), _decode_bytes, describe, {FilesystemEffector.action_kind}, read, _fs_phases
 
 
-def _build_api(entry: dict, api_driver: Any) -> tuple[Any, Callable, str, set[str]]:
+def _build_api(entry: dict, api_driver: Any) -> tuple:
     name = entry.get("service")
     service = SERVICES.get(name) if isinstance(name, str) else None
     if service is None:
@@ -154,7 +161,14 @@ def _build_api(entry: dict, api_driver: Any) -> tuple[Any, Callable, str, set[st
     intents = sorted(op.intent for op in service.operations)
     describe = f"api service={service.name} origin={service.origin} intents={intents}"
     kinds = {op.action_kind for op in service.operations}
-    return ApiEffector(api_driver, service), _decode_api_call, describe, kinds
+
+    def read(target: str, payload: ApiCall, phase: str, request_id: str):
+        return describe_api_read(service, target, payload, phase, request_id)
+
+    def phases(payload: ApiCall) -> tuple[str, ...]:
+        return _api_phases(service, payload)
+
+    return ApiEffector(api_driver, service), _decode_api_call, describe, kinds, read, phases
 
 
 BUILDERS: dict[str, Callable[[dict, Any], tuple]] = {
@@ -174,6 +188,17 @@ def _build_one(type_name: Any, entry: dict, api_driver: Any) -> tuple:
     return builder(entry, api_driver)
 
 
+def _fs_phases(payload: Any) -> tuple[str, ...]:
+    return ("before", "backup", "after", "rollback")
+
+
+def _api_phases(service: ApiService, payload: ApiCall) -> tuple[str, ...]:
+    for op in service.operations:
+        if op.intent == payload.intent:
+            return ("before", "after", "rollback") if op.reversible else ("before", "after")
+    return ("before",)
+
+
 def _build(entries: list, api_driver: Any) -> EffectorRegistry:
     exposed: dict[str, Exposed] = {}
     refusals: list[str] = []
@@ -183,7 +208,9 @@ def _build(entries: list, api_driver: Any) -> EffectorRegistry:
             continue
         kind, type_name = entry.get("action_kind"), entry.get("type")
         try:
-            effector, decode, describe, kinds = _build_one(type_name, entry, api_driver)
+            effector, decode, describe, kinds, describe_read, required_read_phases = _build_one(
+                type_name, entry, api_driver
+            )
         except SpecError as exc:
             refusals.append(f"entry {index} (type {type_name!r}): {exc}")
             continue
@@ -195,7 +222,7 @@ def _build(entries: list, api_driver: Any) -> EffectorRegistry:
         if kind in exposed:
             refusals.append(f"entry {index}: action_kind {kind!r} is already exposed; the first entry stands")
             continue
-        exposed[kind] = Exposed(kind, effector, decode, describe)
+        exposed[kind] = Exposed(kind, effector, decode, describe, describe_read, required_read_phases)
     return EffectorRegistry(exposed, refusals)
 
 

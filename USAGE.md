@@ -58,7 +58,7 @@ MCP client example:
       "env": {
         "PYTHONPATH": "C:/path/to/accountable-surface/src;C:/path/to/coherence-membrane/src;C:/path/to/proof-surface/src",
         "ACCOUNTABLE_SURFACE_GRANTS": "C:/path/to/operator-grants.json",
-        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl"
+        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl", "ACCOUNTABLE_SURFACE_AUTHORITY_STATE": "C:/path/to/authority-state.sqlite3"
       }
     }
   }
@@ -67,7 +67,8 @@ MCP client example:
 
 ## Exposing An Effector Over MCP
 
-`perceive`, `propose`, `session_journal`, and `interocept` are always available.
+`perceive`, `propose`, `session_journal`, and `interocept` are always available
+as tools, but remote reads default-deny without an explicit read grant.
 `actuate` writes, so it reaches only what the operator has exposed. Point
 `ACCOUNTABLE_SURFACE_EFFECTORS` at a JSON file:
 
@@ -84,20 +85,40 @@ A caller then asks for one action kind at a time:
 {"action_kind": "fs.write", "target": "/srv/agent-sandbox/notes.md", "content": "hello"}
 ```
 
-`content` is the text for a file write. For an api entry it is
+`content` is the text for a file write. The matching grant also needs a read
+scope for the phases that actuation depends on:
+
+```json
+{
+  "scope": {
+    "allowed_actions": ["fs.write"],
+    "allowed_targets": [],
+    "allowed_reads": [{
+      "observation_kind": "fs.bytes",
+      "phases": ["before", "backup", "after", "rollback"],
+      "target_scope": {"kind": "fs", "root": "/srv/agent-sandbox", "paths": ["**"]}
+    }]
+  }
+}
+```
+
+For an api entry, `content` is
 `{"intent": "post_comment", "body": {...}}`, so the caller names an operation the
-service declares and never a host, a header, or a route.
+service declares and never a host, a header, or a route. API read scopes name
+the service, origin, intent, and path shape from the registry's service metadata.
 
 The reply carries the gate decision, the verify verdict, the composed certificate,
 and the journal entry for that one call. The rest of the journal stays with the
-operator, and `session_journal` is where the operator reads it.
+operator. `session_journal` returns full replay only under an explicit
+`journal.session` read grant; `journal.own-session` is refused over stdio because
+there is no cross-call caller identity to bind.
 
-Two decisions guard the call and both have to agree. This file says what a caller
-can reach at all; the grant says what may be done with it. Leave the variable unset
-and `actuate` refuses everything, however wide the grants are. The file refuses
-`command`, `browser`, `web`, and `uia` by name, each with the reason. Run `doctor` to see
-the exposed set, the reach of each entry, and the entries it turned down, so nobody
-has to guess at an empty registry.
+Three decisions guard the call and all have to agree. The registry says what a
+caller can reach at all; the grant says what may be done with it; `allowed_reads`
+says which state reads may be used. Leave the variable unset and `actuate`
+refuses everything, however wide the grants are. The file refuses `command`,
+`browser`, `web`, and `uia` by name, each with the reason. Run `doctor` to see the
+exposed set, the reach of each entry, and the entries it turned down; see `docs/durable-authority.md` for durable revocation, usage, idempotency, and recovery state.
 
 ## Using The Browser Backend (JS-Capable SPAs)
 

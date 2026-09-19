@@ -1,35 +1,43 @@
 """Actuation asked for by a remote caller -- the policy layer between an MCP tool
 call and `AccountableSurface.actuate`.
 
-`propose` is advisory and changes nothing, so exposing it costs little. `actuate`
-writes. Everything here exists to make that difference explicit rather than to add
-capability: the call is refused before an effector is touched unless two separate
-operator decisions agree, and whatever happens comes back as a receipt with the
-same shape, so a caller cannot read success out of the response's structure.
-
-Order matters and is deliberate. The registry (what may be reached at all) is
-checked BEFORE the grants, so a caller cannot make the server read its grants, or
-journal an attempt, for a capability that was never exposed.
-
-`allow_irreversible` is absent from this module by construction. There is no
-argument a remote caller can pass that reaches it, so an irreversible plan stays
-`needs-human` here whatever a grant says.
+Remote actuation now has three distinct operator surfaces: registry exposure,
+write authority, and read authority. The registry is checked first, content is
+parsed into inert action metadata, then grants are reloaded and matched for both
+the action and every read phase needed to precondition, verify, and roll back.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
+from uuid import uuid4
 
-from accountable_surface.effector import RefusedActuation
-from accountable_surface.grant import action_authorization
+from accountable_surface.read_authority import grant_digest, select_read_envelope
 from accountable_surface.registry import EffectorRegistry
+from accountable_surface.remote_durable import run_authorized_remote_actuation
 from accountable_surface.surface import AccountableSurface
 
 
+@dataclass(frozen=True)
+class _AuthorityState:
+    grants: list[dict]
+    reason: str = ""
+
+
+class _StaticAuthority:
+    def __init__(self, grants: list[dict]) -> None:
+        self._grants = list(grants)
+
+    def load_for_remote_call(self) -> _AuthorityState:
+        return _AuthorityState(self._grants)
+
+    def reload_and_confirm(self, selection: dict[str, Any]) -> str | None:
+        return None
+
+
 def _refused(reason: str, **extra: Any) -> dict[str, Any]:
-    """A refusal that never reached an effector. Nothing was perceived and nothing
-    acted, so there is no journal entry to hand back. The shape matches a real
-    receipt precisely so a caller cannot read success out of the shape."""
+    """A refusal that never reached an effector."""
     payload: dict[str, Any] = {
         "decision": "deny", "acted": False, "verified": False,
         "verdict": "refused-before-actuation", "rolled_back": False,
@@ -40,14 +48,7 @@ def _refused(reason: str, **extra: Any) -> dict[str, Any]:
 
 
 def _grant_for(grants: list[dict], action_kind: str) -> tuple[dict | None, list[str]]:
-    """The single grant this call runs under, and a note when more than one matched.
-
-    First match wins on purpose. Proposing against every grant would run the gate
-    once per grant and journal each attempt, so one refused call would spell out the
-    operator's whole grant set to the caller. Honest null: a call therefore reaches
-    only as far as the FIRST grant naming its action kind, even when a later grant is
-    wider, and the note in the receipt says when that happened.
-    """
+    """The single action grant this call runs under."""
     matching = [
         grant for grant in grants
         if action_kind in ((grant.get("scope") or {}).get("allowed_actions") or [])
@@ -60,8 +61,7 @@ def _grant_for(grants: list[dict], action_kind: str) -> tuple[dict | None, list[
 
 
 def _receipt(surface: AccountableSurface, outcome, notes: list[str], since: int) -> dict[str, Any]:
-    """The journal entry for THIS call, and nothing else from the journal. The whole
-    journal is the operator's; a caller gets back only what it just caused."""
+    """The journal entry for THIS call, and nothing else from the journal."""
     mine = [entry.to_dict() for entry in surface.journal[since:] if entry.kind == "actuation"]
     return {
         "decision": outcome.decision,
@@ -77,39 +77,69 @@ def _receipt(surface: AccountableSurface, outcome, notes: list[str], since: int)
 
 def actuate_impl(
     surface: AccountableSurface,
-    grants: list[dict],
+    authority: Any,
     registry: EffectorRegistry,
     action_kind: str,
     target: str,
     content: str,
     expected_digest: str | None = None,
     justification: str | None = None,
+    idempotency_key: str | None = None,
 ) -> dict[str, Any]:
     """Act through an exposed effector, or say why not."""
     exposed = registry.get(action_kind)
     if exposed is None:
-        return _refused(
-            f"action_kind {action_kind!r} is not exposed by this server",
-            exposed_action_kinds=registry.action_kinds(),
-        )
-    grant, notes = _grant_for(grants, action_kind)
-    if grant is None:
-        return _refused(
-            f"no operator grant names {action_kind!r} -- default-deny; the model cannot self-authorize"
-        )
+        return _refused(f"action_kind {action_kind!r} is not exposed by this server",
+                        exposed_action_kinds=registry.action_kinds())
     try:
         payload = exposed.decode(content)
     except ValueError as exc:
         return _refused(f"content is not what {action_kind!r} accepts: {exc}")
-    since = len(surface.journal)
+    read_requests, reason = _read_requests(exposed, target, payload)
+    if read_requests is None:
+        return _refused(reason)
+    store = _authority_store(authority)
+    reason, protected_digest = _protected_path_reason(store, read_requests)
+    if reason is not None:
+        return _refused(reason)
+    state = _load_for_actuation(store)
+    grant, notes = _grant_for(state.grants, action_kind)
+    if grant is None:
+        return _refused(state.reason or f"no operator grant names {action_kind!r} -- default-deny; the model cannot self-authorize")
+    envelope, reason = select_read_envelope(state.grants, read_requests)
+    if envelope is None:
+        return _refused(f"read authority denied: {reason}")
+    return run_authorized_remote_actuation(
+        surface, store, exposed, action_kind, target, payload, expected_digest,
+        justification, idempotency_key, grant, notes, read_requests, envelope, protected_digest,
+    )
+
+
+def _authority_store(authority: Any) -> Any:
+    if hasattr(authority, "load_for_remote_call"):
+        return authority
+    return _StaticAuthority(authority if isinstance(authority, list) else [])
+
+
+def _load_for_actuation(store: Any):
     try:
-        outcome = surface.actuate(
-            exposed.effector, target=target, content=payload,
-            authorization=action_authorization(grant),
-            expected_digest=expected_digest, justification=justification,
-        )
-    except RefusedActuation as exc:
-        # The effector can refuse while resolving the plan, before any state exists to
-        # journal. That is a refusal and not a fault, so it comes back as a receipt.
-        return _refused(f"the effector refused the plan before acting: {exc}")
-    return _receipt(surface, outcome, notes, since)
+        return store.load_for_remote_call(include_durable_revoked=True)
+    except TypeError:
+        return store.load_for_remote_call()
+
+
+def _protected_path_reason(store: Any, read_requests: list[Any]) -> tuple[str | None, str]:
+    if not hasattr(store, "protected_path_reason"):
+        return None, ""
+    return store.protected_path_reason([request.subject for request in read_requests])
+
+
+def _read_requests(exposed: Any, target: str, payload: Any) -> tuple[list[Any] | None, str]:
+    if exposed.describe_read is None or exposed.required_read_phases is None:
+        return None, f"action_kind {exposed.action_kind!r} has no read-authority contract"
+    try:
+        phases = exposed.required_read_phases(payload)
+        rid = uuid4().hex
+        return [exposed.describe_read(target, payload, phase, f"{rid}:{phase}") for phase in phases], ""
+    except ValueError as exc:
+        return None, f"read authority cannot describe this target: {exc}"

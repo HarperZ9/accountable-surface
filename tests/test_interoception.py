@@ -48,6 +48,13 @@ def test_self_view_counts_perceptions_and_decisions():
     assert obs.data["pending_needs_human"] == 0
 
 
+def test_self_view_default_does_not_expose_journal_entry_summaries():
+    s = AccountableSurface()
+    s.propose(action_kind="summarize", target="secret-target", authorization=_grant(["summarize"]))
+    obs = s.interocept()
+    assert "entries" not in obs.data
+
+
 def test_journal_digest_changes_with_activity():
     s = AccountableSurface()
     before = s.interocept().data["journal_digest"]

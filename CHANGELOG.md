@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased
+
+- Added optional SQLite authority state for remote MCP actuation: durable
+  revocation, atomic finite-use reservations, idempotency, and local recovery
+  commands. Unresolved reservations remain unavailable until operator recovery.
+- With durable authority enabled, protected grant, journal, and state paths are
+  refused before access, including resolvable aliases and existing hardlinks.
+  This does not provide race-proof path access or rollback detection without an
+  external protected anchor. See `docs/durable-authority.md` for configuration
+  and the tested boundaries.
+- Bug fix: remote `perceive`, `session_journal`, and `actuate` now require
+  explicit scoped read grants. Remote writes fail closed unless their required
+  before/backup/after/rollback read phases match a known filesystem or API
+  target contract, and grants are reloaded just before mutation.
+- Bug fix: `actuate(expected_digest=...)` now refuses before effect when the
+  supplied precondition cannot be bound to an explicit observation identity, and
+  filesystem/API/browser preconditions reach the gate as state checks instead of
+  silently becoming `not-applicable`.
+- Limit: this does not harden filesystem TOCTOU/symlink races, interrupt
+  revocation mid-method, or gate local `surface.actuate()` reads.
+
+## 2026-09-13 - First Release Recovery
+
+- Refreshed the README verification block from the old `3e4b342` checkpoint to
+  current public `main` at `a0bafe6`.
+- Added the first-release checklist in `docs/RELEASE.md`: it records the exact
+  test, build, Twine, and proof-install commands for a GitHub source release and
+  optional package-registry upload.
+- Publication remains a separate reviewed action. This update prepares evidence
+  and documentation; it does not create a tag, GitHub release, PyPI project, or
+  registry upload.
+
 ## 2026-09-05 - The Escalator That Records Why It Fell
 
 - Added `escalator.py`: rungs are climbed in cost order and each fall is recorded with

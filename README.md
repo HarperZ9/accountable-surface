@@ -25,13 +25,18 @@ python examples/actuate_demo.py
 The example refuses an unapproved write, performs an approved write, detects a
 wrong result, restores the previous file, and prints the journal entries.
 
-## Verified today
+## Verified Today
 
-Verified on 2026-08-31 against commit
-[`3e4b342`](https://github.com/HarperZ9/accountable-surface/commit/3e4b342cf7e8c25eb43ebc5a30c4fa194012c25e):
+Verified on 2026-09-13 against commit
+[`a0bafe6`](https://github.com/HarperZ9/accountable-surface/commit/a0bafe63379fd33f638cf2ce6804d70788bb07d1):
 
-- `python -m pytest`: 233 Python tests passed.
+- `python -m pytest`: 375 Python tests passed.
 - `node --test web/*.test.mjs`: 5 browser-interface tests passed.
+- `python -m build --sdist --wheel`: built the local sdist and wheel.
+- `python -m twine check dist/*`: passed with Twine 7.0.0.
+- A fresh virtual environment installed the wheel and ran an offline
+  `FilesystemEffector` actuation proof with sibling repository paths supplied
+  through `PYTHONPATH`.
 
 These checks cover the repository's deterministic local paths. They do not
 establish safety in every host environment or validate every third-party
@@ -76,7 +81,7 @@ Requires Python 3.10+. The package itself declares zero runtime dependencies.
 ```powershell
 python examples/demo.py        # perceive, gate allow, gate deny, journal
 python examples/actuate_demo.py  # the full act-verify-rollback loop
-python -m pytest               # the test suite (233 tests)
+python -m pytest               # the test suite (375 tests)
 ```
 
 `demo.py` prints a witnessed structural reading of a local page (title, links, sha256 digest), then a gate ALLOW for an action inside the grant, a gate DENY for one outside it, and the journal of every perception and decision.
@@ -141,14 +146,23 @@ Client configuration:
       "env": {
         "PYTHONPATH": "C:/path/to/accountable-surface/src;C:/path/to/coherence-membrane/src;C:/path/to/proof-surface/src",
         "ACCOUNTABLE_SURFACE_GRANTS": "C:/path/to/operator-grants.json",
-        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl"
+        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl",
+        "ACCOUNTABLE_SURFACE_AUTHORITY_STATE": "C:/path/to/authority-state.sqlite3"
       }
     }
   }
 }
 ```
 
-`ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant or a list; with none loaded the gate is default-deny. `ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the journal replays on launch so the witnessed self-view spans sessions.
+`ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant
+or a list; with none loaded the gate is default-deny. Remote reads are scoped
+separately from writes: `allowed_actions` may name `fs.write`, but the remote
+server still refuses until `allowed_reads` covers the target state phases it must
+read (`before`, `backup`, `after`, and `rollback` for filesystem writes).
+`ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the
+journal replays on launch so the witnessed self-view spans sessions.
+
+`ACCOUNTABLE_SURFACE_AUTHORITY_STATE` points to an optional stdlib-SQLite state file for durable revocation, atomic usage reservations, and idempotency. With it set, remote `actuate` requires an `idempotency_key`, refuses protected grant/state/journal paths even under broad filesystem grants, and keeps unresolved precommit reservations unavailable until operator recovery. See [docs/durable-authority.md](docs/durable-authority.md).
 
 `ACCOUNTABLE_SURFACE_EFFECTORS` points to a JSON file naming which effectors a remote caller may reach:
 
@@ -159,7 +173,15 @@ Client configuration:
 ]}
 ```
 
-Two operator decisions guard `actuate` and both have to agree. This file says what a caller can reach at all, and the grant says what may be done with it. With the variable unset, the file empty, or the action kind missing from it, `actuate` refuses before it reads a grant. The file refuses `command`, `browser`, `web`, and `uia` by name, each with the reason. Ask `doctor` for the exposed set, the reach of each entry, and the entries it turned down.
+Three operator decisions guard remote `actuate` and all have to agree: the
+registry exposes an effector, `allowed_actions` names the write, and
+`allowed_reads` names the state reads needed to precondition, verify, and roll
+back that write. With the variable unset, the file empty, or the action kind
+missing from it, `actuate` refuses before it reads a grant. The file refuses
+`command`, `browser`, `web`, and `uia` by name, each with the reason. Ask
+`doctor` for the exposed set, the reach of each entry, and the entries it turned
+down. MCP `perceive` likewise needs a `web.document` read grant, and full
+`session_journal` replay needs a `journal.session` read grant.
 
 ## Shared world server
 
@@ -179,7 +201,7 @@ It serves the web UI from `web/` and binds to localhost by default. Grants are o
 - `playwright_driver.py`: the optional JS-capable browser driver.
 - `reference.py`: the grounding cortex, `certify.py`: action certificates, `grant.py`: grant helpers.
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
-- `tests/`: 369 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
+- `tests/`: 375 tests. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
 - `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `.github/assets/zentropy-banner.png`.
 
@@ -192,6 +214,8 @@ $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
 python -m pytest
 node --test web/*.test.mjs
 ```
+
+First-release packaging steps and hold points are in [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Related repos
 
