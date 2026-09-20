@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "accountable-surface": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "accountable_surface.interop_mcp"],
+      "env": {
+        "ACCOUNTABLE_SURFACE_GRANTS": "${ACCOUNTABLE_SURFACE_GRANTS:-/absolute/path/to/operator-grants.json}",
+        "ACCOUNTABLE_SURFACE_JOURNAL": "${ACCOUNTABLE_SURFACE_JOURNAL:-/absolute/path/to/journal.jsonl}",
+        "ACCOUNTABLE_SURFACE_RECEIPTS": "${ACCOUNTABLE_SURFACE_RECEIPTS:-/absolute/path/to/action-receipts.jsonl}",
+        "ACCOUNTABLE_SURFACE_NATIVE_CONTROL_SCRIPT": "${ACCOUNTABLE_SURFACE_NATIVE_CONTROL_SCRIPT:-/absolute/path/to/telos/demo/native-control.mjs}"
+      }
+    }
+  }
+}

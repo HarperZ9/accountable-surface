@@ -68,6 +68,7 @@ browser, website, or model provider.
 - **Shared world server.** A zero-dependency live server (stdlib `http.server` plus SSE) where proposed actions run the real loop and stream to every open browser tab, with a small web UI in `web/`. Optional pilots connect a model (Claude or Ollama) to drive it.
 - **Durable, tamper-evident memory.** An append-only JSONL journal that replays across sessions, hash-chained so an edited, deleted, or reordered entry is caught on reload even though it still parses (corruption and tamper are counted separately, never conflated). `verify_journal()` re-derives the chain and returns the verdict; `interocept()` is a content-addressed view of the surface's own conduct.
 - **Live MCP server.** `perceive`, `propose`, `actuate`, `session_journal`, and `interocept` exposed over MCP stdio (the `[server]` extra). `actuate` reaches only the effectors the operator exposed, and nothing is exposed by default.
+- **Interoperable MCP server (no FastMCP).** A zero-third-party-dependency stdio server, `accountable_surface.interop_mcp`, carries the six accountable primitives (`perceive`, `propose`/gate, `actuate`, `journal`, `receipt`) plus the shipped read-only verb `device_ls`, so other harnesses (Claude Code, Codex, Cursor, the Flywheel bundled lane) adopt one seam. See `docs/interop-mcp.md` and `interop/`.
 - **Action certificates.** `certify` composes the gate, effect, and grounding verdicts into one certificate token; a denial or failed effect makes the whole action REFUTED, and an escalation yields UNVERIFIABLE, never a rounded-up pass.
 
 The gate is default-deny: with no operator grant loaded, nothing acts. The model cannot supply its own authorization.
@@ -196,6 +197,23 @@ Client configuration:
   }
 }
 ```
+
+### Interoperable stdio server (no FastMCP)
+
+For adoption by other harnesses, `accountable_surface.interop_mcp` is a stdlib-only
+JSON-RPC-over-stdio server: no FastMCP, nothing to pip install for a harness to spawn
+it and list tools. It carries the six accountable primitives plus the shipped
+read-only verb and emits an offline-re-derivable `action-receipt/v1`.
+
+```powershell
+python -m accountable_surface.interop_mcp   # or: accountable-surface-mcp
+```
+
+Manifests for Claude Code, Codex, Cursor, and the Flywheel lane live in `interop/`;
+the overview and the evidence-bound comparison over ungated computer use are in
+`docs/interop-mcp.md`. The hard exclusions (CAPTCHA solving, anti-bot stealth /
+fingerprint patching, reCAPTCHA token harvest, mass or obfuscated authenticated
+outreach) are unreachable through any tool and asserted by test.
 
 `ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant
 or a list; with none loaded the gate is default-deny. Remote reads are scoped
