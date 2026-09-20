@@ -2,7 +2,26 @@
 
 ## Unreleased
 
-No changes yet.
+- Native-control bridge (first accountable-computer-use slice, capability-gated).
+  Gates one telos native-control verb, `device ls`, through the full loop: perceive,
+  preview, gate, act via a Node subprocess, re-perceive, verify, journal. New
+  modules `native_control_effector.py` (`NativeControlListEffector`,
+  `NativeControlRunner`, `FakeNativeControlRunner`, and a write-class contract stub
+  `NativeControlWriteEffector`) and `action_receipt.py` (`ActionReceiptReceptor`,
+  `receipt_from_outcome`, `verify_receipts`), the first runtime writer of a
+  `project-telos.action-receipt/v1` event.
+- Independent-witness verify: the effector checks the actuator's directory listing
+  against the surface's own `os.scandir`, so a wrong or lying listing fails verify
+  (false-success control) rather than passing on the actor's own account.
+- Offline receipt verifier `verify_action_receipts.py` (zero-dependency, stdlib
+  only): a receipt store re-derives to MATCH; any edited, deleted, or reordered
+  receipt yields DRIFT.
+- Safe subset only. The runner refuses any verb outside a read allowlist by
+  construction; the evasion and mass-outreach verbs and the mutating device verbs
+  are unreachable through the bridge, asserted by test. See
+  `docs/native-control-bridge.md` for the wired-vs-target status and the write-class
+  compensation contract (defined, not yet exercised).
+- Not a public capability release; prepared on a branch for review.
 
 ## 0.2.0 - 2026-09-18
 
