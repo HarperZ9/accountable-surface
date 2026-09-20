@@ -19,8 +19,20 @@ from .api_effector import (
     ApiService,
     FakeApiDriver,
 )
+from .action_receipt import (
+    ActionReceiptReceptor,
+    receipt_from_outcome,
+    verify_receipts,
+)
 from .credentials import MissingCredential, has_secret, require_secret
 from .effector import FilesystemEffector, Plan, RefusedActuation, Verdict
+from .native_control_effector import (
+    SAFE_READ_VERBS,
+    FakeNativeControlRunner,
+    NativeControlListEffector,
+    NativeControlRunner,
+    NativeControlWriteEffector,
+)
 from .http_driver import HttpDriver, parse_html
 from .os_effector import CommandEffector, SubprocessRunner
 from .registry import EffectorRegistry, Exposed, load_effectors
@@ -81,5 +93,13 @@ __all__ = [
     "FakeSource",
     "ArxivSource",
     "parse_arxiv_atom",
+    "NativeControlListEffector",
+    "NativeControlWriteEffector",
+    "NativeControlRunner",
+    "FakeNativeControlRunner",
+    "SAFE_READ_VERBS",
+    "ActionReceiptReceptor",
+    "receipt_from_outcome",
+    "verify_receipts",
 ]
 __version__ = "0.2.0"
