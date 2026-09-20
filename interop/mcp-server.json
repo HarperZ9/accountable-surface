@@ -1,0 +1,51 @@
+{
+  "name": "accountable-surface",
+  "description": "Accountable actuation over MCP: witnessed perception, a pre-execution gate (allow/deny/needs-human), a reach-bounded act, an independent self-verify (MATCH/DRIFT/UNVERIFIABLE), a tamper-evident journal, and an offline-re-derivable action receipt. Read-only device ls is wired today; write-class actuation and broad browser/app/device breadth are target, not shipped.",
+  "homepage": "https://github.com/HarperZ9/accountable-surface",
+  "license": "LicenseRef-FSL-1.1-MIT",
+  "protocolVersion": "2025-06-18",
+  "transport": {
+    "type": "stdio",
+    "command": "python",
+    "args": ["-m", "accountable_surface.interop_mcp"],
+    "alt_command": "accountable-surface-mcp"
+  },
+  "runtime": {
+    "python": ">=3.10",
+    "third_party_dependencies_for_protocol": [],
+    "runtime_dependencies_for_actions": ["coherence-membrane", "proof-surface"],
+    "note": "The JSON-RPC protocol layer is stdlib only (no FastMCP). initialize, tools/list, status, and doctor answer even without the action runtime; the action tools load it lazily and return a named error when it is absent."
+  },
+  "env": {
+    "ACCOUNTABLE_SURFACE_GRANTS": "Path to the operator's authorization-grant JSON. Without a grant naming an action_kind, actuation is default-deny. The model never supplies authorization.",
+    "ACCOUNTABLE_SURFACE_JOURNAL": "Optional path to the append-only, hash-chained journal. Unset keeps the surface in-memory.",
+    "ACCOUNTABLE_SURFACE_RECEIPTS": "Optional path to the append-only action-receipt/v1 store. Defaults beside the journal, else a per-process temp file.",
+    "ACCOUNTABLE_SURFACE_NATIVE_CONTROL_SCRIPT": "Path to the telos native-control.mjs actuator. Required to actuate device ls for real; unset yields a clean refusal."
+  },
+  "primitives": {
+    "perceive": "accountable-surface.perceive",
+    "propose": "accountable-surface.propose",
+    "gate": "accountable-surface.propose",
+    "actuate": "accountable-surface.actuate",
+    "journal": "accountable-surface.journal",
+    "receipt": "accountable-surface.receipt"
+  },
+  "tools": [
+    {"name": "accountable-surface.perceive", "input": {"subject": "string"}, "side_effect": "none"},
+    {"name": "accountable-surface.propose", "input": {"action_kind": "string", "target": "string", "expected_digest": "string?"}, "side_effect": "none"},
+    {"name": "accountable-surface.actuate", "input": {"action_kind": "string", "target": "string", "content": "string[]?", "expected_digest": "string?", "idempotency_key": "string?"}, "side_effect": "gated"},
+    {"name": "accountable-surface.device_ls", "input": {"path": "string"}, "side_effect": "gated-read"},
+    {"name": "accountable-surface.journal", "input": {}, "side_effect": "none"},
+    {"name": "accountable-surface.receipt", "input": {"include_events": "boolean?"}, "side_effect": "none"},
+    {"name": "accountable-surface.status", "input": {}, "side_effect": "none"},
+    {"name": "accountable-surface.doctor", "input": {}, "side_effect": "none"}
+  ],
+  "wired_action_kinds": ["native.device.ls"],
+  "excluded_capabilities": {
+    "captcha_solving": ["browser.captcha", "browser.recaptcha_solve"],
+    "anti_bot_stealth": ["browser.behave", "browser.stealth", "browser.fingerprint"],
+    "token_harvest": ["browser.token", "browser.recaptcha_token"],
+    "mass_outreach": ["gmail.send_bulk", "linkedin.post", "browser.targets", "browser.autofill", "email.mass"],
+    "mutating_device": ["device.exec", "device.write"]
+  }
+}

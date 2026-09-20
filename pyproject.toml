@@ -37,6 +37,7 @@ test = ["pytest>=8", "build>=1.0"]
 
 [project.scripts]
 accountable-surface-server = "accountable_surface.server:main"
+accountable-surface-mcp = "accountable_surface.interop_mcp:main"  # interop stdio MCP server (no FastMCP dep)
 accountable-surface-authority = "accountable_surface.authority_cli:main"
 
 [tool.pytest.ini_options]
@@ -65,6 +66,7 @@ include = [
   "/verify_journal.py",
   "/docs/**",
   "/examples/**",
+  "/interop/**",
   "/project-docs/**",
   "/src/**",
   "/tests/**",

@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- Interoperable MCP server for the accountable-actuation core
+  (`accountable_surface.interop_mcp` + `interop_runtime`). A zero-third-party-dependency
+  JSON-RPC-over-stdio server (stdlib framing, no FastMCP) so other harnesses -- Claude
+  Code, Codex, Cursor, and the Flywheel bundled lane -- adopt one seam. Exposes the six
+  accountable primitives (`perceive`, `propose`/gate, `actuate`, `journal`, `receipt`)
+  plus the shipped read-only verb `device_ls`, and `status`/`doctor`. Console script
+  `accountable-surface-mcp`. Identity and health answer even where the runtime is not
+  installed; the action tools import it lazily and return a named error otherwise.
+- Interop manifests under `interop/`: a Claude Code `.mcp.json` server entry, a generic
+  MCP server descriptor, a Flywheel lane entry, and an "add this to your harness" README
+  for Codex and Cursor. Concise overview and an evidence-bound comparison over ungated
+  computer use in `docs/interop-mcp.md`.
+- Hard exclusions are enforced at the server boundary and asserted by test
+  (`tests/test_interop_exclusions.py`): CAPTCHA solving, anti-bot stealth / fingerprint
+  patching, reCAPTCHA token harvest, and mass or obfuscated authenticated outreach are
+  unreachable through any tool. The `SAFE_READ_VERBS` allowlist stays the boundary;
+  `EXCLUDED_CAPABILITIES` is the explicit second assertion of it. Shippable today: the
+  read-only `device ls` slice. Target, not shipped: write-class actuation and broad
+  browser / app / device breadth.
+- Not a public capability release; prepared on a branch for review.
+
 - Native-control bridge (first accountable-computer-use slice, capability-gated).
   Gates one telos native-control verb, `device ls`, through the full loop: perceive,
   preview, gate, act via a Node subprocess, re-perceive, verify, journal. New

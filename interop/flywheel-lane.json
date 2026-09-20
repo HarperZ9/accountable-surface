@@ -1,0 +1,16 @@
+{
+  "$comment": "Descriptor for adding accountable-surface as a Flywheel lane. Maps to the Lane dataclass in flywheel harness/lanes_registry.py. A maintainer pastes the ready-to-use Lane(...) line from interop/README.md into the LANES registry; this file is the data behind it. The lane roster marks a lane live when its {name}.status health tool answers -- this server advertises accountable-surface.status.",
+  "name": "accountable-surface",
+  "install_name": "accountable-surface",
+  "command": "python",
+  "mcp_args": ["-m", "accountable_surface.interop_mcp"],
+  "kind": "bundled",
+  "version": "0.2.0",
+  "role": "accountable actuation: gate + independent verify + rollback + offline-re-derivable receipt over MCP",
+  "organ": "actuation",
+  "source_repo": "public/accountable-surface",
+  "py_module": "accountable_surface.interop_mcp",
+  "extra_source_repos": ["public/coherence-membrane", "public/proof-surface"],
+  "health_tool": "accountable-surface.status",
+  "note": "The protocol layer is stdlib only (no FastMCP). status/doctor answer without the action runtime, so the roster can mark the lane live; the action tools load the runtime (coherence-membrane + proof-surface) lazily."
+}
