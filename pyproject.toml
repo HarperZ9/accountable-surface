@@ -19,9 +19,16 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Software Development :: Quality Assurance",
 ]
-# Core perception + gate come from the sibling repos coherence-membrane and
-# proof-surface (see README) -- kept off PyPI deliberately, like those repos.
-dependencies = []
+# Core perception and gate come from the sibling repos coherence-membrane and
+# proof-surface. Both are on PyPI now, so they are declared here. They used to be
+# omitted because neither was published, which left a wheel that installed
+# cleanly and then raised ModuleNotFoundError on first import. accountable_surface
+# .mcp names the same three in _RUNTIME_DEPS; mcp stays optional under [server]
+# because only the MCP server path needs it.
+dependencies = [
+  "coherence-membrane>=0.1.0",
+  "proof-surface>=0.1.0",
+]
 
 [project.urls]
 Homepage = "https://harperz9.github.io"
