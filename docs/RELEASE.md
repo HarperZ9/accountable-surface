@@ -91,7 +91,12 @@ as the install proof.
 
 ## Publication Routes
 
-Current repository state has CI only. It does not ship a registry-publish workflow.
+The repository ships `.github/workflows/release.yml`, an OIDC trusted-publishing
+workflow. No token is stored. A tag builds the sdist and wheel, checks the tag
+against the declared version, records artifact digests, installs the wheel into a
+clean venv and resolves every console script, and rebuilds a wheel from the sdist
+before anything is uploaded. The publish job stays skipped unless the repository
+variable `PYPI_ENABLED` is `true`.
 
 For the current GitHub source release, `v0.2.0` is published with
 `SHA256SUMS.txt`, the wheel, and the sdist attached. For later GitHub releases,

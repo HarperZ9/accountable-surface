@@ -75,9 +75,13 @@ The gate is default-deny: with no operator grant loaded, nothing acts. The model
 
 ## Install
 
-`accountable-surface` is not published on PyPI. Use the GitHub release asset for the latest tagged package, or use a source checkout when you need current `main` branch features.
+```bash
+pip install accountable-surface
+```
 
-Current GitHub release: `v0.2.0`, published from `b2ae9be77038753d9bdbda861e9908542883ff2c`. `v0.1.0` remains the older tagged package. The package is still alpha; this release does not add PyPI availability or a registry-publish workflow.
+Add the MCP server with `pip install "accountable-surface[server]"`. Use a source checkout when you need current `main` branch features, or a GitHub release asset when you want a wheel with a published checksum.
+
+Current PyPI release: `0.3.1`, published by an OIDC trusted publisher with PEP 740 attestations, so the index records which workflow built the bytes. `v0.2.0` and `v0.1.0` remain older tagged GitHub packages. The package is still alpha.
 
 Install the released wheel with the published checksum file:
 
@@ -118,7 +122,7 @@ $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
 python -m pip install -e ".[test]"
 ```
 
-Requires Python 3.10+. The package itself declares zero runtime dependencies. Do not use `pip install accountable-surface` until the PyPI project exists.
+Requires Python 3.10+. The package declares `coherence-membrane` and `proof-surface` as runtime dependencies, because `accountable_surface` imports both. `mcp` stays optional under the `[server]` extra, since only the MCP server path needs it.
 
 ## Quickstart
 
