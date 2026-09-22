@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "accountable-surface"
-version = "0.2.0"
+version = "0.3.1"
 description = "Gate AI-agent actions with explicit grants, durable journals, MCP server support, and verification."
 readme = "README.md"
 requires-python = ">=3.10"
