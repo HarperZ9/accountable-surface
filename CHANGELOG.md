@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.1 - 2026-09-22
+
+- Declares the runtime dependencies. The wheel previously installed cleanly and
+  then raised `ModuleNotFoundError` on first import, because `coherence-membrane`
+  and `proof-surface` were omitted while neither was published. Both are on PyPI
+  now, so both are declared. `mcp` stays optional under `[server]`.
+- Adds an OIDC trusted-publishing release workflow with tag/version, artifact
+  digest, clean-venv entry-point resolution, and sdist-rebuild gates.
+- Aligns the declared version with the repository's tag history. `pyproject.toml`
+  and `accountable_surface.__version__` both read `0.1.0` through the v0.1.0,
+  v0.2.1 and v0.3.0 tags, so the MCP `serverInfo` reported `0.1.0` to every
+  client regardless of which release was running. A new guard binds the two.
+
 ## Unreleased
 
 - Interoperable MCP server for the accountable-actuation core
