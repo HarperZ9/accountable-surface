@@ -46,6 +46,7 @@ test = ["pytest>=8", "build>=1.0"]
 accountable-surface-server = "accountable_surface.server:main"
 accountable-surface-mcp = "accountable_surface.interop_mcp:main"  # interop stdio MCP server (no FastMCP dep)
 accountable-surface-authority = "accountable_surface.authority_cli:main"
+accountable-surface-replay = "accountable_surface.replay_cli:main"  # verify, explain, export; never acts
 
 [tool.pytest.ini_options]
 addopts = "-q"
@@ -71,6 +72,7 @@ include = [
   "/USAGE.md",
   "/pyproject.toml",
   "/verify_journal.py",
+  "/verify_actuation.py",
   "/docs/**",
   "/examples/**",
   "/interop/**",

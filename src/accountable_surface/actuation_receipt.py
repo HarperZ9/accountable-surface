@@ -39,6 +39,7 @@ PINNED_SOURCES = ("policy.py", "plan.py", "tiers.py", "page_evidence.py", "actua
                   "detectors/irreversible.py", "detectors/injection.py")
 _CHAIN = ("_prev", "_hash")
 _ROOT = Path(__file__).resolve().parent
+SOURCE_ROOT = _ROOT  # where the pinned sources live, for an export that carries them
 
 
 def canonical(value) -> str:

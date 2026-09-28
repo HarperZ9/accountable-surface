@@ -19,9 +19,6 @@ from dataclasses import dataclass, field
 from hashlib import sha256
 from urllib.parse import urljoin
 
-from accountable_surface.browser_effector import BrowserAction
-from accountable_surface.web_effector import WebAction
-
 SCHEMA = "accountable-surface.action-plan/v1"
 READ_KINDS = frozenset({"perceive", "find"})
 # Post-condition kinds this build can settle, per path. Every other kind in the
@@ -161,7 +158,12 @@ def post_condition_problem(step: ActionStep) -> str | None:
 
 
 def effector_content(step: ActionStep):
-    """(target string, effector content) for the existing effectors."""
+    """(target string, effector content) for the existing effectors. The effector
+    types are imported here, not at module load, so validating or re-deriving a
+    plan never loads an effector (the replay no-act test holds this)."""
+    from accountable_surface.browser_effector import BrowserAction
+    from accountable_surface.web_effector import WebAction
+
     verb = step.action_kind.rsplit(".", 1)[-1]
     selector = (step.control or {}).get("name", "")
     value = str(step.args.get("value", ""))

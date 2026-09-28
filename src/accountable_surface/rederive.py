@@ -49,7 +49,7 @@ def worst(labels) -> str:
     return max(labels, key=RANK.__getitem__, default="MATCH")
 
 
-def _records(path: Path) -> list:
+def load_records(path: Path) -> list:
     try:
         return [json.loads(ln) for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     except (OSError, ValueError):
@@ -191,7 +191,7 @@ def rederive(receipts_path, evidence_root, *, level: str = "verdict") -> dict:
     path = Path(receipts_path)
     chain = actuation_receipt.verify_chain(path)
     report = {"levels": {"chain": {"verdict": chain["verdict"], "notes": chain["breaks"]}}, "records": []}
-    records = _records(path)
+    records = load_records(path)
     genesis = records[0] if records and records[0].get("kind") == "genesis" else {}
     steps = [r for r in records if r.get("kind") == "step"]
     report["records"] = [{"seq": r.get("seq"), "step_id": (r.get("step") or {}).get("step_id"),

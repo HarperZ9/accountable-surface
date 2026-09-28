@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 
-from accountable_surface.actuation_receipt import ReceiptLog
+from accountable_surface.actuation_receipt import ReceiptLog, canonical, chain_hash, content_hash
 from accountable_surface.approvals import ApprovalStore
 from accountable_surface.evidence import EvidenceStore
 from accountable_surface.http_driver import HttpDriver
@@ -106,3 +106,33 @@ class World:
 
 def rules(result):
     return {h["rule"] for h in result.policy["rule_hits"]}
+
+
+def mixed_session(w):
+    """Acted, refused, and held steps in one session."""
+    w.nav("/notes")
+    w.fill("/notes", "Title", "weekly notes")
+    w.nav("/login")
+    w.fill("/login", "Password", PASSWORD, sid="pw")
+    w.nav("/order")
+    w.submit_order()
+
+
+def reseal(path, edit):
+    """Apply `edit` to the parsed records, then reseal every record with the chain
+    rule, as an attacker who knows it would."""
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    edit(records)
+    head, session = "", None
+    for index, rec in enumerate(records):
+        for key in ("content_hash", "_prev", "_hash"):
+            rec.pop(key, None)
+        if index and session:
+            rec["session"] = session
+        rec["content_hash"] = content_hash(rec)
+        rec["_prev"] = head
+        rec["_hash"] = chain_hash(head, rec)
+        head = rec["_hash"]
+        if index == 0:
+            session = "sha256:" + rec["_hash"]
+    path.write_text("".join(canonical(r) + "\n" for r in records), encoding="utf-8")

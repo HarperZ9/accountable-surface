@@ -12,14 +12,12 @@ which recompute the decision and the verdict from evidence, catch it.
 
 from __future__ import annotations
 
-import json
-
 import pytest
 from actuation_site import Site
-from actuation_world import CARD, PASSWORD, SpyDriver, World
+from actuation_world import CARD, PASSWORD, SpyDriver, World, mixed_session, reseal
 
 from accountable_surface import rederive
-from accountable_surface.actuation_receipt import canonical, chain_hash, content_hash, verify_chain
+from accountable_surface.actuation_receipt import verify_chain
 
 
 class DroppedWriteDriver(SpyDriver):
@@ -32,36 +30,6 @@ def site():
     s = Site().start()
     yield s
     s.stop()
-
-
-def reseal(path, edit):
-    """Apply `edit` to the parsed records, then reseal every record with the chain
-    rule, as an attacker who knows it would."""
-    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    edit(records)
-    head, session = "", None
-    for index, rec in enumerate(records):
-        for key in ("content_hash", "_prev", "_hash"):
-            rec.pop(key, None)
-        if index and session:
-            rec["session"] = session
-        rec["content_hash"] = content_hash(rec)
-        rec["_prev"] = head
-        rec["_hash"] = chain_hash(head, rec)
-        head = rec["_hash"]
-        if index == 0:
-            session = "sha256:" + rec["_hash"]
-    path.write_text("".join(canonical(r) + "\n" for r in records), encoding="utf-8")
-
-
-def mixed_session(w):
-    """Acted, refused, and held steps in one session."""
-    w.nav("/notes")
-    w.fill("/notes", "Title", "weekly notes")
-    w.nav("/login")
-    w.fill("/login", "Password", PASSWORD, sid="pw")
-    w.nav("/order")
-    w.submit_order()
 
 
 def run(w, level="verdict"):
