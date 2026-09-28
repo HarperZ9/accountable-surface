@@ -128,6 +128,6 @@ def schema_refusal(raw, exc, plan: PlanRef | None, policy_digest: str) -> tuple[
     step_id = step_id if isinstance(step_id, str) else None
     body = {"status": "refused", "step": {"step_id": step_id, "plan_id": plan.plan_id if plan else None},
             "policy": record, "before": None, "execution": {"acted": False}, "after": None,
-            "verification": {"verdict": "not-acted"}, "approval_pending": None, "evidence": None,
+            "verification": {"verdict": "not-acted"}, "approval_pending": None, "rollback": None, "evidence": None,
             "message": f"refused: R9.schema: {exc}"}
     return record, body, step_id

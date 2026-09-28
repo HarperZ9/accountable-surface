@@ -68,7 +68,10 @@ Chromium (`browser.navigate`, `browser.fill`, `browser.click`).
    post-condition, the read repeats until the condition holds or the time runs out.
 7. Verify: the predicate and the effector's own check, met. `verified`, `drift`, or
    `unverifiable`; a timeout or a human check after the act is `unverifiable`.
-8. Receipt: one hash-chained line per step, refusals and holds included.
+8. Rollback: a reversible step that drifted is undone and the verdict stays drift.
+   An irreversible step is never undone by the pipeline, and an unverifiable one is
+   left alone, because nothing settled that it went wrong.
+9. Receipt: one hash-chained line per step, refusals and holds included.
 
 `run_plan` validates the whole plan first, stops at the first step that is not
 verified, and returns a plan certificate that is never VERIFIED unless every step

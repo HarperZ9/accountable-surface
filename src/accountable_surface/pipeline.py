@@ -7,10 +7,13 @@
     S4 gate      bound check + proof-surface gate, bound to the S2 page digest
     S5 act       the existing effector, through AccountableSurface.actuate
     S6 after     the driver's after-snapshot, plus a separate read where the
-                 post-condition names one or the step navigated
+                 post-condition names one or the step navigated; with
+                 settle_ms, re-read until it settles or times out
     S7 verify    predicate + effector verify, met; a challenge after the act
                  makes the step unverifiable and stops it              (predicates.py)
-    S9 receipt   one hash-chained receipt for every step, acted or not
+    S8 rollback  a reversible step that drifted is undone; the verdict stays
+    S9 receipt   one hash-chained receipt for every step, acted or not, naming
+                 the stored evidence L1 to L3 re-derive from          (evidence.py)
 
 The pipeline wraps the loop in `AccountableSurface.actuate`; it does not fork it.
 It never reads a page the driver is not already on, it reads nothing on a paused
@@ -18,74 +21,30 @@ target, and it retries nothing: a stop is final until a person clears it.
 `allow_irreversible` is passed true only when S3 consumed a live approval for
 this exact step, so a blanket grant flag never stands in for a person.
 
-Not built here yet: rollback on a predicate drift (the surface still rolls back
-a failed effector verify), the content-addressed evidence store, and the
-browser and desktop drivers proven live.
+Not built here yet: the desktop (UIA) driver proven live, and re-reading the
+world itself (L4). The browser path is proven live in tests/live.
 """
 
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, replace
-from typing import Any
+from dataclasses import replace
 
 from accountable_surface import plan as plan_mod
 from accountable_surface import policy, predicates
 from accountable_surface.certify import plan_certificate
-from accountable_surface.detectors import challenge, secrets
+from accountable_surface.detectors import secrets
 from accountable_surface.effector import RefusedActuation
 from accountable_surface import evidence as evidence_mod
 from accountable_surface.evidence import redact_snapshot
-from accountable_surface.page_evidence import blank, capture, from_snapshot
+from accountable_surface.page_evidence import blank, from_snapshot
+from accountable_surface.pipeline_parts import (
+    IDENTITY_FIELDS, Context, IrreversibleView, default_reader, has, shows_challenge,
+)
 from accountable_surface.pipeline_record import (
     PlanRef, PlanResult, StepResult, act_message, evidence_summary, message_for, plan_hmac,
     policy_record, reasons, schema_refusal, step_summary,
 )
-
-IDENTITY_FIELDS = {"web-effector": "page_digest", "browser-effector": "page_digest",
-                   "fs-effector": "sha256", "api-effector": "sha256"}
-
-
-def default_reader(url: str):
-    return capture(url, redactor=secrets.redact)
-
-
-class _IrreversibleView:
-    """Delegates every method and lowers the plan's reversible bit, so an R7 hit
-    needs `allow_irreversible` at the surface (the effector plans clicks reversible)."""
-
-    def __init__(self, effector: Any) -> None:
-        self._effector = effector
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._effector, name)
-
-    def preview(self, target, content, before=None):
-        return replace(self._effector.preview(target, content, before), reversible=False)
-
-
-@dataclass
-class _Context:
-    step: Any
-    target: str
-    content: Any
-    reversible: bool
-    now: str
-    paused: frozenset
-    before: Any = None
-    effector_before: Any = None
-    approval: dict | None = None
-    plan: PlanRef | None = None
-    refs: dict | None = None
-
-
-def _challenged(snapshot, reader) -> bool:
-    return bool(challenge.scan(from_snapshot(snapshot)) or (reader and challenge.scan(reader)))
-
-
-def _has(decision, rule: str) -> bool:
-    return any(h["rule"] == rule for h in decision.rule_hits)
-
 
 class ActuationPipeline:
     def __init__(self, surface, effector, *, grant, approvals, receipts, reader=None, config=None,
@@ -153,10 +112,10 @@ class ActuationPipeline:
 
     # --- S1 and S2 -------------------------------------------------------------
 
-    def _prepare(self, step) -> _Context:
+    def _prepare(self, step) -> Context:
         target, content = plan_mod.effector_content(step)
         reversible = self.effector.preview(target, content, None).reversible
-        ctx = _Context(step, target, content, reversible, self.approvals.now(), self.approvals.paused_targets())
+        ctx = Context(step, target, content, reversible, self.approvals.now(), self.approvals.paused_targets())
         if policy.target_key(step) in ctx.paused:
             return ctx  # nothing is read on a paused target
         ctx.effector_before = self.effector.perceive(target)
@@ -183,16 +142,16 @@ class ActuationPipeline:
 
     # --- outcomes --------------------------------------------------------------
 
-    def _stop(self, ctx: _Context, decision) -> StepResult:
+    def _stop(self, ctx: Context, decision) -> StepResult:
         if decision.pause and ctx.before is not None:
             self.approvals.pause(policy.target_key(ctx.step), "R3.challenge", ctx.before.digest)
         msg = message_for("stop", decision, origin=ctx.step.origin, state_path=self.approvals.path)
         return self._record(ctx, decision, "stopped", "not-acted", msg)
 
-    def _hold(self, ctx: _Context, decision) -> StepResult:
+    def _hold(self, ctx: Context, decision) -> StepResult:
         step = ctx.step
         rendering = {**plan_mod.render_public(step), "reasons": reasons(decision), "page": ctx.before.url,
-                     "flagged_spans": [f.span for f in decision.injection_flags] if _has(decision, "R8.echo") else []}
+                     "flagged_spans": [f.span for f in decision.injection_flags] if has(decision, "R8.echo") else []}
         plan_ref = plan_hmac(ctx.plan, self.receipts) or plan_mod.plan_digest([step])
         approval_id = self.approvals.request(plan_mod.step_digest(step), plan_ref, ctx.before.digest, rendering)
         command = f"accountable-surface-authority approve --state {self.approvals.path} --approval-id {approval_id}"
@@ -200,12 +159,12 @@ class ActuationPipeline:
                           approval_id=approval_id, command=command)
         return self._record(ctx, decision, "needs-human", "not-acted", msg, approval_id=approval_id)
 
-    def _act(self, ctx: _Context, decision) -> StepResult:
+    def _act(self, ctx: Context, decision) -> StepResult:
         step = ctx.step
         if decision.approval is not None and not self.approvals.consume(
                 decision.approval["approval_id"], plan_mod.step_digest(step), ctx.before.digest):
             return self._hold(ctx, replace(decision, outcome="confirm", approval=None))
-        effector = _IrreversibleView(self.effector) if _has(decision, "R7.irreversible") else self.effector
+        effector = IrreversibleView(self.effector) if has(decision, "R7.irreversible") else self.effector
         field = IDENTITY_FIELDS.get(ctx.effector_before.organ)
         expected = ctx.effector_before.data.get(field) if field else None
         try:
@@ -218,13 +177,13 @@ class ActuationPipeline:
 
     # --- S6, S7, S9 ------------------------------------------------------------
 
-    def _read_after(self, ctx: _Context):
+    def _read_after(self, ctx: Context):
         snapshot = redact_snapshot(self.effector.perceive(ctx.target).data)[0]
         path = (ctx.step.post_condition or {}).get("path")
         url = ctx.step.origin + str(path) if path else (ctx.step.url if ctx.step.action_kind.endswith(".navigate") else None)
         return snapshot, self._read(url)
 
-    def _after(self, ctx: _Context, acted: bool):
+    def _after(self, ctx: Context, acted: bool):
         """The after read. With settle_ms, re-read until the post-condition holds, a
         forbidden condition or a human check shows, or the time runs out; the last
         flag says it ran out. Never waits on a page showing a human check."""
@@ -235,19 +194,19 @@ class ActuationPipeline:
             if not acted or not post.get("settle_ms"):
                 return snapshot, reader, False
             done = predicates.check(post, driver_after=snapshot, reader_after=reader)[0] == "verified"
-            if done or predicates.forbidden_present(post, reader) or _challenged(snapshot, reader):
+            if done or predicates.forbidden_present(post, reader) or shows_challenge(snapshot, reader):
                 return snapshot, reader, False
             if time.monotonic() >= deadline:
                 return snapshot, reader, True
             time.sleep(0.1)
 
-    def _verify(self, ctx: _Context, decision, outcome, error, *, bound: bool) -> StepResult:
+    def _verify(self, ctx: Context, decision, outcome, error, *, bound: bool) -> StepResult:
         acted = bool(outcome and outcome.acted)
         snapshot, reader, timed_out = self._after(ctx, acted)
         evidence_mod.store_after(self.evidence, ctx.refs, snapshot=snapshot, reader=reader, outcome=outcome,
                                  error=error, timed_out=timed_out)
         after_ev = reader or from_snapshot(snapshot)
-        challenged = _challenged(snapshot, reader)
+        challenged = shows_challenge(snapshot, reader)
         verification = {"verdict": "not-acted", "effector_verify": outcome.verdict if outcome else None}
         if acted:
             pred, detail, independence = predicates.check(ctx.step.post_condition, driver_after=snapshot,
@@ -262,6 +221,7 @@ class ActuationPipeline:
             self.approvals.pause(policy.target_key(ctx.step), "R3.challenge-after", after_ev.digest)
             detail = "a human check appeared after the act; the target is paused"
         verification["verdict"] = verdict
+        rollback = self._rollback(ctx, decision, outcome) if verdict == "drift" else None
         status = "stopped" if challenged else ("acted" if acted else ("failed" if error else "refused"))
         execution = {"acted": acted, "error": error, "precondition_bound": bound,
                      "gate_decision": outcome.decision if outcome else None,
@@ -270,17 +230,31 @@ class ActuationPipeline:
                      "certificate": outcome.certificate if outcome else None}
         after = {**evidence_summary(after_ev), "driver_url": snapshot.get("url")}
         return self._record(ctx, decision, status, verdict, act_message(status, verdict, detail),
-                            execution=execution, after=after, verification=verification)
+                            execution=execution, after=after, verification=verification, rollback=rollback)
+
+    def _rollback(self, ctx: Context, decision, outcome) -> dict:
+        """S8: a reversible step that drifted is undone, and the verdict stays drift.
+        An irreversible one is never touched; one the surface already rolled back
+        is recorded as such."""
+        if outcome is not None and outcome.rolled_back:
+            return {"attempted": True, "ok": True, "by": "surface (the effector's own check failed)"}
+        if has(decision, "R7.irreversible") or not ctx.reversible:
+            return {"attempted": False, "reason": "irreversible: the pipeline never undoes it"}
+        try:
+            self.effector.rollback(self.effector.preview(ctx.target, ctx.content, ctx.effector_before))
+            return {"attempted": True, "ok": True, "by": "pipeline"}
+        except Exception as exc:  # noqa: BLE001 - a failed rollback is recorded, never retried
+            return {"attempted": True, "ok": False, "error": secrets.redact(f"{type(exc).__name__}: {exc}")[0][:300]}
 
     def _record(self, ctx, decision, status, verdict, message, *, approval_id=None, execution=None,
-                after=None, verification=None) -> StepResult:
+                after=None, verification=None, rollback=None) -> StepResult:
         body = {"status": status,
-                "step": step_summary(ctx.step, self.receipts, decision, irreversible=_has(decision, "R7.irreversible"),
+                "step": step_summary(ctx.step, self.receipts, decision, irreversible=has(decision, "R7.irreversible"),
                                      plan=ctx.plan),
                 "policy": policy_record(decision), "before": evidence_summary(ctx.before, decision.injection_flags),
                 "execution": execution or {"acted": False}, "after": after,
                 "verification": verification or {"verdict": verdict}, "approval_pending": approval_id,
-                "evidence": ctx.refs, "message": message}
+                "rollback": rollback, "evidence": ctx.refs, "message": message}
         return StepResult(status, verdict, decision.to_dict(), approval_id, message, self.receipts.emit(body),
                           ctx.step.step_id)
 
