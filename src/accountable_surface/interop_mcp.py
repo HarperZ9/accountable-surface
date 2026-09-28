@@ -21,14 +21,20 @@ one. The allowlist is the boundary; the denylist is a second, explicit assertion
 
 from __future__ import annotations
 
+import argparse
 import json
 import platform
 import sys
 from typing import Any
 
+from accountable_surface import tool_catalog
+
 MCP_PROTOCOL_VERSION = "2025-06-18"
 SERVER_NAME = "accountable-surface"
 _SURFACE = "interop-stdio"
+_PROFILE = "interop"  # the operator picks the profile with --profile; no tool argument does
+PIPELINE_TOOLS = frozenset({"check_plan", "journal", "receipt_verify", "approvals_pending", "browser_navigate",
+                            "browser_fill", "browser_click", "browser_submit", "run_plan", "withdraw_approval"})
 
 # The runtime the action tools need. doctor probes these by name only (find_spec
 # never executes them), so it reports reachability while itself staying stdlib.
@@ -132,7 +138,9 @@ def doctor_payload() -> dict:
         "transport": "stdio",
         "python": platform.python_version(),
         "platform": platform.platform(),
+        "profile": _PROFILE,
         "tools": [t["name"] for t in _tool_defs()],
+        "annotations": {t["name"]: t["annotations"] for t in _tool_defs()},
         "primitives": dict(PRIMITIVES),
         "runtime_dependencies": deps,
         "runtime_reachable": all(deps.values()),
@@ -148,50 +156,36 @@ def doctor_payload() -> dict:
     return payload
 
 
-def _tool(name: str, description: str, properties: dict | None = None,
-          required: list[str] | None = None) -> dict:
-    schema: dict[str, Any] = {"type": "object"}
-    if properties:
-        schema["properties"] = properties
-    if required:
-        schema["required"] = required
-    return {"name": f"{SERVER_NAME}.{name}", "description": description, "inputSchema": schema}
+def _tool_defs(profile: str | None = None) -> list[dict]:
+    """The tools for a profile, read from the one catalog (tool_catalog.py) with
+    their titles and annotations. `interop` is the manifests' eight tools; `plugin`
+    splits read and write and adds the pipeline tools."""
+    return tool_catalog.definitions(profile or _PROFILE)
 
 
-_STR = {"type": "string"}
+def _argument_problem(name: str, args: dict) -> str | None:
+    """The plugin profile's schemas are closed: an argument outside a tool's
+    schema, or a missing required one, is refused before anything runs."""
+    spec = tool_catalog.spec(name)
+    extra = sorted(set(args) - set(spec.properties))
+    if extra:
+        return f"unexpected argument(s) for {name}: {', '.join(extra)}"
+    missing = [k for k in spec.required if k not in args]
+    return f"missing argument(s) for {name}: {', '.join(missing)}" if missing else None
 
 
-def _tool_defs() -> list[dict]:
-    """The eight tools. perceive/journal/receipt/status/doctor are pure reads; propose
-    is the advisory gate; actuate and device_ls run the gated loop for a wired safe verb."""
-    return [
-        _tool("perceive", "Witness a subject as an Observation with its provenance digest: a "
-              "directory (independent os.scandir witness) or a web page / file. No gate, no act.",
-              {"subject": _STR}, ["subject"]),
-        _tool("propose", "Run the pre-execution GATE for (action_kind, target) against the operator's "
-              "grants; returns allow / deny / needs-human. The model cannot self-authorize; "
-              "default-deny with no grant. Never acts.",
-              {"action_kind": _STR, "target": _STR, "expected_digest": _STR}, ["action_kind", "target"]),
-        _tool("actuate", "The full loop for a wired SAFE verb: perceive -> plan -> gate -> act -> "
-              "re-perceive -> independent verify -> journal -> emit an action-receipt/v1. Only "
-              "native.device.ls is wired; anything else is refused. Rolls back a failed reversible act.",
-              {"action_kind": _STR, "target": _STR, "content": {"type": "array", "items": _STR},
-               "expected_digest": _STR, "idempotency_key": _STR}, ["action_kind", "target"]),
-        _tool("device_ls", "The shipped read-only verb: list a directory through the accountable loop "
-              "(native.device.ls), checked against the surface's own independent witness. Takes a path.",
-              {"path": _STR}, ["path"]),
-        _tool("journal", "Return this session's journal (perceptions, gate decisions, actuations) with "
-              "a re-derived chain-integrity verdict. A pure read."),
-        _tool("receipt", "Re-derive the action-receipt/v1 store offline: MATCH / DRIFT / UNVERIFIABLE, "
-              "with the store path. Set include_events to also return the (redacted) events.",
-              {"include_events": {"type": "boolean"}}),
-        _tool("status", "Network-free identity: name, version, tools, primitives. A fast liveness probe."),
-        _tool("doctor", "Readiness: identity, tools, the runtime dependency probe, the hard exclusions, "
-              "and (when the runtime loads) grants, wired safe verbs, and the receipt store."),
-    ]
+def _plugin_call(short: str, args: dict) -> tuple[Any, bool] | None:
+    problem = _argument_problem(short, args)
+    if problem:
+        return {"error": problem}, True
+    if short in PIPELINE_TOOLS:
+        from accountable_surface import pipeline_tools
+
+        return pipeline_tools.current().call(short, args)
+    return None
 
 
-def call_tool(name: str, args: dict) -> tuple[Any, bool]:
+def call_tool(name: str, args: dict, profile: str | None = None) -> tuple[Any, bool]:
     """Dispatch a tool by name. Returns (payload, is_error). Health tools answer with
     no runtime; the action tools import the runtime lazily and return a named error
     (never a crash) when it is unavailable."""
@@ -200,6 +194,10 @@ def call_tool(name: str, args: dict) -> tuple[Any, bool]:
         return status_payload(), False
     if short == "doctor":
         return doctor_payload(), False
+    if (profile or _PROFILE) == "plugin":
+        answered = _plugin_call(short, args)
+        if answered is not None:
+            return answered
     try:
         from accountable_surface.interop_runtime import default_interop
 
@@ -228,7 +226,7 @@ def call_tool(name: str, args: dict) -> tuple[Any, bool]:
     raise ValueError(f"unknown tool: {name!r}")
 
 
-def handle_request(req: dict) -> dict | None:
+def handle_request(req: dict, profile: str | None = None) -> dict | None:
     method = req.get("method")
     mid = req.get("id")
     if "id" not in req:  # a notification -- no response.
@@ -239,14 +237,14 @@ def handle_request(req: dict) -> dict | None:
     if method == "ping":
         return _ok(mid, {})
     if method == "tools/list":
-        return _ok(mid, {"tools": _tool_defs()})
+        return _ok(mid, {"tools": _tool_defs(profile)})
     if method == "tools/call":
         params = req.get("params") or {}
         name = params.get("name")
-        if not isinstance(name, str) or name not in {t["name"] for t in _tool_defs()}:
+        if not isinstance(name, str) or name not in {t["name"] for t in _tool_defs(profile)}:
             return _err(mid, -32602, f"unknown tool: {name!r}")
         try:
-            payload, is_error = call_tool(name, params.get("arguments") or {})
+            payload, is_error = call_tool(name, params.get("arguments") or {}, profile=profile)
             return _ok(mid, _text_result(payload, is_error=is_error))
         except Exception as exc:  # noqa: BLE001 - a tool failure is a named, non-fatal result.
             return _ok(mid, _text_result(f"error: {exc}", is_error=True))
@@ -274,8 +272,13 @@ def serve(stdin=None, stdout=None) -> int:
     return 0
 
 
-def main() -> int:
-    """Console entry point -- run the interop server over stdio."""
+def main(argv: list[str] | None = None) -> int:
+    """Console entry point -- run the interop server over stdio. The operator picks
+    the tool profile here; the model cannot."""
+    global _PROFILE
+    parser = argparse.ArgumentParser(prog="accountable-surface-mcp")
+    parser.add_argument("--profile", choices=("interop", "plugin"), default="interop")
+    _PROFILE = parser.parse_args(argv if argv is not None else sys.argv[1:]).profile
     return serve()
 
 

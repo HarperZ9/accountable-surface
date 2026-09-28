@@ -88,22 +88,6 @@ def step_summary(step, receipts, decision, *, irreversible: bool, plan: PlanRef 
             "value_hmac": None if value is None else receipts.value_hmac(str(value))}
 
 
-WITHHELD = "[withheld:R4]"
-
-
-def stored_step(step, decision) -> dict:
-    """The step as the evidence store keeps it. When R4 refused a secret, every
-    argument value and the post-condition value are withheld, so the store never
-    holds the secret; L2 then re-derives only the rules that do not read them."""
-    data = step.to_dict()
-    if not is_secret(decision):
-        return data
-    data["args"] = {k: WITHHELD for k in data["args"]}
-    if isinstance(data.get("post_condition"), dict) and "value" in data["post_condition"]:
-        data["post_condition"] = {**data["post_condition"], "value": WITHHELD}
-    return data
-
-
 def policy_record(decision) -> dict:
     record = decision.to_dict()
     if is_secret(decision):

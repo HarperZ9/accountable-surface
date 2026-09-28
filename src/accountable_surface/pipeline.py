@@ -33,11 +33,12 @@ from accountable_surface import policy, predicates
 from accountable_surface.certify import plan_certificate
 from accountable_surface.detectors import challenge, secrets
 from accountable_surface.effector import RefusedActuation
+from accountable_surface import evidence as evidence_mod
 from accountable_surface.evidence import redact_snapshot
 from accountable_surface.page_evidence import blank, capture, from_snapshot
 from accountable_surface.pipeline_record import (
-    PlanRef, PlanResult, StepResult, act_message, evidence_summary, is_secret, message_for, plan_hmac,
-    policy_record, reasons, step_summary, stored_step,
+    PlanRef, PlanResult, StepResult, act_message, evidence_summary, message_for, plan_hmac,
+    policy_record, reasons, step_summary,
 )
 
 IDENTITY_FIELDS = {"web-effector": "page_digest", "browser-effector": "page_digest",
@@ -112,6 +113,21 @@ class ActuationPipeline:
         cert = plan_certificate([(r.step_id, r.verdict) for r in results], not_run)
         return PlanResult(plan_id, results, stopped, not_run, cert.to_dict())
 
+    def check_step(self, raw) -> dict:
+        """S1 to S3 for one step, advisory: reads the page the step names and
+        runs the policy check, and writes nothing (no pending approval, no
+        evidence, no receipt) and never acts."""
+        try:
+            step = raw if isinstance(raw, plan_mod.ActionStep) else plan_mod.step_from_dict(raw)
+            ctx = self._prepare(step)
+        except (plan_mod.PlanError, RefusedActuation) as exc:
+            step_id = raw.get("step_id") if isinstance(raw, dict) else None
+            return {"step_id": step_id, "outcome": "refuse", "rule_hits": [
+                {"rule": "R9.schema", "version": policy.VERSION, "outcome": "refuse", "reason": str(exc)}]}
+        decision = policy.decide(step, ctx.before, grant=self.grant, approval=ctx.approval, paused=ctx.paused,
+                                 now=ctx.now, plan_reversible=ctx.reversible, config=self.config)
+        return {"step_id": step.step_id, **policy_record(decision)}
+
     def run_step(self, raw, *, plan: PlanRef | None = None) -> StepResult:
         try:
             step = raw if isinstance(raw, plan_mod.ActionStep) else plan_mod.step_from_dict(raw)
@@ -121,7 +137,7 @@ class ActuationPipeline:
         ctx.plan = plan
         decision = policy.decide(step, ctx.before, grant=self.grant, approval=ctx.approval, paused=ctx.paused,
                                  now=ctx.now, plan_reversible=ctx.reversible, config=self.config)
-        ctx.refs = self._store_inputs(ctx, decision)
+        ctx.refs = evidence_mod.store_inputs(self.evidence, ctx, decision, grant=self.grant, config=self.config)
         if decision.outcome == "stop":
             return self._stop(ctx, decision)
         if decision.outcome == "refuse":
@@ -196,30 +212,6 @@ class ActuationPipeline:
             outcome, error = None, secrets.redact(f"{type(exc).__name__}: {exc}")[0][:300]
         return self._verify(ctx, decision, outcome, error, bound=expected is not None)
 
-    # --- evidence ----------------------------------------------------------------
-
-    def _store_inputs(self, ctx: _Context, decision) -> dict | None:
-        """Everything policy.decide read, so L2 can re-run it offline. A value the
-        policy refused as a secret is withheld before anything is stored."""
-        if self.evidence is None:
-            return None
-        before = self.evidence.put(ctx.before.to_dict()) if ctx.before is not None else None
-        grant = self.evidence.put(self.grant) if self.grant is not None else None
-        inputs = {"schema": "accountable-surface.policy-inputs/v1", "step": stored_step(ctx.step, decision),
-                  "value_withheld": is_secret(decision), "before": before, "grant": grant,
-                  "approval": ctx.approval, "paused": sorted(ctx.paused), "now": ctx.now,
-                  "plan_reversible": ctx.reversible, "config": self.config}
-        return {"inputs": self.evidence.put(inputs), "after": None}
-
-    def _store_after(self, ctx: _Context, snapshot, reader, outcome, error) -> None:
-        if self.evidence is None or ctx.refs is None:
-            return
-        after = {"schema": "accountable-surface.after-evidence/v1", "driver": snapshot,
-                 "reader": self.evidence.put(reader.to_dict()) if reader is not None else None,
-                 "acted": bool(outcome and outcome.acted), "effector_verified": bool(outcome and outcome.verified),
-                 "error": error}
-        ctx.refs["after"] = self.evidence.put(after)
-
     # --- S6, S7, S9 ------------------------------------------------------------
 
     def _after(self, ctx: _Context):
@@ -230,7 +222,8 @@ class ActuationPipeline:
 
     def _verify(self, ctx: _Context, decision, outcome, error, *, bound: bool) -> StepResult:
         snapshot, reader = self._after(ctx)
-        self._store_after(ctx, snapshot, reader, outcome, error)
+        evidence_mod.store_after(self.evidence, ctx.refs, snapshot=snapshot, reader=reader, outcome=outcome,
+                                 error=error)
         after_ev = reader or from_snapshot(snapshot)
         challenged = bool(challenge.scan(from_snapshot(snapshot)) or (reader and challenge.scan(reader)))
         acted = bool(outcome and outcome.acted)

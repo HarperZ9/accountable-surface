@@ -21,7 +21,7 @@ import platform
 import sys
 from typing import Any
 
-from accountable_surface import __version__
+from accountable_surface import __version__, tool_catalog
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 
@@ -98,20 +98,8 @@ def doctor_payload() -> dict:
 
 
 def _tool_defs() -> list[dict]:
-    return [
-        {
-            "name": STATUS_TOOL,
-            "description": "Emit the Accountable Surface's network-free identity "
-                           "envelope: no perception, no gate, no actuation.",
-            "inputSchema": {"type": "object", "properties": {}},
-        },
-        {
-            "name": DOCTOR_TOOL,
-            "description": "Report the bundled surface's readiness: identity, the "
-                           "exposed tools, and basic environment checks.",
-            "inputSchema": {"type": "object", "properties": {}},
-        },
-    ]
+    """The two health tools, with titles and annotations from the one catalog."""
+    return tool_catalog.definitions("health")
 
 
 def call_tool(name: str, args: dict) -> str:

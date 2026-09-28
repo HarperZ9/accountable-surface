@@ -133,9 +133,8 @@ def receipt_from_outcome(
     yields a byte-stable event. `receipts[].hash` is computed last, over every field
     except itself, so it seals the event's semantic content.
 
-    The receptor, policy ref, verification ref, and input ref default to the
-    native-control labels, so that path's events are unchanged; another effector
-    passes its own, and nothing native-control is written into its event."""
+    The labels default to native-control's, so that path's events are unchanged;
+    another effector passes its own, and nothing native-control enters its event."""
     labels = {"receptor": receptor or RECEPTOR, "policy_ref": policy_ref}
     event_type, state, stop_reason, verdict = _outcome_terms(outcome)
     nc = native_control_receipt or {}

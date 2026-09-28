@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
-from accountable_surface import __version__
+from accountable_surface import __version__, tool_catalog
 from accountable_surface.authority_store import AuthorityState, AuthorityStore, load_operator_grants
 from accountable_surface.grant import action_authorization
 from accountable_surface.read_authority import (
@@ -141,7 +142,14 @@ _registry = load_effectors()
 mcp = FastMCP("accountable-surface")
 
 
-@mcp.tool()
+def _meta(name: str) -> dict:
+    """Title, description, and annotations from the one tool catalog."""
+    spec = tool_catalog.spec(name)
+    return {"title": spec.title, "description": spec.description,
+            "annotations": ToolAnnotations(**spec.annotations())}
+
+
+@mcp.tool(**_meta("perceive"))
 def perceive(subject: str) -> dict:
     """Perceive a web page or artifact as a witnessed Observation (URL, file
     path). Returns the observation with its provenance digest -- a structural
@@ -149,7 +157,7 @@ def perceive(subject: str) -> dict:
     return remote_perceive_impl(_surface, _authority, subject)
 
 
-@mcp.tool()
+@mcp.tool(**_meta("propose"))
 def propose(action_kind: str, target: str, expected_digest: str | None = None) -> dict:
     """Propose an action on a target. It is checked against the operator's
     pre-loaded authorization grants by the pre-execution gate (allow / deny /
@@ -158,7 +166,7 @@ def propose(action_kind: str, target: str, expected_digest: str | None = None) -
     return propose_impl(_surface, _authority.load_for_remote_call().grants, action_kind, target, expected_digest)
 
 
-@mcp.tool()
+@mcp.tool(**_meta("actuate"))
 def actuate(action_kind: str, target: str, content: str,
             expected_digest: str | None = None, justification: str | None = None,
             idempotency_key: str | None = None) -> dict:
@@ -175,7 +183,7 @@ def actuate(action_kind: str, target: str, content: str,
                         idempotency_key=idempotency_key)
 
 
-@mcp.tool()
+@mcp.tool(**_meta("session_journal"))
 def session_journal() -> dict:
     """Return every perception and decision in the journal -- including entries
     replayed from prior sessions when ACCOUNTABLE_SURFACE_JOURNAL persistence is
@@ -183,7 +191,7 @@ def session_journal() -> dict:
     return session_journal_impl(_surface, _authority)
 
 
-@mcp.tool()
+@mcp.tool(**_meta("interocept"))
 def interocept() -> dict:
     """Perceive the surface's own session: a witnessed, tamper-evident view of
     what it has perceived and what the gate decided (counts + a journal digest).
@@ -204,7 +212,7 @@ def _doctor_payload() -> dict:
                       "interocept", "status", "doctor"]}
 
 
-@mcp.tool()
+@mcp.tool(**_meta("status"))
 def status() -> dict:
     """Liveness and identity of the Accountable Surface MCP server. Network-free:
     no perception, no gate, no actuation -- a fast health probe (the Flywheel lane
@@ -212,7 +220,7 @@ def status() -> dict:
     return _status_payload()
 
 
-@mcp.tool()
+@mcp.tool(**_meta("doctor"))
 def doctor() -> dict:
     """Readiness: identity, the exposed tools, whether operator grants are loaded,
     which effectors are actuable (with the reach of each and every spec entry that

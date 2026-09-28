@@ -155,6 +155,13 @@ class ApprovalStore:
             return self._public(row) | {"status": "approved"}
         return self._tx(work)
 
+    def withdraw(self, approval_id: str) -> bool:
+        """Close a pending request the agent made. It can only close a pending
+        request; it never approves, and an approved or used one is left alone."""
+        return self._tx(lambda c: c.execute("UPDATE approvals SET status='withdrawn', decided_at=? "
+                                            "WHERE approval_id=? AND status='pending'",
+                                            (self.now(), approval_id)).rowcount == 1)
+
     def deny(self, approval_id: str, approver: str = "operator") -> None:
         self._tx(lambda c: c.execute("UPDATE approvals SET status='denied', approver=?, decided_at=? "
                                      "WHERE approval_id=? AND status='pending'", (approver, self.now(), approval_id)))

@@ -26,6 +26,7 @@ from pathlib import Path
 
 from accountable_surface.detectors import secrets
 from accountable_surface.page_evidence import KEPT_ATTRS, Control, PageEvidence
+from accountable_surface.pipeline_record import is_secret
 
 _REF = re.compile(r"sha256:([0-9a-f]{64})")
 SECRET_FIELD = "[redacted:secret-field]"
@@ -115,3 +116,46 @@ def redact_snapshot(snapshot: dict) -> tuple[dict, int]:
     if "fields" in snapshot:
         out["fields"] = fields
     return out, count
+
+
+WITHHELD = "[withheld:R4]"
+
+
+def stored_step(step, decision) -> dict:
+    """The step as the evidence store keeps it. When R4 refused a secret, every
+    argument value and the post-condition value are withheld, so the store never
+    holds the secret; L2 then re-derives only the rules that do not read them."""
+    data = step.to_dict()
+    if not is_secret(decision):
+        return data
+    data["args"] = {k: WITHHELD for k in data["args"]}
+    if isinstance(data.get("post_condition"), dict) and "value" in data["post_condition"]:
+        data["post_condition"] = {**data["post_condition"], "value": WITHHELD}
+    return data
+
+
+def store_inputs(store, ctx, decision, *, grant, config) -> dict | None:
+    """Everything policy.decide read, so L2 can re-run it offline: the step (its
+    values withheld when R4 refused a secret), the before page, the grant, the
+    approval reference, the pauses, the time, and the config."""
+    if store is None:
+        return None
+    before = store.put(ctx.before.to_dict()) if ctx.before is not None else None
+    grant_ref = store.put(grant) if grant is not None else None
+    inputs = {"schema": "accountable-surface.policy-inputs/v1", "step": stored_step(ctx.step, decision),
+              "value_withheld": is_secret(decision), "before": before, "grant": grant_ref,
+              "approval": ctx.approval, "paused": sorted(ctx.paused), "now": ctx.now,
+              "plan_reversible": ctx.reversible, "config": config}
+    return {"inputs": store.put(inputs), "after": None}
+
+
+def store_after(store, refs, *, snapshot, reader, outcome, error) -> None:
+    """What the verdict read: the redacted driver snapshot, the separate reader's
+    page, the effector's own verify bit, and the error. Names it in `refs`."""
+    if store is None or refs is None:
+        return
+    after = {"schema": "accountable-surface.after-evidence/v1", "driver": snapshot,
+             "reader": store.put(reader.to_dict()) if reader is not None else None,
+             "acted": bool(outcome and outcome.acted), "effector_verified": bool(outcome and outcome.verified),
+             "error": error}
+    refs["after"] = store.put(after)
