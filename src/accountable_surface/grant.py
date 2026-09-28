@@ -9,6 +9,8 @@ same grant, and they have no meaning inside proof-surface's schema:
                            (see ``bounds.py``).
   ``allowed_reads``        which read scopes the remote MCP layer may use for
                            preconditions, verification, rollback, and journal replay.
+  ``target_tiers``         the read / click / full tier per origin or window that the
+                           actuation policy check reads (see ``tiers.py``).
 
 Strip them before handing any grant to propose() or actuate() so the schema check
 never sees them.
@@ -19,7 +21,7 @@ boundary that calls into proof-surface (world/session.py, server.py, …).
 
 from __future__ import annotations
 
-LOCAL_SCOPE_FIELDS = ("allowed_perceptions", "allowed_bounds", "allowed_reads")
+LOCAL_SCOPE_FIELDS = ("allowed_perceptions", "allowed_bounds", "allowed_reads", "target_tiers")
 
 
 def action_authorization(grant):
