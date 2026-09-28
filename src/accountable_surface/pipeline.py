@@ -30,11 +30,13 @@ from typing import Any
 
 from accountable_surface import plan as plan_mod
 from accountable_surface import policy, predicates
+from accountable_surface.certify import plan_certificate
 from accountable_surface.detectors import challenge, secrets
 from accountable_surface.effector import RefusedActuation
 from accountable_surface.page_evidence import blank, capture, from_snapshot
 from accountable_surface.pipeline_record import (
-    StepResult, act_message, evidence_summary, message_for, policy_record, reasons, step_summary,
+    PlanRef, PlanResult, StepResult, act_message, evidence_summary, message_for, plan_hmac, policy_record,
+    reasons, step_summary,
 )
 
 IDENTITY_FIELDS = {"web-effector": "page_digest", "browser-effector": "page_digest",
@@ -70,6 +72,7 @@ class _Context:
     before: Any = None
     effector_before: Any = None
     approval: dict | None = None
+    plan: PlanRef | None = None
 
 
 def _has(decision, rule: str) -> bool:
@@ -83,21 +86,35 @@ class ActuationPipeline:
         self.reader = reader or default_reader
         self.config = config
 
-    def run_plan(self, steps) -> list[StepResult]:
-        """Run steps in order and stop at the first one that is not verified."""
+    def run_plan(self, doc) -> PlanResult:
+        """Validate the whole plan, then run its steps in order and stop at the
+        first one that is not verified. The certificate is the meet over every
+        step, the ones that never ran included."""
+        ids = plan_mod.step_ids(doc)
+        plan_id = doc.get("plan_id") if isinstance(doc, dict) and isinstance(doc.get("plan_id"), str) else None
+        try:
+            plan_id, steps = plan_mod.plan_from_document(doc)
+        except plan_mod.PlanError as exc:
+            refusal = self._schema_refusal({"step_id": None}, exc, plan=PlanRef(plan_id, ""))
+            return PlanResult(plan_id, [refusal], None, ids, plan_certificate([], ids).to_dict())
+        ref = PlanRef(plan_id, plan_mod.plan_digest(steps))
         results = []
-        for raw in steps:
-            results.append(self.run_step(raw))
+        for step in steps:
+            results.append(self.run_step(step, plan=ref))
             if results[-1].verdict != "verified":
                 break
-        return results
+        not_run = [s.step_id for s in steps[len(results):]]
+        stopped = results[-1].step_id if results[-1].verdict != "verified" else None
+        cert = plan_certificate([(r.step_id, r.verdict) for r in results], not_run)
+        return PlanResult(plan_id, results, stopped, not_run, cert.to_dict())
 
-    def run_step(self, raw) -> StepResult:
+    def run_step(self, raw, *, plan: PlanRef | None = None) -> StepResult:
         try:
             step = raw if isinstance(raw, plan_mod.ActionStep) else plan_mod.step_from_dict(raw)
             ctx = self._prepare(step)
         except (plan_mod.PlanError, RefusedActuation) as exc:
-            return self._schema_refusal(raw, exc)
+            return self._schema_refusal(raw, exc, plan=plan)
+        ctx.plan = plan
         decision = policy.decide(step, ctx.before, grant=self.grant, approval=ctx.approval, paused=ctx.paused,
                                  now=ctx.now, plan_reversible=ctx.reversible, config=self.config)
         if decision.outcome == "stop":
@@ -151,8 +168,8 @@ class ActuationPipeline:
         step = ctx.step
         rendering = {**plan_mod.render_public(step), "reasons": reasons(decision), "page": ctx.before.url,
                      "flagged_spans": [f.span for f in decision.injection_flags] if _has(decision, "R8.echo") else []}
-        approval_id = self.approvals.request(plan_mod.step_digest(step), plan_mod.plan_digest([step]),
-                                             ctx.before.digest, rendering)
+        plan_ref = plan_hmac(ctx.plan, self.receipts) or plan_mod.plan_digest([step])
+        approval_id = self.approvals.request(plan_mod.step_digest(step), plan_ref, ctx.before.digest, rendering)
         command = f"accountable-surface-authority approve --state {self.approvals.path} --approval-id {approval_id}"
         msg = message_for("confirm", decision, origin=step.origin, state_path=self.approvals.path,
                           approval_id=approval_id, command=command)
@@ -213,22 +230,26 @@ class ActuationPipeline:
     def _record(self, ctx, decision, status, verdict, message, *, approval_id=None, execution=None,
                 after=None, verification=None) -> StepResult:
         body = {"status": status,
-                "step": step_summary(ctx.step, self.receipts, decision, irreversible=_has(decision, "R7.irreversible")),
+                "step": step_summary(ctx.step, self.receipts, decision, irreversible=_has(decision, "R7.irreversible"),
+                                     plan=ctx.plan),
                 "policy": policy_record(decision), "before": evidence_summary(ctx.before, decision.injection_flags),
                 "execution": execution or {"acted": False}, "after": after,
                 "verification": verification or {"verdict": verdict}, "approval_pending": approval_id,
                 "message": message}
-        return StepResult(status, verdict, decision.to_dict(), approval_id, message, self.receipts.emit(body))
+        return StepResult(status, verdict, decision.to_dict(), approval_id, message, self.receipts.emit(body),
+                          ctx.step.step_id)
 
-    def _schema_refusal(self, raw, exc) -> StepResult:
+    def _schema_refusal(self, raw, exc, *, plan: PlanRef | None = None) -> StepResult:
         hit = {"rule": "R9.schema", "version": policy.VERSION, "outcome": "refuse", "reason": str(exc)}
         # A malformed step may still carry a secret value, so nothing digested over
         # the raw step is kept: only its id, when it has one.
         decision = policy.PolicyDecision("refuse", [hit], None, None, policy.policy_digest(self.config), None)
         message = f"refused: R9.schema: {exc}"
         step_id = raw.get("step_id") if isinstance(raw, dict) else None
-        body = {"status": "refused", "step": {"step_id": step_id if isinstance(step_id, str) else None},
+        step_id = step_id if isinstance(step_id, str) else None
+        body = {"status": "refused", "step": {"step_id": step_id, "plan_id": plan.plan_id if plan else None},
                 "policy": decision.to_dict(),
                 "before": None, "execution": {"acted": False}, "after": None,
                 "verification": {"verdict": "not-acted"}, "approval_pending": None, "message": message}
-        return StepResult("refused", "not-acted", decision.to_dict(), None, message, self.receipts.emit(body))
+        return StepResult("refused", "not-acted", decision.to_dict(), None, message, self.receipts.emit(body),
+                          step_id)

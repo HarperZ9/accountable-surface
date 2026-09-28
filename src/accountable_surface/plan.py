@@ -113,6 +113,40 @@ def step_from_dict(raw: dict) -> ActionStep:
                       bool(raw.get("declared_irreversible", False)), raw.get("cites_observation"))
 
 
+def plan_from_document(doc) -> tuple[str | None, list[ActionStep]]:
+    """Validate a whole plan before any step runs: the schema string, a plan id,
+    and every step. A bare list of steps is accepted as a plan with no id.
+    Raises PlanError naming the first step that fails, so step three being
+    malformed never lets steps one and two act."""
+    if isinstance(doc, list):
+        plan_id, raw_steps = None, doc
+    else:
+        _require(isinstance(doc, dict), "a plan must be an object or a list of steps")
+        _require(doc.get("schema") == SCHEMA, f"a plan must declare schema {SCHEMA!r}")
+        _require(isinstance(doc.get("plan_id"), str) and doc["plan_id"] != "", "plan_id must be a non-empty string")
+        plan_id, raw_steps = doc["plan_id"], doc.get("steps")
+    _require(isinstance(raw_steps, list) and raw_steps != [], "a plan needs a non-empty list of steps")
+    steps, seen = [], set()
+    for index, raw in enumerate(raw_steps):
+        label = raw.get("step_id") if isinstance(raw, dict) and isinstance(raw.get("step_id"), str) else f"#{index + 1}"
+        try:
+            step = step_from_dict(raw)
+        except PlanError as exc:
+            raise PlanError(f"step {label}: {exc}") from exc
+        _require(step.step_id not in seen, f"step {label}: step_id is used twice")
+        seen.add(step.step_id)
+        steps.append(step)
+    return plan_id, steps
+
+
+def step_ids(doc) -> list[str]:
+    """The step ids a plan document names, readable even when it does not validate."""
+    raw_steps = doc if isinstance(doc, list) else (doc.get("steps") if isinstance(doc, dict) else None)
+    if not isinstance(raw_steps, list):
+        return []
+    return [r["step_id"] for r in raw_steps if isinstance(r, dict) and isinstance(r.get("step_id"), str)]
+
+
 def post_condition_problem(step: ActionStep) -> str | None:
     """R9: a state-changing step needs a post-condition the planned readback can
     settle. Returns why not, or None."""

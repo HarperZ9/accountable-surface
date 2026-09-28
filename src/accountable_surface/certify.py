@@ -52,3 +52,24 @@ def action_certificate(*, decision: str, verdict: str, acted: bool,
             _GROUND_ORACLE,
             (("confidence", str(grounding.confidence)), ("digest", str(grounding.digest)))))
     return compose(certs, claim=f"action: decision={decision} verdict={verdict}")
+
+
+_STEP_ORACLE = "accountable-surface-step-v1"
+_STEP = {"verified": Verdict.VERIFIED, "drift": Verdict.REFUTED, "unverifiable": Verdict.UNVERIFIABLE}
+
+
+def step_certificate(step_id: str | None, verdict: str) -> Certificate:
+    """One pipeline step's typed verdict on the lattice: verified to VERIFIED,
+    drift to REFUTED, and unverifiable or not-acted to UNVERIFIABLE."""
+    return Certificate(f"step {step_id}: {verdict}", _STEP.get(verdict, Verdict.UNVERIFIABLE), _STEP_ORACLE,
+                       (("step_id", str(step_id)), ("verdict", str(verdict))))
+
+
+def plan_certificate(verdicts: list[tuple[str | None, str]], not_run: list[str]) -> Certificate:
+    """The meet over every step of a plan. A step that never ran is UNVERIFIABLE,
+    so a plan that stopped early is never VERIFIED, and a drift anywhere is
+    REFUTED whatever the other steps say."""
+    certs = [step_certificate(sid, v) for sid, v in verdicts]
+    certs += [Certificate(f"step {sid}: not run", Verdict.UNVERIFIABLE, _STEP_ORACLE, (("step_id", sid),))
+              for sid in not_run]
+    return compose(certs, claim=f"plan: {len(verdicts)} ran, {len(not_run)} not run")
