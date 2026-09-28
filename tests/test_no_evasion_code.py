@@ -21,7 +21,7 @@ SRC = ROOT / "src" / "accountable_surface"
 DRIVER_MODULES = (
     "playwright_driver.py", "http_driver.py", "browser_effector.py", "web_effector.py",
     "uia_transport.py", "uia_effector.py", "native_control_effector.py", "os_effector.py",
-    "api_transport.py", "api_effector.py",
+    "api_transport.py", "api_effector.py", "page_evidence.py",
 )
 EVASION_STRINGS = (
     "automationcontrolled", "disable-blink-features", "navigator.webdriver", "add_init_script",
