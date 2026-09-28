@@ -4,6 +4,10 @@
 // model reads -- ascii shape + structure contours (overlay.js) + OKLab colour map.
 // No raw screen pixels cross the wire; the witnessed sight is the shared medium.
 
+// The session token the server wrote into this page. Every POST sends it back;
+// a page from any other origin cannot read it.
+const WORLD_TOKEN = (document.querySelector('meta[name="world-token"]') || {}).content || "";
+
 const $ = id => document.getElementById(id);
 
 function render(sight) {
@@ -33,8 +37,8 @@ function region() {
 }
 $("start").addEventListener("click", async () => {
   const res = await (await fetch("/capture/start", { method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-World-Token": WORLD_TOKEN },
     body: JSON.stringify({ region: region() }) })).json();
   $("status").textContent = res.error ? "refused: " + res.error : "starting…";
 });
-$("stop").addEventListener("click", () => fetch("/capture/stop", { method: "POST" }));
+$("stop").addEventListener("click", () => fetch("/capture/stop", { method: "POST", headers: { "X-World-Token": WORLD_TOKEN } }));

@@ -4,6 +4,10 @@
 // (gate decision, the hands acting, the receipt) and the world's new state (material + journal).
 // The operator can propose actions too. The receipt is re-checked CLIENT-SIDE (recheck.js) -- the
 // meet re-derived from the certificate's own evidence. Trust nothing; check it.
+
+// The session token the server wrote into this page. Every POST sends it back;
+// a page from any other origin cannot read it.
+const WORLD_TOKEN = (document.querySelector('meta[name="world-token"]') || {}).content || "";
 import { recheckComposed } from "./recheck.js";
 
 const $ = id => document.getElementById(id);
@@ -83,7 +87,7 @@ async function propose() {
   };
   $("act-btn").disabled = true;
   try {
-    const r = await fetch("./act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const r = await fetch("./act", { method: "POST", headers: { "Content-Type": "application/json", "X-World-Token": WORLD_TOKEN }, body: JSON.stringify(body) });
     const step = await r.json();
     if (step.error) { announce("error: " + step.error); return; }
     renderMove(step);
@@ -125,7 +129,7 @@ async function runAutopilot() {
   setRunning(true);
   try {
     const r = await fetch("./autopilot", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json", "X-World-Token": WORLD_TOKEN },
       body: JSON.stringify({ goal: $("ap-goal").value.trim(), max_steps: parseInt($("ap-steps").value) || 4 }),
     });
     const d = await r.json();
@@ -137,7 +141,7 @@ async function runAutopilot() {
 }
 
 async function stopAutopilot() {
-  try { await fetch("./autopilot/stop", { method: "POST" }); } catch (e) { /* ignore */ }
+  try { await fetch("./autopilot/stop", { method: "POST", headers: { "X-World-Token": WORLD_TOKEN } }); } catch (e) { /* ignore */ }
   announce("Autopilot stop requested.");
 }
 

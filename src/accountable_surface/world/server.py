@@ -21,6 +21,7 @@ from pathlib import Path
 from coherence_membrane.pngview import is_png
 from coherence_membrane.native_capture import ScreenCaptureSource, capture_available
 
+from . import origin_guard
 from .screen import witness_capture
 from .session import WorldSession, screen_capture_allowed
 from .sight import sight_of, describe_sight
@@ -69,6 +70,7 @@ class World:
         self._capturing = False
         self._goal = ""
         self._chat: list = []   # the small conversation memory: what they said about what they see
+        self.token = origin_guard.new_token()   # admits only the pages this server serves
 
     @property
     def goal(self) -> str:
@@ -225,16 +227,12 @@ class Handler(BaseHTTPRequestHandler):
         data = body if isinstance(body, (bytes, bytearray)) else json.dumps(body).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
 
     def do_OPTIONS(self):
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_response(204)   # no allow-origin: a cross-origin preflight fails here
         self.end_headers()
 
     def do_GET(self):
@@ -259,6 +257,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0]
+        if not origin_guard.admitted(path, self.headers, _WORLD.token):
+            return self._send(403, {"error": "missing or wrong session token"})
         n = min(int(self.headers.get("Content-Length") or 0), 32 * 1024 * 1024)  # cap the body (32 MiB)
         try:
             body = json.loads(self.rfile.read(n) or b"{}") if n else {}
@@ -319,7 +319,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         try:
             self._sse("world", _WORLD.snapshot())
@@ -342,7 +341,10 @@ class Handler(BaseHTTPRequestHandler):
         fp = (_WEB / rel).resolve()
         if not fp.is_file() or _WEB not in fp.parents:
             return self._send(404, {"error": "not found"})
-        self._send(200, fp.read_bytes(), _CT.get(fp.suffix.lower(), "application/octet-stream"))
+        data = fp.read_bytes()
+        if fp.suffix.lower() == ".html":
+            data = origin_guard.inject(data, _WORLD.token)
+        self._send(200, data, _CT.get(fp.suffix.lower(), "application/octet-stream"))
 
     def log_message(self, *a):
         pass  # quiet by default

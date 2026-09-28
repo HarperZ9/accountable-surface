@@ -5,6 +5,10 @@
 // that witnessed sight -- the same frame, two ways of seeing. The chat is grounded in the sight,
 // with a small memory the model carries across the conversation.
 
+// The session token the server wrote into this page. Every POST sends it back;
+// a page from any other origin cannot read it.
+const WORLD_TOKEN = (document.querySelector('meta[name="world-token"]') || {}).content || "";
+
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -37,7 +41,7 @@ async function addImage(file) {
   setStatus("witnessing your image…");
   try {
     const { dataUrl, b64, name } = await fileToPng(file);
-    const d = await (await fetch("./upload", { method: "POST", headers: { "Content-Type": "application/json" },
+    const d = await (await fetch("./upload", { method: "POST", headers: { "Content-Type": "application/json", "X-World-Token": WORLD_TOKEN },
       body: JSON.stringify({ name, png_b64: b64 }) })).json();
     if (d.error) { setStatus("upload: " + d.error); return; }
     currentSight = d.sight;
@@ -98,7 +102,7 @@ async function send() {
   $("chat-send").disabled = true;
   setStatus("the model is looking…");
   try {
-    const d = await (await fetch("./chat", { method: "POST", headers: { "Content-Type": "application/json" },
+    const d = await (await fetch("./chat", { method: "POST", headers: { "Content-Type": "application/json", "X-World-Token": WORLD_TOKEN },
       body: JSON.stringify({ message }) })).json();
     addMsg("assistant", d.error ? "(" + d.error + ")" : d.reply);
   } catch (e) { addMsg("assistant", "(couldn't reach the model: " + e.message + ")"); }
