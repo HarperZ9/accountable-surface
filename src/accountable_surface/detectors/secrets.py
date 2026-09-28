@@ -203,8 +203,31 @@ def redact(text: str) -> tuple[str, int]:
     return text, count
 
 
+SCRIPT_VALUE_ACCESS = re.compile(
+    r"\.value\b|setattribute\(\s*['\"]value|\.fill\(|\.type\(|\.press\(|sendkeys|inserttext"
+    r"|\.presssequentially\(", re.I)
+_REDACTED = re.compile(r"\[redacted:([a-z-]+)\]")
+
+
+def script_refusal(script: str) -> str | None:
+    """Why a script is refused under R4, or None. A fill into a secret field is
+    refused, so a script is too when it reads or writes a value and names a
+    secret field, or when it carries a secret-shaped literal. The reason names
+    the field words or the shape, never the value."""
+    if not isinstance(script, str) or not script:
+        return None
+    shapes = sorted(set(_REDACTED.findall(redact(script)[0])))
+    if shapes:
+        return f"the script carries a value shaped like a {', '.join(shapes)}"
+    words = _label_hits(script)
+    if words and SCRIPT_VALUE_ACCESS.search(script):
+        return f"the script reads or writes the value of a secret field ({', '.join(words)})"
+    return None
+
+
 def lexicon() -> dict:
     return {"version": VERSION, "autocomplete": sorted(AUTOCOMPLETE), "field_words": sorted(FIELD_WORDS),
             "field_compounds": list(FIELD_COMPOUNDS), "key_pattern": KEY_PATTERN.pattern,
             "entropy": [ENTROPY_MIN_LEN, ENTROPY_BITS], "key_files": sorted(KEY_FILE_NAMES),
-            "key_suffixes": list(KEY_FILE_SUFFIXES)}
+            "key_suffixes": list(KEY_FILE_SUFFIXES),
+            "script": {"write_markers": SCRIPT_VALUE_ACCESS.pattern}}

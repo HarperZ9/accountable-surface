@@ -190,3 +190,14 @@ def test_a_plan_runs_in_the_live_browser_and_certifies(world, site):
     result = world.pipe.run_plan(plan)
     assert [r.verdict for r in result.results] == ["verified"] * 3
     assert result.certificate["verdict"] == "verified"
+
+
+def test_a_script_that_writes_the_password_is_refused_and_nothing_is_typed(world):
+    world.nav("/login")
+    result = world.step("js", "browser.evaluate", "/login",
+                        args={"value": f"document.getElementById('password').value = '{PASSWORD}'"},
+                        post={"kind": "title_is", "value": "Sign in"})
+    assert result.status == "refused" and "R4.script" in rules(result)
+    assert "evaluate" not in world.driver.calls
+    assert world.dom("document.getElementById('password').value") == ""
+    assert PASSWORD.encode() not in world.all_bytes()

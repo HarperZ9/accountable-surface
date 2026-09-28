@@ -105,6 +105,9 @@ def _r3(before) -> list:
 
 def _r4(step, control) -> list:
     verb = step.action_kind.rsplit(".", 1)[-1]
+    if verb == "evaluate":
+        why = secrets.script_refusal(str(step.args.get("value", "")))
+        return [_hit("R4.script", "refuse", why)] if why else []
     if verb not in TEXT_VERBS:
         return []
     hits = [_hit("R4.secret-field", "refuse", r) for r in secrets.field_markers(control)]

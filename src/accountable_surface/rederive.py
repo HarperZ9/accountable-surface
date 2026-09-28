@@ -38,7 +38,7 @@ RANK = {"MATCH": 0, "UNVERIFIABLE": 1, "DRIFT": 2}
 L2_SOURCES = ("policy.py", "plan.py", "tiers.py", "page_evidence.py", "evidence.py", "detectors/secrets.py",
               "detectors/challenge.py", "detectors/irreversible.py", "detectors/injection.py")
 L3_SOURCES = ("predicates.py", "page_evidence.py", "evidence.py", "detectors/challenge.py")
-VALUE_RULES = ("R4.value-shape", "R4.upload", "R8.echo")
+VALUE_RULES = ("R4.value-shape", "R4.upload", "R4.script", "R8.echo")
 
 
 def current_sources() -> dict:
