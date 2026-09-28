@@ -35,8 +35,8 @@ from pathlib import Path
 
 SCHEMA = "accountable-surface.actuation-receipt/v1"
 PINNED_SOURCES = ("policy.py", "plan.py", "tiers.py", "page_evidence.py", "actuation_receipt.py",
-                  "detectors/secrets.py", "detectors/challenge.py", "detectors/irreversible.py",
-                  "detectors/injection.py")
+                  "predicates.py", "evidence.py", "detectors/secrets.py", "detectors/challenge.py",
+                  "detectors/irreversible.py", "detectors/injection.py")
 _CHAIN = ("_prev", "_hash")
 _ROOT = Path(__file__).resolve().parent
 

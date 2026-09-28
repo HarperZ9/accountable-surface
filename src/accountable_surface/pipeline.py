@@ -33,10 +33,11 @@ from accountable_surface import policy, predicates
 from accountable_surface.certify import plan_certificate
 from accountable_surface.detectors import challenge, secrets
 from accountable_surface.effector import RefusedActuation
+from accountable_surface.evidence import redact_snapshot
 from accountable_surface.page_evidence import blank, capture, from_snapshot
 from accountable_surface.pipeline_record import (
-    PlanRef, PlanResult, StepResult, act_message, evidence_summary, message_for, plan_hmac, policy_record,
-    reasons, step_summary,
+    PlanRef, PlanResult, StepResult, act_message, evidence_summary, is_secret, message_for, plan_hmac,
+    policy_record, reasons, step_summary, stored_step,
 )
 
 IDENTITY_FIELDS = {"web-effector": "page_digest", "browser-effector": "page_digest",
@@ -73,6 +74,7 @@ class _Context:
     effector_before: Any = None
     approval: dict | None = None
     plan: PlanRef | None = None
+    refs: dict | None = None
 
 
 def _has(decision, rule: str) -> bool:
@@ -80,11 +82,13 @@ def _has(decision, rule: str) -> bool:
 
 
 class ActuationPipeline:
-    def __init__(self, surface, effector, *, grant, approvals, receipts, reader=None, config=None) -> None:
+    def __init__(self, surface, effector, *, grant, approvals, receipts, reader=None, config=None,
+                 evidence=None) -> None:
         self.surface, self.effector, self.grant = surface, effector, grant
         self.approvals, self.receipts = approvals, receipts
         self.reader = reader or default_reader
         self.config = config
+        self.evidence = evidence  # an EvidenceStore; without one, receipts re-derive only at L0
 
     def run_plan(self, doc) -> PlanResult:
         """Validate the whole plan, then run its steps in order and stop at the
@@ -117,6 +121,7 @@ class ActuationPipeline:
         ctx.plan = plan
         decision = policy.decide(step, ctx.before, grant=self.grant, approval=ctx.approval, paused=ctx.paused,
                                  now=ctx.now, plan_reversible=ctx.reversible, config=self.config)
+        ctx.refs = self._store_inputs(ctx, decision)
         if decision.outcome == "stop":
             return self._stop(ctx, decision)
         if decision.outcome == "refuse":
@@ -191,16 +196,41 @@ class ActuationPipeline:
             outcome, error = None, secrets.redact(f"{type(exc).__name__}: {exc}")[0][:300]
         return self._verify(ctx, decision, outcome, error, bound=expected is not None)
 
+    # --- evidence ----------------------------------------------------------------
+
+    def _store_inputs(self, ctx: _Context, decision) -> dict | None:
+        """Everything policy.decide read, so L2 can re-run it offline. A value the
+        policy refused as a secret is withheld before anything is stored."""
+        if self.evidence is None:
+            return None
+        before = self.evidence.put(ctx.before.to_dict()) if ctx.before is not None else None
+        grant = self.evidence.put(self.grant) if self.grant is not None else None
+        inputs = {"schema": "accountable-surface.policy-inputs/v1", "step": stored_step(ctx.step, decision),
+                  "value_withheld": is_secret(decision), "before": before, "grant": grant,
+                  "approval": ctx.approval, "paused": sorted(ctx.paused), "now": ctx.now,
+                  "plan_reversible": ctx.reversible, "config": self.config}
+        return {"inputs": self.evidence.put(inputs), "after": None}
+
+    def _store_after(self, ctx: _Context, snapshot, reader, outcome, error) -> None:
+        if self.evidence is None or ctx.refs is None:
+            return
+        after = {"schema": "accountable-surface.after-evidence/v1", "driver": snapshot,
+                 "reader": self.evidence.put(reader.to_dict()) if reader is not None else None,
+                 "acted": bool(outcome and outcome.acted), "effector_verified": bool(outcome and outcome.verified),
+                 "error": error}
+        ctx.refs["after"] = self.evidence.put(after)
+
     # --- S6, S7, S9 ------------------------------------------------------------
 
     def _after(self, ctx: _Context):
-        snapshot = self.effector.perceive(ctx.target).data
+        snapshot = redact_snapshot(self.effector.perceive(ctx.target).data)[0]
         path = (ctx.step.post_condition or {}).get("path")
         url = ctx.step.origin + str(path) if path else (ctx.step.url if ctx.step.action_kind.endswith(".navigate") else None)
         return snapshot, self._read(url)
 
     def _verify(self, ctx: _Context, decision, outcome, error, *, bound: bool) -> StepResult:
         snapshot, reader = self._after(ctx)
+        self._store_after(ctx, snapshot, reader, outcome, error)
         after_ev = reader or from_snapshot(snapshot)
         challenged = bool(challenge.scan(from_snapshot(snapshot)) or (reader and challenge.scan(reader)))
         acted = bool(outcome and outcome.acted)
@@ -235,7 +265,7 @@ class ActuationPipeline:
                 "policy": policy_record(decision), "before": evidence_summary(ctx.before, decision.injection_flags),
                 "execution": execution or {"acted": False}, "after": after,
                 "verification": verification or {"verdict": verdict}, "approval_pending": approval_id,
-                "message": message}
+                "evidence": ctx.refs, "message": message}
         return StepResult(status, verdict, decision.to_dict(), approval_id, message, self.receipts.emit(body),
                           ctx.step.step_id)
 
@@ -250,6 +280,7 @@ class ActuationPipeline:
         body = {"status": "refused", "step": {"step_id": step_id, "plan_id": plan.plan_id if plan else None},
                 "policy": decision.to_dict(),
                 "before": None, "execution": {"acted": False}, "after": None,
-                "verification": {"verdict": "not-acted"}, "approval_pending": None, "message": message}
+                "verification": {"verdict": "not-acted"}, "approval_pending": None, "evidence": None,
+                "message": message}
         return StepResult("refused", "not-acted", decision.to_dict(), None, message, self.receipts.emit(body),
                           step_id)

@@ -11,6 +11,7 @@ import json
 
 from accountable_surface.actuation_receipt import ReceiptLog
 from accountable_surface.approvals import ApprovalStore
+from accountable_surface.evidence import EvidenceStore
 from accountable_surface.http_driver import HttpDriver
 from accountable_surface.pipeline import ActuationPipeline
 from accountable_surface.surface import AccountableSurface
@@ -64,15 +65,16 @@ def grant(origin, tier="full", **scope_extra):
 
 
 class World:
-    def __init__(self, tmp_path, site, *, the_grant=None, driver=None):
+    def __init__(self, tmp_path, site, *, the_grant=None, driver=None, evidence=True):
         self.tmp, self.site = tmp_path, site
+        self.evidence = EvidenceStore(tmp_path / "evidence") if evidence else None
         self.driver = driver or SpyDriver()
         self.effector = WebEffector(self.driver, allowed_origins=[site.origin])
         self.store = ApprovalStore(tmp_path / "authority.db")
         self.receipts = ReceiptLog(tmp_path / "receipts.jsonl")
         self.surface = AccountableSurface(journal_path=tmp_path / "journal.jsonl")
         self.pipe = ActuationPipeline(self.surface, self.effector, grant=the_grant or grant(site.origin),
-                                      approvals=self.store, receipts=self.receipts)
+                                      approvals=self.store, receipts=self.receipts, evidence=self.evidence)
 
     def nav(self, path):
         return self.pipe.run_step({"step_id": f"nav{path}", "action_kind": "web.navigate",
@@ -97,6 +99,8 @@ class World:
 
     def all_bytes(self):
         paths = [self.receipts.path, self.tmp / "journal.jsonl", self.store.path]
+        if self.evidence is not None and self.evidence.root.exists():
+            paths += sorted(p for p in self.evidence.root.rglob("*") if p.is_file())
         return b"".join(p.read_bytes() for p in paths if p.exists())
 
 
