@@ -49,6 +49,27 @@ manifests are `interop/claude-code.mcp.json`, `interop/mcp-server.json`, and
 `gate` is the decision `propose` returns, not a separate call; `actuate` re-runs the
 gate itself before acting. `status` and `doctor` are network-free health tools.
 
+## Profiles, titles, and annotations
+
+Every tool on all three servers (this stdio server, the FastMCP server, and the
+bundled-lane health shim) carries a title and the MCP annotations `readOnlyHint`,
+`destructiveHint`, `idempotentHint`, and `openWorldHint`, read from one catalog
+(`src/accountable_surface/tool_catalog.py`). Annotations are hints a client may
+ignore; the policy check and the gate stay the boundary.
+
+The operator picks a profile when starting the server; no tool argument can:
+
+| Profile | Start | Tools |
+| --- | --- | --- |
+| `interop` (default) | `accountable-surface-mcp` | the eight tools above, unchanged names |
+| `plugin` | `accountable-surface-mcp --profile plugin` | read: `status`, `doctor`, `perceive`, `check_plan`, `journal`, `receipt_verify`, `approvals_pending`, `device_ls`; write: `browser_navigate`, `browser_fill`, `browser_click`, `browser_submit`, `run_plan`, `withdraw_approval` |
+
+The plugin profile never mixes read and write in one tool, closes every input
+schema (an argument such as a grant, a tier, or `allow_irreversible` is refused),
+and runs each write through the actuation pipeline (`docs/actuation-pipeline.md`).
+Its pipeline tools answer "not exposed" until the web or browser effector is
+exposed in the registry, which the registry still refuses by name.
+
 ## What this adds over ungated computer use (evidence-bound)
 
 | Property | Ungated computer use | This server | Evidence |

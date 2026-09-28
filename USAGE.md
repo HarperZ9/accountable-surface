@@ -298,6 +298,27 @@ has a content digest and a perceptual hash and answers nothing about a control n
 The escalator only reads. Rungs 1 and 2 act, and acting stays with the effectors and
 the grants that bound them, so nothing here presses a control to find out what it does.
 
+## Run The Accountable Pipeline
+
+`ActuationPipeline` runs each browser or web step through a policy check, the gate,
+the act, an independent readback, a typed verdict, and a hash-chained receipt. It
+refuses secrets, stops on a CAPTCHA or bot check, and holds irreversible actions for
+a person. See `docs/actuation-pipeline.md` for the rules, the approval command, and a
+runnable example.
+
+Check a session offline:
+
+```
+accountable-surface-replay verify receipts.jsonl --evidence evidence
+python verify_actuation.py receipts.jsonl --evidence evidence
+```
+
+Run the live browser tests (needs the `[browser]` extra and Chromium):
+
+```
+python -m pytest -m live tests/live
+```
+
 ## Boundary
 
 - No grant means default deny.
@@ -310,3 +331,5 @@ the grants that bound them, so nothing here presses a control to find out what i
 - Journals are append-only local records.
 - Operator grant files and session journals are runtime inputs, not source files.
 - Irreversible actions require explicit grant handling and verification.
+- The pipeline never types a password, key, token, card or bank number, or government
+  ID, and never solves, waits out, or routes around a CAPTCHA or bot check.

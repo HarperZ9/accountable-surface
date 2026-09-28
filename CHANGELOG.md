@@ -15,6 +15,29 @@
 
 ## Unreleased
 
+- The accountable actuation pipeline (`pipeline.py`): plan, before read, pure policy
+  check (R1 to R9), gate bound to the page the policy saw, act, independent after
+  read, typed verdict, and a hash-chained receipt for every step. Refuses secret
+  fields and secret-shaped values; stops on a CAPTCHA or bot check and pauses the
+  origin until a person clears it; holds send, submit, buy, delete, and accept steps
+  for a console-bound approval; holds steps echoed from agent-addressed page text.
+- `run_plan` validates a whole action plan first, stops at the first step not
+  verified, and returns a plan certificate.
+- Content-addressed evidence and offline re-derivation at four levels, the
+  `accountable-surface-replay` command (verify, explain, export), and the stdlib-only
+  `verify_actuation.py`. The package now loads its public names on first use, so the
+  replay path imports no effector.
+- `settle_ms` on a post-condition: the readback waits for a late effect; a timeout
+  is unverifiable.
+- One tool catalog with titles and annotations for all three MCP servers, and a
+  `--profile plugin` stdio profile with split read and write tools.
+- The browser origin bound now holds where a navigation lands after a redirect.
+- The shared-world server no longer answers every origin: no wildcard CORS header,
+  and every mutating route needs the page's per-session token.
+- A live test suite (`-m live`) drives the pipeline in a real headless Chromium on
+  127.0.0.1.
+- Action-receipt labels are parameters, so any effector can emit a correctly
+  labelled `project-telos.action-receipt/v1` event.
 - Interoperable MCP server for the accountable-actuation core
   (`accountable_surface.interop_mcp` + `interop_runtime`). A zero-third-party-dependency
   JSON-RPC-over-stdio server (stdlib framing, no FastMCP) so other harnesses -- Claude
