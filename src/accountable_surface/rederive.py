@@ -149,7 +149,8 @@ def _reverdict(after: dict, post, store: EvidenceStore) -> str:
     reader = page_from_dict(store.load(after["reader"])) if after.get("reader") else None
     challenged = bool(challenge.scan(from_snapshot(driver)) or (reader and challenge.scan(reader)))
     if after.get("acted"):
-        pred = predicates.check(post, driver_after=driver, reader_after=reader)[0]
+        pred = predicates.check(post, driver_after=driver, reader_after=reader,
+                                timed_out=bool(after.get("timed_out")))[0]
         verdict = predicates.meet(["verified" if after.get("effector_verified") else "drift", pred])
     else:
         verdict = "unverifiable" if after.get("error") or challenged else "not-acted"

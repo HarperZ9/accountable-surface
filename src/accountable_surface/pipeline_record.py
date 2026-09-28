@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from accountable_surface import plan as plan_mod
+from accountable_surface import policy
 from accountable_surface.detectors import challenge
 
 REDACTION_RULE = "secret-shapes/v1"
@@ -115,3 +116,18 @@ def message_for(outcome: str, decision, *, origin: str, state_path, approval_id=
 
 def act_message(status: str, verdict: str, detail: str) -> str:
     return f"{status}: {verdict} ({detail})"
+
+
+def schema_refusal(raw, exc, plan: PlanRef | None, policy_digest: str) -> tuple[dict, dict, str | None]:
+    """The policy record and receipt body for a malformed step. It may still carry
+    a secret value, so nothing digested over the raw step is kept: only its id,
+    when it has one."""
+    hit = {"rule": "R9.schema", "version": policy.VERSION, "outcome": "refuse", "reason": str(exc)}
+    record = policy.PolicyDecision("refuse", [hit], None, None, policy_digest, None).to_dict()
+    step_id = raw.get("step_id") if isinstance(raw, dict) else None
+    step_id = step_id if isinstance(step_id, str) else None
+    body = {"status": "refused", "step": {"step_id": step_id, "plan_id": plan.plan_id if plan else None},
+            "policy": record, "before": None, "execution": {"acted": False}, "after": None,
+            "verification": {"verdict": "not-acted"}, "approval_pending": None, "evidence": None,
+            "message": f"refused: R9.schema: {exc}"}
+    return record, body, step_id

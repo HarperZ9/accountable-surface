@@ -110,7 +110,16 @@ def _forbidden(forbid, reader) -> tuple[str, str] | None:
     return None
 
 
-def check(post, *, driver_after: dict, reader_after) -> tuple[str, str, str]:
+def forbidden_present(post, reader_after) -> bool:
+    """A forbidden condition is settled present: it ends a settle wait as drift."""
+    blocked = _forbidden((post or {}).get("forbid"), reader_after) if isinstance(post, dict) else None
+    return bool(blocked and blocked[0] == "drift")
+
+
+def check(post, *, driver_after: dict, reader_after, timed_out: bool = False) -> tuple[str, str, str]:
+    """The verdict for one post-condition. `timed_out` says a settle_ms wait ran
+    out: then anything short of verified is unverifiable, never a settled drift,
+    unless a forbidden condition is present, which settles drift on its own."""
     if not isinstance(post, dict) or post.get("kind") not in PREDICATES:
         kind = post.get("kind") if isinstance(post, dict) else None
         return "unverifiable", f"no predicate for {kind!r}", "none"
@@ -118,4 +127,6 @@ def check(post, *, driver_after: dict, reader_after) -> tuple[str, str, str]:
     blocked = _forbidden(post.get("forbid"), reader_after)
     if blocked and verdict != "drift":
         verdict, detail = blocked[0], detail + "; " + blocked[1]
+    if timed_out and verdict != "verified" and not forbidden_present(post, reader_after):
+        verdict, detail = "unverifiable", detail + f"; not settled within {post.get('settle_ms')} ms"
     return verdict, detail, independence

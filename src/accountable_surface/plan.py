@@ -28,6 +28,7 @@ CHECKABLE = {
     "browser": frozenset({"url_is", "field_value_is", "title_is", "text_present", "element_appears", "element_disappears"}),
 }
 _COORDINATE_KEYS = frozenset({"x", "y", "coordinate", "coordinates", "point"})
+MAX_SETTLE_MS = 60_000  # the longest a readback waits for a late effect
 
 
 class PlanError(ValueError):
@@ -154,6 +155,9 @@ def post_condition_problem(step: ActionStep) -> str | None:
     kind = step.post_condition.get("kind")
     if kind not in CHECKABLE.get(step.family, frozenset()):
         return f"post_condition kind {kind!r} is one the {step.family} readback cannot settle in this build"
+    settle = step.post_condition.get("settle_ms", 0)
+    if isinstance(settle, bool) or not isinstance(settle, int) or not 0 <= settle <= MAX_SETTLE_MS:
+        return f"settle_ms must be a whole number of milliseconds from 0 to {MAX_SETTLE_MS}"
     return None
 
 

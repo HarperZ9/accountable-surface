@@ -25,6 +25,7 @@ browser and desktop drivers proven live.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -38,7 +39,7 @@ from accountable_surface.evidence import redact_snapshot
 from accountable_surface.page_evidence import blank, capture, from_snapshot
 from accountable_surface.pipeline_record import (
     PlanRef, PlanResult, StepResult, act_message, evidence_summary, message_for, plan_hmac,
-    policy_record, reasons, step_summary,
+    policy_record, reasons, schema_refusal, step_summary,
 )
 
 IDENTITY_FIELDS = {"web-effector": "page_digest", "browser-effector": "page_digest",
@@ -76,6 +77,10 @@ class _Context:
     approval: dict | None = None
     plan: PlanRef | None = None
     refs: dict | None = None
+
+
+def _challenged(snapshot, reader) -> bool:
+    return bool(challenge.scan(from_snapshot(snapshot)) or (reader and challenge.scan(reader)))
 
 
 def _has(decision, rule: str) -> bool:
@@ -121,9 +126,8 @@ class ActuationPipeline:
             step = raw if isinstance(raw, plan_mod.ActionStep) else plan_mod.step_from_dict(raw)
             ctx = self._prepare(step)
         except (plan_mod.PlanError, RefusedActuation) as exc:
-            step_id = raw.get("step_id") if isinstance(raw, dict) else None
-            return {"step_id": step_id, "outcome": "refuse", "rule_hits": [
-                {"rule": "R9.schema", "version": policy.VERSION, "outcome": "refuse", "reason": str(exc)}]}
+            record, _, step_id = schema_refusal(raw, exc, None, policy.policy_digest(self.config))
+            return {"step_id": step_id, **record}
         decision = policy.decide(step, ctx.before, grant=self.grant, approval=ctx.approval, paused=ctx.paused,
                                  now=ctx.now, plan_reversible=ctx.reversible, config=self.config)
         return {"step_id": step.step_id, **policy_record(decision)}
@@ -214,22 +218,40 @@ class ActuationPipeline:
 
     # --- S6, S7, S9 ------------------------------------------------------------
 
-    def _after(self, ctx: _Context):
+    def _read_after(self, ctx: _Context):
         snapshot = redact_snapshot(self.effector.perceive(ctx.target).data)[0]
         path = (ctx.step.post_condition or {}).get("path")
         url = ctx.step.origin + str(path) if path else (ctx.step.url if ctx.step.action_kind.endswith(".navigate") else None)
         return snapshot, self._read(url)
 
+    def _after(self, ctx: _Context, acted: bool):
+        """The after read. With settle_ms, re-read until the post-condition holds, a
+        forbidden condition or a human check shows, or the time runs out; the last
+        flag says it ran out. Never waits on a page showing a human check."""
+        post = ctx.step.post_condition or {}
+        deadline = time.monotonic() + int(post.get("settle_ms") or 0) / 1000
+        while True:
+            snapshot, reader = self._read_after(ctx)
+            if not acted or not post.get("settle_ms"):
+                return snapshot, reader, False
+            done = predicates.check(post, driver_after=snapshot, reader_after=reader)[0] == "verified"
+            if done or predicates.forbidden_present(post, reader) or _challenged(snapshot, reader):
+                return snapshot, reader, False
+            if time.monotonic() >= deadline:
+                return snapshot, reader, True
+            time.sleep(0.1)
+
     def _verify(self, ctx: _Context, decision, outcome, error, *, bound: bool) -> StepResult:
-        snapshot, reader = self._after(ctx)
-        evidence_mod.store_after(self.evidence, ctx.refs, snapshot=snapshot, reader=reader, outcome=outcome,
-                                 error=error)
-        after_ev = reader or from_snapshot(snapshot)
-        challenged = bool(challenge.scan(from_snapshot(snapshot)) or (reader and challenge.scan(reader)))
         acted = bool(outcome and outcome.acted)
+        snapshot, reader, timed_out = self._after(ctx, acted)
+        evidence_mod.store_after(self.evidence, ctx.refs, snapshot=snapshot, reader=reader, outcome=outcome,
+                                 error=error, timed_out=timed_out)
+        after_ev = reader or from_snapshot(snapshot)
+        challenged = _challenged(snapshot, reader)
         verification = {"verdict": "not-acted", "effector_verify": outcome.verdict if outcome else None}
         if acted:
-            pred, detail, independence = predicates.check(ctx.step.post_condition, driver_after=snapshot, reader_after=reader)
+            pred, detail, independence = predicates.check(ctx.step.post_condition, driver_after=snapshot,
+                                                          reader_after=reader, timed_out=timed_out)
             verdict = predicates.meet(["verified" if outcome.verified else "drift", pred])
             verification.update(predicate=f"{ctx.step.post_condition.get('kind')}/{predicates.VERSION}",
                                 detail=detail, independence=independence)
@@ -263,17 +285,5 @@ class ActuationPipeline:
                           ctx.step.step_id)
 
     def _schema_refusal(self, raw, exc, *, plan: PlanRef | None = None) -> StepResult:
-        hit = {"rule": "R9.schema", "version": policy.VERSION, "outcome": "refuse", "reason": str(exc)}
-        # A malformed step may still carry a secret value, so nothing digested over
-        # the raw step is kept: only its id, when it has one.
-        decision = policy.PolicyDecision("refuse", [hit], None, None, policy.policy_digest(self.config), None)
-        message = f"refused: R9.schema: {exc}"
-        step_id = raw.get("step_id") if isinstance(raw, dict) else None
-        step_id = step_id if isinstance(step_id, str) else None
-        body = {"status": "refused", "step": {"step_id": step_id, "plan_id": plan.plan_id if plan else None},
-                "policy": decision.to_dict(),
-                "before": None, "execution": {"acted": False}, "after": None,
-                "verification": {"verdict": "not-acted"}, "approval_pending": None, "evidence": None,
-                "message": message}
-        return StepResult("refused", "not-acted", decision.to_dict(), None, message, self.receipts.emit(body),
-                          step_id)
+        record, body, step_id = schema_refusal(raw, exc, plan, policy.policy_digest(self.config))
+        return StepResult("refused", "not-acted", record, None, body["message"], self.receipts.emit(body), step_id)

@@ -149,7 +149,7 @@ def store_inputs(store, ctx, decision, *, grant, config) -> dict | None:
     return {"inputs": store.put(inputs), "after": None}
 
 
-def store_after(store, refs, *, snapshot, reader, outcome, error) -> None:
+def store_after(store, refs, *, snapshot, reader, outcome, error, timed_out=False) -> None:
     """What the verdict read: the redacted driver snapshot, the separate reader's
     page, the effector's own verify bit, and the error. Names it in `refs`."""
     if store is None or refs is None:
@@ -157,5 +157,5 @@ def store_after(store, refs, *, snapshot, reader, outcome, error) -> None:
     after = {"schema": "accountable-surface.after-evidence/v1", "driver": snapshot,
              "reader": store.put(reader.to_dict()) if reader is not None else None,
              "acted": bool(outcome and outcome.acted), "effector_verified": bool(outcome and outcome.verified),
-             "error": error}
+             "error": error, "timed_out": timed_out}
     refs["after"] = store.put(after)
