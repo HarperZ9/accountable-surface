@@ -27,6 +27,8 @@ from coherence_membrane.observation import sha256_hex
 
 SCHEMA = "project-telos.action-receipt/v1"
 RECEPTOR = {"name": "accountable-surface.native-control-receptor", "version": "0.1"}
+POLICY_REF = "policy:native-control-read-v1"
+VERIFICATION_REF = "accountable-surface:native-control-list"
 GENESIS = ""
 
 
@@ -39,8 +41,8 @@ def _digest(value: Any) -> str:
     return "sha256:" + sha256_hex(canonical(value).encode("utf-8"))
 
 
-def _config_hash() -> str:
-    return _digest({"schema": SCHEMA, "receptor": RECEPTOR})
+def _config_hash(receptor: dict | None = None) -> str:
+    return _digest({"schema": SCHEMA, "receptor": receptor or RECEPTOR})
 
 
 def _outcome_terms(outcome: Any) -> tuple[str, str, str, str]:
@@ -71,9 +73,10 @@ def _external_request_id(nc: dict) -> str | None:
 
 def _identity_block(base_id: str, idempotency_key: str, created_at: str, principal: str,
                     action_kind: str, args_hash: str, side_effect_class: str,
-                    intent_ref: str, authority_ref: str | None, decision: str) -> dict:
+                    intent_ref: str, authority_ref: str | None, decision: str, labels: dict) -> dict:
     """The identity, component, action, and authority fields -- everything about WHO
     acted and under WHAT permission, before the execution facts are joined in."""
+    receptor = labels["receptor"]
     return {
         "schema": SCHEMA,
         "event_id": f"evt_{base_id}",
@@ -82,11 +85,12 @@ def _identity_block(base_id: str, idempotency_key: str, created_at: str, princip
         "idempotency_key": idempotency_key,
         "created_at": created_at,
         "agent": {"principal": principal},
-        "component": {"name": RECEPTOR["name"], "version": RECEPTOR["version"], "config_hash": _config_hash()},
+        "component": {"name": receptor["name"], "version": receptor["version"],
+                      "config_hash": _config_hash(receptor)},
         "action": {"kind": action_kind, "side_effect_class": side_effect_class, "args_hash": args_hash},
         "intent_ref": intent_ref,
         "authority_ref": authority_ref,
-        "policy": {"decision": decision, "ref": "policy:native-control-read-v1"},
+        "policy": {"decision": decision, "ref": labels["policy_ref"]},
     }
 
 
@@ -118,12 +122,21 @@ def receipt_from_outcome(
     created_at: str,
     side_effect_class: str = "read",
     reversible: bool = True,
+    receptor: dict | None = None,
+    policy_ref: str = POLICY_REF,
+    verification_ref: str = VERIFICATION_REF,
+    input_ref: str | None = None,
 ) -> dict:
     """Build a `project-telos.action-receipt/v1` event from an actuation outcome.
 
     IDs are derived from the invocation and the injected `created_at`, so a fixed clock
     yields a byte-stable event. `receipts[].hash` is computed last, over every field
-    except itself, so it seals the event's semantic content."""
+    except itself, so it seals the event's semantic content.
+
+    The receptor, policy ref, verification ref, and input ref default to the
+    native-control labels, so that path's events are unchanged; another effector
+    passes its own, and nothing native-control is written into its event."""
+    labels = {"receptor": receptor or RECEPTOR, "policy_ref": policy_ref}
     event_type, state, stop_reason, verdict = _outcome_terms(outcome)
     nc = native_control_receipt or {}
     base_id = sha256_hex(f"{action_kind}|{target}|{args_hash}|{created_at}".encode("utf-8"))[:24]
@@ -131,13 +144,13 @@ def receipt_from_outcome(
     core = {
         **_identity_block(base_id, idempotency_key, created_at, principal, action_kind,
                           args_hash, side_effect_class, intent_ref, authority_ref,
-                          str(getattr(outcome, "decision", "deny"))),
+                          str(getattr(outcome, "decision", "deny")), labels),
         "event_type": event_type,
-        "input_materials": [{"ref": f"dir://{target}", "digest": before}],
+        "input_materials": [{"ref": input_ref or f"dir://{target}", "digest": before}],
         "side_effect": {"class": side_effect_class, "reversible": reversible},
         "execution": _execution_block(state, idempotency_key, outcome, nc),
         "evidence_ref": _digest({"before": before, "after": getattr(outcome, "after_digest", "")}),
-        "verification": {"verdict": verdict, "ref": "accountable-surface:native-control-list"},
+        "verification": {"verdict": verdict, "ref": verification_ref},
         "result": {"state": state, "stop_reason": stop_reason},
         "retry": {"attempt": 1, "max_attempts": 1},
         "compensation_ref": None,
