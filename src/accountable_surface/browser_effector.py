@@ -198,6 +198,7 @@ class BrowserEffector:
         if action.kind == "navigate":
             self._prior[plan.digest] = ("navigate", before_digest)
             self._driver.navigate(action.url)
+            self._refuse_if_off_origin(plan, "navigation was redirected")
         elif action.kind == "click":
             if self._driver.current_url() != action.url:
                 raise RefusedActuation("not on the target page -- navigate (accountably) first")
@@ -208,13 +209,7 @@ class BrowserEffector:
             # just the page it was dispatched from. If it escaped the allowlist, undo
             # the navigation and refuse (the bound is a second gate, stricter than any
             # grant), so the surface reports refused-by-effector and the page stays put.
-            landed = self._driver.current_url()
-            if not self._within_origin(landed):
-                self._driver.back()
-                del self._prior[plan.digest]
-                raise RefusedActuation(
-                    f"click navigated off the allowed origins {self._origins}: {landed!r}"
-                )
+            self._refuse_if_off_origin(plan, "click navigated")
         elif action.kind == "fill":
             if self._driver.current_url() != action.url:
                 raise RefusedActuation("not on the target page -- navigate (accountably) first")
@@ -223,6 +218,15 @@ class BrowserEffector:
         elif action.kind == "evaluate":
             self._prior[plan.digest] = ("evaluate",)
             self._driver.evaluate(action.value)
+
+    def _refuse_if_off_origin(self, plan: Plan, what: str) -> None:
+        """The origin bound holds for where the page LANDS: a server redirect or a
+        client-side route off the allowlist is undone and refused."""
+        landed = self._driver.current_url()
+        if not self._within_origin(landed):
+            self._driver.back()
+            del self._prior[plan.digest]
+            raise RefusedActuation(f"{what} off the allowed origins {self._origins}: {landed!r}")
 
     def verify(self, plan: Plan, after: Observation) -> Verdict:
         """Re-perceive and check the post-condition (proprioception)."""
