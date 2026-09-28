@@ -49,7 +49,10 @@ accountable-surface-authority = "accountable_surface.authority_cli:main"
 accountable-surface-replay = "accountable_surface.replay_cli:main"  # verify, explain, export; never acts
 
 [tool.pytest.ini_options]
-addopts = "-q"
+# Live tests drive a real browser on 127.0.0.1 and stay out of the default run;
+# run them with: python -m pytest -m live tests/live
+addopts = "-q -m 'not live'"
+markers = ["live: drives a real browser against a 127.0.0.1 fixture (run with -m live)"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 

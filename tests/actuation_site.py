@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import http.server
 import threading
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -20,6 +21,9 @@ class Site:
     def __init__(self) -> None:
         self.requests: list[tuple[str, str]] = []
         self.orders: list[dict] = []
+        self.redirect_to: str | None = None  # where /leave redirects, when a test sets it
+        self.save_delay = 0.4  # seconds before /status shows what /save-later started
+        self.saved_at: float | None = None
         self._httpd = None
 
     @property
@@ -68,6 +72,15 @@ class Site:
         if path == "/orders":
             items = "".join(f"<li>Order {i + 1}: quantity {o['quantity']}</li>" for i, o in enumerate(self.orders))
             return self._send(handler, 200, f"<title>Orders</title><ul>{items}</ul>")
+        if path == "/save-later":
+            self.saved_at = time.monotonic()
+            return self._send(handler, 200, "<title>Saving</title><p>Saving your note.</p>")
+        if path == "/status":
+            done = self.saved_at is not None and time.monotonic() - self.saved_at >= self.save_delay
+            body = "<p role='status'>Saved</p>" if done else "<p role='status'>Working</p>"
+            return self._send(handler, 200, "<title>Status</title>" + body)
+        if path == "/leave" and self.redirect_to:
+            return self._send(handler, 302, "<title>Moved</title>", {"Location": self.redirect_to})
         if path == "/challenge-403":
             return self._send(handler, 403, "<title>Just a moment...</title>", {"cf-mitigated": "challenge"})
         if path == "/wire-all-funds":
