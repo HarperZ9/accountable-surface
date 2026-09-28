@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><title>One more step</title></head>
+<body>
+<h1>Verify you are human</h1>
+<p>Complete the check below to continue to the fixture site.</p>
+<form action="/captcha/verify" method="post">
+  <div class="g-recaptcha" data-sitekey="fixture-not-a-real-key">
+    <input type="checkbox" id="robot"><label for="robot">I'm not a robot</label>
+  </div>
+  <label for="email">Email</label><input id="email" name="email">
+  <button type="submit">Continue</button>
+</form>
+</body></html>

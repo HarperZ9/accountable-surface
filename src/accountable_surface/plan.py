@@ -131,7 +131,8 @@ def effector_content(step: ActionStep):
     verb = step.action_kind.rsplit(".", 1)[-1]
     selector = (step.control or {}).get("name", "")
     value = str(step.args.get("value", ""))
-    expected = str((step.post_condition or {}).get("value", ""))
+    post = step.post_condition or {}
+    expected = str(step.args.get("expect_title") or (post.get("value", "") if post.get("kind") == "title_is" else ""))
     if step.family == "web":
         if verb == "submit":
             return step.url, WebAction("submit", url=urljoin(step.url, str(step.args.get("action", ""))), value=expected)

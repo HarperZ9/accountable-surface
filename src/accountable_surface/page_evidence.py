@@ -192,6 +192,8 @@ class _PageParser(HTMLParser):
                 self.markers.append(a[key].lower())
         if "data-sitekey" in a:
             self.markers.append("data-sitekey")
+        if a.get("role"):
+            self.markers.append("role:" + a["role"].lower())
 
 
 def _role(tag: str, input_type: str) -> str:
@@ -248,6 +250,24 @@ def parse_page(url: str, html: str, *, http_status: int = 200, response_headers:
                         title=" ".join(parser.title.split()), controls=_controls(parser),
                         frames=tuple(parser.frames), markers=tuple(parser.markers),
                         text=text, redactions=redactions, channel=channel)
+
+
+def blank(url: str) -> PageEvidence:
+    """Evidence for a page with nothing on it (about:blank before a first
+    navigation): nothing to read, so nothing to detect."""
+    return PageEvidence(url=url, http_status=0, headers=(), title="", controls=(), frames=(),
+                        markers=(), text="", channel="none")
+
+
+def from_snapshot(snapshot: dict) -> PageEvidence:
+    """Evidence from a driver's own snapshot (url, title, fields). Same-driver, and
+    thin: it carries the title and the field names, which is enough for a title
+    challenge check and nothing more."""
+    controls = tuple(Control(f"c{i}:textbox:{name}", "input", "textbox", str(name), "", (), False, "")
+                     for i, name in enumerate(sorted(snapshot.get("fields") or {})))
+    return PageEvidence(url=str(snapshot.get("url", "")), http_status=200, headers=(),
+                        title=str(snapshot.get("title") or ""), controls=controls, frames=(), markers=(),
+                        text="", channel="driver-snapshot")
 
 
 def capture(url: str, *, timeout: float = 10.0, max_bytes: int = 2_000_000, redactor=None) -> PageEvidence:

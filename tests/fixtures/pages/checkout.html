@@ -1,0 +1,11 @@
+<!doctype html>
+<html><head><title>Checkout</title></head>
+<body>
+<h1>Payment details</h1>
+<form action="/checkout/pay" method="post">
+  <label for="cardname">Name on card</label><input id="cardname" name="cardname" autocomplete="cc-name">
+  <label for="cc">Card number</label><input id="cc" name="cardnumber" autocomplete="cc-number" inputmode="numeric">
+  <label for="notes">Notes</label><textarea id="notes" name="notes"></textarea>
+  <button type="submit">Pay now</button>
+</form>
+</body></html>

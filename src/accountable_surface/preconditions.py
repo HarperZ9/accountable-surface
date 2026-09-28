@@ -20,6 +20,7 @@ _PRECONDITION_IDENTITY_FIELDS = {
     "api-effector": "sha256",
     "browser-effector": "page_digest",
     "fs-effector": "sha256",
+    "web-effector": "page_digest",
     "web-document": "identity_sha256",
 }
 

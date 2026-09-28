@@ -101,7 +101,8 @@ class WebEffector:
             summary=f"page {url!r}: {len(snap.get('fields', {}))} fields",
             status=Status.PASS,
             provenance=Provenance.witness_bytes(f"dom://{url}", _canon(snap), "high"),
-            data={"url": url, "title": snap.get("title"), "fields": snap.get("fields", {})},
+            data={"url": url, "title": snap.get("title"), "fields": snap.get("fields", {}),
+                  "page_digest": sha256_hex(_canon(snap))},
         )
 
     # --- the efferent contract ----------------------------------------------
