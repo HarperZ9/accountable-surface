@@ -268,7 +268,7 @@ It serves the web UI from `web/` and binds to localhost by default. Grants are o
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
 - `tests/`: the Python test suite. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
-- `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `.github/assets/zentropy-banner.png`.
+- `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `.github/assets/banner.png`.
 
 ## Status
 
@@ -317,4 +317,4 @@ The long form of this belief: [The Unbundling](https://github.com/HarperZ9/flywh
 
 ---
 
-**[Zentropy Labs](https://github.com/ZentropyLabs-ai)** · order out of entropy. An independent lab building evidence-first tools that leave a re-checkable artifact behind. Built by Zain Dana Harper in Seattle. The full workbench is at [Project Telos](https://harperz9.github.io).
+Built by **[Zain Dana Harper](https://harperz9.github.io)** in Seattle: evidence-first tools that leave a re-checkable artifact behind. The full workbench is at [Project Telos](https://harperz9.github.io).
