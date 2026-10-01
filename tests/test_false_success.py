@@ -56,6 +56,7 @@ from accountable_surface.surface import AccountableSurface
 from accountable_surface.uia import SCHEME, FakeUiaDriver, FakeWindow, UiaStructureOrgan
 from accountable_surface.uia_effector import UiaCommand, UiaEffector
 from accountable_surface.web_effector import FakePageDriver, WebAction, WebEffector
+from _irreversible import granting_irreversible
 
 
 def _grant(actions, targets=()):
@@ -121,13 +122,13 @@ def test_a_dead_runner_does_not_report_the_previous_command_as_this_one(tmp_path
     effector = CommandEffector(runner, {"echo"}, tmp_path)
     surface = AccountableSurface()
     first = surface.actuate(effector, target="probe-1", content=["echo", "hi"],
-                            authorization=_grant(["os.run"]), allow_irreversible=True)
+                            authorization=granting_irreversible(_grant(["os.run"])), allow_irreversible=True)
     assert first.verified is True
 
     runner.raise_next = True
     with pytest.raises(RuntimeError):
         surface.actuate(effector, target="probe-2", content=["echo", "hi"],
-                        authorization=_grant(["os.run"]), allow_irreversible=True)
+                        authorization=granting_irreversible(_grant(["os.run"])), allow_irreversible=True)
 
     after = effector.perceive("probe-2")
     assert after.data["last_exit"] is None   # NOT the 0 from probe-1
@@ -167,7 +168,7 @@ def test_a_submit_that_lands_but_drops_the_write_does_not_verify():
     # value carries the intended post-condition: the title the response must have.
     action = WebAction("submit", url="https://ok.test/saved", value="Saved")
     out = AccountableSurface().actuate(effector, target="https://ok.test/saved", content=action,
-                                       authorization=_grant(["web.submit"]), allow_irreversible=True)
+                                       authorization=granting_irreversible(_grant(["web.submit"])), allow_irreversible=True)
     assert out.acted is True
     assert driver.current_url() == "https://ok.test/saved"   # the request "succeeded"
     assert out.verified is False                              # the resource says it did not
@@ -194,7 +195,7 @@ def test_a_script_that_returns_nothing_does_not_verify():
     effector = BrowserEffector(driver, allowed_origins=["https://ok.test"])
     action = BrowserAction("evaluate", url="https://ok.test/app", value="doSomething()")
     out = AccountableSurface().actuate(effector, target="https://ok.test/app", content=action,
-                                       authorization=_grant(["browser.evaluate"]),
+                                       authorization=granting_irreversible(_grant(["browser.evaluate"])),
                                        allow_irreversible=True)
     assert out.acted is True
     assert out.verified is False
@@ -249,7 +250,7 @@ def test_an_invoke_the_window_ignored_does_not_verify():
     out = AccountableSurface().actuate(
         UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Save",
         content=UiaCommand("invoke", expect={"kind": "appears", "element": "Saved"}),
-        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+        authorization=granting_irreversible(_grant(["uia.invoke"])), allow_irreversible=True)
     assert out.acted is True
     assert [r["verb"] for r in driver.requests].count("invoke") == 1
     assert out.verified is False
@@ -265,7 +266,7 @@ def test_an_absence_read_off_a_truncated_tree_does_not_verify():
     out = AccountableSurface().actuate(
         UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Save",
         content=UiaCommand("invoke", expect={"kind": "disappears", "element": "Dialog"}),
-        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+        authorization=granting_irreversible(_grant(["uia.invoke"])), allow_irreversible=True)
     assert out.acted is True
     assert "Dialog" not in [e["name"] for e in driver.windows["Notepad"].elements[:2]]
     assert any(e["name"] == "Dialog" for e in driver.windows["Notepad"].elements)
@@ -286,7 +287,7 @@ def test_an_absence_read_off_a_tree_with_nothing_named_does_not_verify():
     out = AccountableSurface().actuate(
         UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Close",
         content=UiaCommand("invoke", expect={"kind": "disappears", "element": "Dialog"}),
-        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+        authorization=granting_irreversible(_grant(["uia.invoke"])), allow_irreversible=True)
     assert out.acted is True
     assert driver.windows["Notepad"].elements == []   # the read is not partial
     assert out.verified is False
@@ -305,7 +306,7 @@ def test_a_label_two_controls_carry_does_not_verify_as_gone():
     out = AccountableSurface().actuate(
         UiaEffector(driver, "Notepad"), target=f"{SCHEME}Notepad/Save",
         content=UiaCommand("invoke", expect={"kind": "disappears", "element": "Dialog"}),
-        authorization=_grant(["uia.invoke"]), allow_irreversible=True)
+        authorization=granting_irreversible(_grant(["uia.invoke"])), allow_irreversible=True)
     assert out.acted is True
     assert len([e for e in driver.windows["Notepad"].elements
                 if e["name"] == "Dialog"]) == 2   # both still on screen

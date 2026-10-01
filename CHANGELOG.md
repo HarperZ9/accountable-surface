@@ -15,6 +15,23 @@
 
 ## Unreleased
 
+- Security: the shared world server no longer accepts cross-origin control. It
+  sent `Access-Control-Allow-Origin: *` with no authentication, so any web page
+  could POST `/act`, `/autopilot` and `/upload` to `127.0.0.1:8808`. It now binds
+  loopback only (non-loopback hosts are refused, and `ACCOUNTABLE_WORLD_HOST`
+  can no longer publish it), generates a token per run and prints it in the URL,
+  requires that token on every API route (`X-World-Token`; the event stream alone
+  also takes `?token=`), refuses any request whose Host or Origin is not its own
+  (DNS rebinding included), refuses non-JSON POSTs, and sends no CORS headers.
+  The web UI reads the token from the printed URL and keeps it in the tab.
+- Security: irreversible actuation needs the grant. `allow_irreversible=True`
+  used to be enough on its own; the grant now has to list the action kind in
+  `scope.allowed_irreversible_actions`, and the caller flag remains a second
+  opt-in that can only narrow. **Breaking** for library callers that relied on the
+  flag alone: add the kind to the grant.
+- The world session refuses its own root directory as a write target (a request
+  with an empty target used to crash the request handler).
+
 - Interoperable MCP server for the accountable-actuation core
   (`accountable_surface.interop_mcp` + `interop_runtime`). A zero-third-party-dependency
   JSON-RPC-over-stdio server (stdlib framing, no FastMCP) so other harnesses -- Claude

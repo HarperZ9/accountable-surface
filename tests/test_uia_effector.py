@@ -18,6 +18,7 @@ from accountable_surface.registry import load_effectors
 from accountable_surface.surface import AccountableSurface
 from accountable_surface.uia import SCHEME, FakeUiaDriver, FakeWindow
 from accountable_surface.uia_effector import UiaCommand, UiaEffector
+from _irreversible import granting_irreversible
 
 WINDOW = "Notepad"
 FIELD = f"{SCHEME}{WINDOW}/Field"
@@ -53,8 +54,11 @@ def _driver(window=None, **kwargs):
 
 
 def _act(effector, target, command, actions, **kwargs):
+    grant = _grant(actions)
+    if kwargs.get("allow_irreversible"):   # the grant, not the flag, carries the authority
+        grant = granting_irreversible(grant)
     return AccountableSurface().actuate(effector, target=target, content=command,
-                                        authorization=_grant(actions), **kwargs)
+                                        authorization=grant, **kwargs)
 
 
 # --- what is refused before anything is touched ------------------------------

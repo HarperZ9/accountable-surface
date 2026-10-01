@@ -23,6 +23,7 @@ from accountable_surface.api_effector import (
 from accountable_surface.credentials import MissingCredential, has_secret, require_secret
 from accountable_surface.effector import RefusedActuation
 from accountable_surface.surface import AccountableSurface
+from _irreversible import granting_irreversible
 
 TOKEN = "fake-token-for-tests-only"
 THREAD = "/repos/octo/demo/issues/7/comments"
@@ -298,7 +299,7 @@ def test_an_irreversible_call_the_operator_pre_authorized_cannot_be_rolled_back(
     effector = ApiEffector(driver, NO_UNDO)
     call = ApiCall("send_message", {"body": "go"})
     outcome = AccountableSurface().actuate(effector, target="/repos/octo/demo/dispatches", content=call,
-                                           authorization=_grant(["api.post"]), allow_irreversible=True)
+                                           authorization=granting_irreversible(_grant(["api.post"])), allow_irreversible=True)
     assert outcome.acted is True and outcome.verified is True
     with pytest.raises(RefusedActuation) as exc:
         effector.rollback(effector.preview("/repos/octo/demo/dispatches", call))

@@ -35,9 +35,25 @@ from coherence_membrane.organs.web import WebDocumentOrgan
 from accountable_surface.bounds import bound_of, bound_refusal, render_bound
 from accountable_surface.certify import action_certificate
 from accountable_surface.effector import RefusedActuation
-from accountable_surface.grant import action_authorization
+from accountable_surface.grant import action_authorization, irreversible_granted
 from accountable_surface.journal_chain import GENESIS, entry_hash, read_journal
 from accountable_surface.preconditions import bind_state_precondition
+
+
+def _irreversible_refusal(authorization, action_kind: str, allow_irreversible: bool) -> str | None:
+    """Why an irreversible plan may not act, or None when it may.
+
+    The grant is the authority: ``scope.allowed_irreversible_actions`` must name the
+    action kind. The caller's ``allow_irreversible`` is a second opt-in that can only
+    narrow; on its own it authorizes nothing."""
+    if not irreversible_granted(authorization, action_kind):
+        return (f"irreversible action {action_kind!r} is not listed in the grant's "
+                "allowed_irreversible_actions; a caller argument alone is not authority. "
+                "Ask the operator for a grant that names it, or for human approval")
+    if not allow_irreversible:
+        return (f"the grant permits irreversible {action_kind!r}, but this call did not opt in "
+                "with allow_irreversible=True")
+    return None
 
 
 @dataclass(frozen=True)
@@ -341,11 +357,11 @@ class AccountableSurface:
                     decision="needs-human", verdict="ungrounded-premise", grounding=grounding,
                     reasons=[f"action premise {justification!r} is ungrounded -- no supporting references"],
                 ), None, None
-        if not plan.reversible and not allow_irreversible:
-            return refuse(
-                decision="needs-human", verdict="irreversible-needs-human", grounding=grounding,
-                reasons=["irreversible action needs explicit allow_irreversible in the grant, or human approval"],
-            ), None, None
+        if not plan.reversible:
+            reason = _irreversible_refusal(authorization, plan.action_kind, allow_irreversible)
+            if reason is not None:
+                return refuse(decision="needs-human", verdict="irreversible-needs-human",
+                              grounding=grounding, reasons=[reason]), None, None
         return None, outcome, grounding
 
     def _record_actuation(

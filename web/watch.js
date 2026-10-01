@@ -2,6 +2,7 @@
 // operator and the model see -- the witnessed material (including the glyph grid the model actually
 // perceives), the mind's voice, and every gated, witnessed move -- streamed live. Like a stream.
 
+import { api, stream } from "./token.js";
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -84,19 +85,19 @@ function addTick(step) {
 
 async function init() {
   try {
-    const d = await (await fetch("./world")).json();
+    const d = await (await api("./world")).json();
     $("pilot").textContent = d.pilot || "none";
     setNow(d.goal); setLive(!!d.running, d.running ? "live" : "idle");
     renderStage(d);
   } catch (e) { /* the stream will drive the view */ }
   try {
-    const rl = await (await fetch("./reel")).json();
+    const rl = await (await api("./reel")).json();
     if (rl && rl.count) playReel(rl);   // moving material present -- start the ASCII video player
   } catch (e) { /* no reel */ }
 }
 
 function connect() {
-  const es = new EventSource("./world/stream");
+  const es = stream("./world/stream");
   es.addEventListener("world", e => renderStage(JSON.parse(e.data)));
   es.addEventListener("step", e => { const s = JSON.parse(e.data); addVoice(s); addTick(s); });
   es.addEventListener("status", e => {

@@ -5,6 +5,7 @@
 // that witnessed sight -- the same frame, two ways of seeing. The chat is grounded in the sight,
 // with a small memory the model carries across the conversation.
 
+import { api, stream } from "./token.js";
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -37,7 +38,7 @@ async function addImage(file) {
   setStatus("witnessing your image…");
   try {
     const { dataUrl, b64, name } = await fileToPng(file);
-    const d = await (await fetch("./upload", { method: "POST", headers: { "Content-Type": "application/json" },
+    const d = await (await api("./upload", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, png_b64: b64 }) })).json();
     if (d.error) { setStatus("upload: " + d.error); return; }
     currentSight = d.sight;
@@ -98,7 +99,7 @@ async function send() {
   $("chat-send").disabled = true;
   setStatus("the model is looking…");
   try {
-    const d = await (await fetch("./chat", { method: "POST", headers: { "Content-Type": "application/json" },
+    const d = await (await api("./chat", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }) })).json();
     addMsg("assistant", d.error ? "(" + d.error + ")" : d.reply);
   } catch (e) { addMsg("assistant", "(couldn't reach the model: " + e.message + ")"); }
@@ -119,10 +120,10 @@ $("chat-input").addEventListener("keydown", e => { if (e.key === "Enter") send()
 window.addEventListener("resize", () => currentSight && fitAscii(currentSight));
 
 (async function init() {
-  try { pilotKind = (await (await fetch("./world")).json()).pilot || "none"; } catch (e) { /* offline */ }
+  try { pilotKind = (await (await api("./world")).json()).pilot || "none"; } catch (e) { /* offline */ }
   setStatus();
   try {
-    const h = (await (await fetch("./chat")).json()).history || [];
+    const h = (await (await api("./chat")).json()).history || [];
     if (h.length) { const e = $("chat-empty"); if (e) e.remove(); h.forEach(m => addMsg(m.role, m.text)); }
   } catch (e) { /* no history */ }
 })();

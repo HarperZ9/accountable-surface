@@ -238,7 +238,8 @@ AccountableSurface().actuate(
 Two intents, so a grant can carry the reversible one on its own. `set_value` reads
 the control's prior value first and puts it back when verification fails. `invoke`
 presses the control and cannot be undone, so it stays `needs-human` unless the
-operator passes `allow_irreversible`, and it needs a declared post-condition:
+grant lists `uia.invoke` in `allowed_irreversible_actions` and the caller passes
+`allow_irreversible=True`. It also needs a declared post-condition:
 
 ```python
 UiaCommand("invoke", expect={"kind": "appears", "element": "Saved"})
@@ -309,4 +310,9 @@ the grants that bound them, so nothing here presses a control to find out what i
   passes reaches `allow_irreversible`.
 - Journals are append-only local records.
 - Operator grant files and session journals are runtime inputs, not source files.
-- Irreversible actions require explicit grant handling and verification.
+- Irreversible actions require the grant to name the action kind in
+  `scope.allowed_irreversible_actions` (an explicit list; no wildcard, boolean or
+  string form counts). The caller's `allow_irreversible=True` is a second opt-in that
+  can only narrow. On its own it authorizes nothing.
+- The shared world server binds loopback only, needs its per-run token on every API
+  request, and refuses requests whose Host or Origin is not its own.

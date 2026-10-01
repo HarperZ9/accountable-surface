@@ -44,8 +44,9 @@ cannot fabricate one. No grant loaded means the gate denies everything.
 
 **Gate.** Every proposed action is checked by proof-surface's pre-execution
 gate. Three outcomes: allow, deny, needs-human. Irreversible actions (a POST,
-an OS command that cannot be undone) escalate to needs-human unless the
-operator explicitly passes `allow_irreversible`.
+an OS command that cannot be undone) escalate to needs-human unless the grant
+names the action kind in `allowed_irreversible_actions` and the caller also
+passes `allow_irreversible=True`. The argument alone authorizes nothing.
 
 **Effector.** The only thing that touches the world. Each effector is bounded
 by construction (a filesystem root, an origin list, a command allowlist) and
@@ -118,7 +119,8 @@ Then pick the transcript closest to your use case:
   extra first).
 
 To watch the surface act live, start the shared world server and open the
-printed URL:
+printed URL. It carries a token that is new on every run; the server binds
+loopback only and refuses requests from any other origin:
 
 ```powershell
 python -m accountable_surface.world.server 8808

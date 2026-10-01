@@ -12,6 +12,7 @@ import pytest
 
 from accountable_surface.surface import AccountableSurface
 from accountable_surface.web_effector import FakePageDriver, WebAction, WebEffector
+from _irreversible import granting_irreversible
 
 
 class _Allow:
@@ -207,7 +208,7 @@ def test_actuate_submit_with_irreversible_permission_acts():
     out = AccountableSurface().actuate(
         eff, target="https://ok.test/form",
         content=WebAction("submit", url="https://ok.test/thanks", value="Thanks"),
-        authorization=_grant(["web.submit"]), allow_irreversible=True,
+        authorization=granting_irreversible(_grant(["web.submit"])), allow_irreversible=True,
     )
     assert out.acted is True
     assert out.verified is True

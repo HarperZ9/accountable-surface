@@ -5,6 +5,9 @@ operator grant) and a set of live subscribers: a proposed action POSTed to /act 
 loop and is pushed to every open /world/stream connection, so the operator sees the body act in
 real time. Grants are operator-supplied at startup (env or arg); the built-in fallback is an
 explicit, sandbox-scoped demo grant -- default-deny still holds (no grant -> nothing acts).
+
+The HTTP door (see access.py) binds loopback only, requires a per-run token printed at start,
+and refuses any request whose Host or Origin is not the server's own.
 """
 from __future__ import annotations
 
@@ -13,6 +16,7 @@ import json
 import os
 import queue
 import re
+import socket
 import threading
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -21,6 +25,7 @@ from pathlib import Path
 from coherence_membrane.pngview import is_png
 from coherence_membrane.native_capture import ScreenCaptureSource, capture_available
 
+from . import access
 from .screen import witness_capture
 from .session import WorldSession, screen_capture_allowed
 from .sight import sight_of, describe_sight
@@ -221,23 +226,46 @@ _WORLD: World | None = None
 
 
 class Handler(BaseHTTPRequestHandler):
+    """Every request passes `access.check_request` first (Host, Origin, token, content type).
+    No response carries an Access-Control-Allow-* header."""
+
     def _send(self, code, body, ctype="application/json"):
         data = body if isinstance(body, (bytes, bytearray)) else json.dumps(body).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 
+    def _refused(self, method) -> bool:
+        """Send the refusal and return True when the door says no."""
+        verdict = access.check_request(method, self.path, self.headers,
+                                       token=self.server.world_token, hosts=self.server.world_hosts)
+        if verdict is None:
+            return False
+        self._drain_small_body()
+        self.close_connection = True
+        self._send(verdict[0], {"error": verdict[1]})
+        return True
+
+    def _drain_small_body(self, limit=64 * 1024):
+        """Read a small unread request body before refusing. Closing a socket with unread
+        bytes makes Windows send RST, and the client then loses the refusal itself."""
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return
+        if 0 < n <= limit:
+            self.rfile.read(n)
+
     def do_OPTIONS(self):
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
+        self._refused("OPTIONS")   # always refuses: there is no cross-origin access to grant
 
     def do_GET(self):
+        if self._refused("GET"):
+            return
         path = self.path.split("?")[0]
         if path == "/world":
             snap = _WORLD.snapshot()
@@ -258,8 +286,13 @@ class Handler(BaseHTTPRequestHandler):
         return self._static("index.html" if path == "/" else path.lstrip("/"))
 
     def do_POST(self):
+        if self._refused("POST"):
+            return
         path = self.path.split("?")[0]
-        n = min(int(self.headers.get("Content-Length") or 0), 32 * 1024 * 1024)  # cap the body (32 MiB)
+        try:
+            n = max(0, min(int(self.headers.get("Content-Length") or 0), 32 * 1024 * 1024))  # cap (32 MiB)
+        except ValueError:
+            return self._send(400, {"error": "bad Content-Length"})
         try:
             body = json.loads(self.rfile.read(n) or b"{}") if n else {}
         except json.JSONDecodeError:
@@ -319,7 +352,6 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         try:
             self._sse("world", _WORLD.snapshot())
@@ -378,21 +410,45 @@ def _build_pilot():
     return SightfulPilot(), "sightful-demo"
 
 
-def serve(host=None, port=8808, root=None, grant=None):
+class _Server(ThreadingHTTPServer):
+    daemon_threads = True
+
+
+class _Server6(_Server):
+    address_family = socket.AF_INET6
+
+
+def make_server(world, host="127.0.0.1", port=8808, token=None):
+    """Bind the world server to a loopback address with a fresh per-run token.
+
+    Raises ValueError for any non-loopback host. The token and the accepted Host values
+    ride on the returned server object (`world_token`, `world_hosts`)."""
     global _WORLD
-    host = host or os.environ.get("ACCOUNTABLE_WORLD_HOST", "127.0.0.1")  # 0.0.0.0 to host on a droplet
+    host = access.require_loopback(host)
+    cls = _Server6 if ":" in host else _Server
+    httpd = cls(("127.0.0.1" if host == "localhost" else host, port), Handler)
+    httpd.world_token = token or access.new_token()
+    httpd.world_hosts = access.allowed_hosts(host, httpd.server_address[1])
+    _WORLD = world
+    return httpd
+
+
+def serve(host=None, port=8808, root=None, grant=None):
+    host = host or os.environ.get("ACCOUNTABLE_WORLD_HOST", "127.0.0.1")
     root = root or os.environ.get("ACCOUNTABLE_WORLD_ROOT") or (Path.cwd() / "world-sandbox")
     grant = grant or _load_grant() or _sandbox_grant()
     pilot, kind = _build_pilot()
-    _WORLD = World(root, grant, pilot, kind)
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        print(f"!! WARNING: binding {host} exposes this surface PUBLICLY with NO authentication -- "
-              "anyone who can reach this port can drive the body and read the sandbox. "
-              "Only do this behind your own auth/firewall.")
-    httpd = ThreadingHTTPServer((host, port), Handler)
+    try:
+        httpd = make_server(World(root, grant, pilot, kind), host=host, port=port)
+    except ValueError as exc:
+        raise SystemExit(f"!! {exc}. The world server has no remote mode; put your own "
+                         "authenticated proxy in front of the loopback port instead.") from exc
+    shown = f"[{host}]" if ":" in host else host
     actions = _WORLD.session.grant.get("scope", {}).get("allowed_actions", [])
-    print(f"shared world on http://{host}:{port}  root={_WORLD.session.root}  "
+    print(f"shared world on http://{shown}:{port}  root={_WORLD.session.root}  "
           f"grant={actions}  pilot={kind}")
+    print(f"open  http://{shown}:{httpd.server_address[1]}/?token={httpd.world_token}")
+    print(f"API clients send the header {access.TOKEN_HEADER}: <token>. The token lasts for this run only.")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

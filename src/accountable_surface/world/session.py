@@ -79,8 +79,8 @@ class WorldSession:
     def _resolve(self, target: str) -> str:
         """Absolute path under root for `target`; refuse anything that escapes the world root."""
         p = Path(target).resolve() if os.path.isabs(target) else (self.root / target).resolve()
-        if self.root != p and self.root not in p.parents:
-            raise RefusedActuation(f"target {target!r} escapes the world root")
+        if self.root not in p.parents:   # the root itself is a directory, never a write target
+            raise RefusedActuation(f"target {target!r} is not a file inside the world root")
         return str(p)
 
     def act(self, *, kind, target, content="", justification="", reasoning="") -> WorldStep:

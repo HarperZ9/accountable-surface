@@ -14,6 +14,7 @@ from accountable_surface.browser_effector import (
     FakeBrowserDriver,
 )
 from accountable_surface.surface import AccountableSurface
+from _irreversible import granting_irreversible
 
 
 def _grant(actions, targets=()):
@@ -160,7 +161,7 @@ def test_irreversible_script_with_permission_runs():
         eff,
         target="https://app.test/",
         content=BrowserAction("evaluate", url="https://app.test/", value="document.title"),
-        authorization=_grant(["browser.evaluate"]),
+        authorization=granting_irreversible(_grant(["browser.evaluate"])),
         allow_irreversible=True,
     )
     assert out.acted is True
