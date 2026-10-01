@@ -27,7 +27,6 @@ from urllib.parse import parse_qs, urlsplit
 
 TOKEN_HEADER = "X-World-Token"
 STREAM_PATH = "/world/stream"
-STATIC_PATHS = ("/", "/watch", "/together", "/screen")
 _API_GET = ("/world", STREAM_PATH, "/reel", "/chat")
 _LOOPBACK_NAMES = ("localhost",)
 
