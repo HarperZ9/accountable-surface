@@ -24,6 +24,7 @@ from accountable_surface.effector import FilesystemEffector, RefusedActuation
 from accountable_surface.reference import FakeSource, ReferenceCortex
 from accountable_surface.surface import AccountableSurface
 from coherence_membrane.observation import sha256_hex
+from _irreversible import granting_irreversible
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -597,7 +598,7 @@ class TestIrreversibleEscalation:
             eff,
             target="https://app.test/result",
             content=action,
-            authorization=_grant(["web.submit"]),
+            authorization=granting_irreversible(_grant(["web.submit"])),
             allow_irreversible=True,
         )
         assert out.acted is True

@@ -4,6 +4,7 @@
 // model reads -- ascii shape + structure contours (overlay.js) + OKLab colour map.
 // No raw screen pixels cross the wire; the witnessed sight is the shared medium.
 
+import { api, stream } from "./token.js";
 const $ = id => document.getElementById(id);
 
 function render(sight) {
@@ -17,7 +18,7 @@ function render(sight) {
     `${(sight.structure && sight.structure.contours) || 0} contours · ${sight.digest}`;
 }
 
-const es = new EventSource("/world/stream");
+const es = stream("/world/stream");
 es.addEventListener("capture", e => {
   const d = JSON.parse(e.data);
   if (d.error) { $("status").textContent = "refused: " + d.error; return; }
@@ -32,9 +33,9 @@ function region() {
   return r.every(n => Number.isFinite(n)) ? r : null;
 }
 $("start").addEventListener("click", async () => {
-  const res = await (await fetch("/capture/start", { method: "POST",
+  const res = await (await api("/capture/start", { method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ region: region() }) })).json();
   $("status").textContent = res.error ? "refused: " + res.error : "starting…";
 });
-$("stop").addEventListener("click", () => fetch("/capture/stop", { method: "POST" }));
+$("stop").addEventListener("click", () => api("/capture/stop", { method: "POST" }));

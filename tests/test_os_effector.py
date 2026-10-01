@@ -12,6 +12,7 @@ import pytest
 from accountable_surface.effector import RefusedActuation
 from accountable_surface.os_effector import CommandEffector
 from accountable_surface.surface import AccountableSurface
+from _irreversible import granting_irreversible
 
 
 class _Allow:
@@ -112,7 +113,7 @@ def test_actuate_irreversible_with_permission_runs(tmp_path):
     runner = _FakeRunner(exit_code=0)
     eff = CommandEffector(runner, {"echo"}, tmp_path)
     out = AccountableSurface().actuate(
-        eff, target="greet", content=["echo", "hi"], authorization=_grant(["os.run"]), allow_irreversible=True
+        eff, target="greet", content=["echo", "hi"], authorization=granting_irreversible(_grant(["os.run"])), allow_irreversible=True
     )
     assert out.acted is True
     assert out.verified is True

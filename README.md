@@ -256,7 +256,7 @@ A live surface you can watch in a browser: proposed actions run the real perceiv
 python -m accountable_surface.world.server 8808
 ```
 
-It serves the web UI from `web/` and binds to localhost by default. Grants are operator-supplied at startup; the built-in fallback is an explicit sandbox-scoped demo grant, and default-deny still holds.
+It serves the web UI from `web/`. Open the URL it prints: the URL carries a token that is new on every run. The server binds loopback only and refuses any other host. Every API request needs the token (header `X-World-Token`), and a request whose Host or Origin is not the server's own is refused, so another web page you visit cannot drive the world. Grants are operator-supplied at startup; the built-in fallback is an explicit sandbox-scoped demo grant, and default-deny still holds.
 
 ## Layout
 

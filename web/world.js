@@ -5,6 +5,7 @@
 // The operator can propose actions too. The receipt is re-checked CLIENT-SIDE (recheck.js) -- the
 // meet re-derived from the certificate's own evidence. Trust nothing; check it.
 import { recheckComposed } from "./recheck.js";
+import { api, stream } from "./token.js";
 
 const $ = id => document.getElementById(id);
 let liveCert = null;
@@ -83,7 +84,7 @@ async function propose() {
   };
   $("act-btn").disabled = true;
   try {
-    const r = await fetch("./act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const r = await api("./act", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const step = await r.json();
     if (step.error) { announce("error: " + step.error); return; }
     renderMove(step);
@@ -124,7 +125,7 @@ async function runAutopilot() {
   apStep = 0; $("transcript").innerHTML = ""; $("transcript").hidden = false;
   setRunning(true);
   try {
-    const r = await fetch("./autopilot", {
+    const r = await api("./autopilot", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ goal: $("ap-goal").value.trim(), max_steps: parseInt($("ap-steps").value) || 4 }),
     });
@@ -137,20 +138,20 @@ async function runAutopilot() {
 }
 
 async function stopAutopilot() {
-  try { await fetch("./autopilot/stop", { method: "POST" }); } catch (e) { /* ignore */ }
+  try { await api("./autopilot/stop", { method: "POST" }); } catch (e) { /* ignore */ }
   announce("Autopilot stop requested.");
 }
 
 async function initPilot() {
   try {
-    const d = await (await fetch("./world")).json();
+    const d = await (await api("./world")).json();
     $("pilot-kind").textContent = d.pilot || "none";
     setRunning(!!d.running);
   } catch (e) { /* the stream will still drive the view */ }
 }
 
 function connect() {
-  const es = new EventSource("./world/stream");
+  const es = stream("./world/stream");
   es.addEventListener("world", e => renderWorld(JSON.parse(e.data)));
   es.addEventListener("step", e => { const s = JSON.parse(e.data); renderMove(s); appendVoice(s); });
   es.addEventListener("autopilot", () => { setRunning(false); announce("Autopilot finished."); });

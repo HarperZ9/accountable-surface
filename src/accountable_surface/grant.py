@@ -9,6 +9,10 @@ same grant, and they have no meaning inside proof-surface's schema:
                            (see ``bounds.py``).
   ``allowed_reads``        which read scopes the remote MCP layer may use for
                            preconditions, verification, rollback, and journal replay.
+  ``allowed_irreversible_actions``
+                           the exact action kinds the operator lets act without a
+                           rollback (see ``irreversible_granted``). A list of kind
+                           strings; no wildcard, boolean, or string form counts.
 
 Strip them before handing any grant to propose() or actuate() so the schema check
 never sees them.
@@ -19,7 +23,21 @@ boundary that calls into proof-surface (world/session.py, server.py, …).
 
 from __future__ import annotations
 
-LOCAL_SCOPE_FIELDS = ("allowed_perceptions", "allowed_bounds", "allowed_reads")
+LOCAL_SCOPE_FIELDS = ("allowed_perceptions", "allowed_bounds", "allowed_reads",
+                      "allowed_irreversible_actions")
+
+
+def irreversible_granted(grant, action_kind: str) -> bool:
+    """True iff the grant lists `action_kind` in ``scope.allowed_irreversible_actions``.
+
+    Only a list (or tuple) of exact kind strings counts. A string would turn the
+    membership test into a substring test, and a wildcard would grant kinds the
+    operator never named, so both read as "not granted"."""
+    scope = grant.get("scope") if isinstance(grant, dict) else None
+    kinds = scope.get("allowed_irreversible_actions") if isinstance(scope, dict) else None
+    if not isinstance(kinds, (list, tuple)):
+        return False
+    return any(isinstance(k, str) and k == action_kind and k != "*" for k in kinds)
 
 
 def action_authorization(grant):
