@@ -1,6 +1,6 @@
 # Senses and Sensibility -- a thesis on accountable machines
 
-*Zain Dana Harper · 2026-06-19 · MIT*
+*Zain Dana Harper · 2026-06-19 · CC BY 4.0*
 
 > Senses and sensibility are what lead to the new frontier. Machines learning to hold
 > themselves accountable.
@@ -120,7 +120,7 @@ and elsewhere the system emits the honest independence annotation alongside the 
 
 ---
 
-*The implementation is MIT-licensed and inspectable; the thesis is offered openly. Authorship
+*The implementation is FSL-1.1-MIT and inspectable; this thesis is licensed CC BY 4.0. Authorship
 and priority are established by the public record and its dated history.*
 
 © 2026 Zain Dana Harper.
