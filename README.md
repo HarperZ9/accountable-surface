@@ -304,6 +304,11 @@ A journal that can be quietly rewritten records nothing worth reading. Each entr
 
 ## License
 
+Text: CC BY 4.0. Code: FSL-1.1-MIT.
+
+[`THESIS.md`](THESIS.md) is a written work and is licensed CC BY 4.0. Share and
+adapt it with credit to Zain Dana Harper; the terms are in
+[`LICENSE-TEXT`](LICENSE-TEXT). The code and the software documentation are
 FSL-1.1-MIT. Copyright (c) 2026 Zain Dana Harper. See [LICENSE](LICENSE).
 
 ## What this believes
