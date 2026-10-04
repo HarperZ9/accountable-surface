@@ -1,14 +1,26 @@
-<p align="center"><img src="docs/art/accountable-surface-header.svg" alt="Accountable Surface" width="100%"></p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/HarperZ9/accountable-surface/main/docs/art/hero-dark.svg">
+  <img src="https://raw.githubusercontent.com/HarperZ9/accountable-surface/main/docs/art/hero-light.svg" alt="accountable-surface: Lets an AI agent take only the actions a person has approved. Lines arrive from one side at a toothed ring around a bright core; most pass through and a few stop at the ring with a short cross mark." width="100%">
+</picture>
 
-# Accountable Surface
+# accountable-surface
+
+Lets an AI agent take only the actions a person has approved.
+
+```
+pip install accountable-surface
+```
+
+[![version: 0.2.0](https://img.shields.io/badge/version-0.2.0-e6e1d6?style=flat-square&labelColor=1a1712)](https://pypi.org/project/accountable-surface/)
+[![CI](https://github.com/HarperZ9/accountable-surface/actions/workflows/ci.yml/badge.svg)](https://github.com/HarperZ9/accountable-surface/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-FSL--1.1--MIT-e6e1d6?style=flat-square&labelColor=1a1712)](https://github.com/HarperZ9/accountable-surface/blob/main/LICENSE)
+![python 3.10+](https://img.shields.io/badge/python-3.10%2B-e6e1d6?style=flat-square&labelColor=1a1712)
 
 Accountable Surface lets an AI agent take only the file, command, web, or
 browser action a person has approved. It checks the request and authorization,
 blocks or pauses when needed, verifies the outcome, rolls back reversible
 failures, and records decisions and outcomes in a journal. Persisted journals
 are hash-chained so later edits, deletions, or reordering are detected.
-
-![version](https://img.shields.io/badge/version-0.2.0-f8cc43?style=flat-square&labelColor=14041b) ![license](https://img.shields.io/badge/license-FSL--1.1--MIT-8f8095?style=flat-square&labelColor=14041b)
 
 The Python core uses only the standard library. Browser automation is an
 optional extra.
@@ -268,7 +280,7 @@ It serves the web UI from `web/`. Open the URL it prints: the URL carries a toke
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
 - `tests/`: the Python test suite. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
-- `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `.github/assets/banner.png`.
+- `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `docs/art/` (hero, social preview) and `docs/brand/` (mark, lockups).
 
 ## Status
 
