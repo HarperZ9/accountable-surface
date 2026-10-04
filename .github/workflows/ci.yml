@@ -47,3 +47,9 @@ jobs:
         shell: powershell
         working-directory: accountable-surface
         run: node --test web/*.test.mjs
+  art-receipts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify art receipt digests
+        run: python3 scripts/check_art_receipts.py
