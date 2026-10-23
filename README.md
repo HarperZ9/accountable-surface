@@ -7,95 +7,120 @@
 
 Lets an AI agent take only the actions a person has approved.
 
-```
-pip install accountable-surface
-```
-
-[![version: 0.2.0](https://img.shields.io/badge/version-0.2.0-e6e1d6?style=flat-square&labelColor=1a1712)](https://pypi.org/project/accountable-surface/)
+[![PyPI: 0.3.1](https://img.shields.io/badge/pypi-0.3.1-e6e1d6?style=flat-square&labelColor=1a1712)](https://pypi.org/project/accountable-surface/)
 [![CI](https://github.com/HarperZ9/accountable-surface/actions/workflows/ci.yml/badge.svg)](https://github.com/HarperZ9/accountable-surface/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-FSL--1.1--MIT-e6e1d6?style=flat-square&labelColor=1a1712)](https://github.com/HarperZ9/accountable-surface/blob/main/LICENSE)
 ![python 3.10+](https://img.shields.io/badge/python-3.10%2B-e6e1d6?style=flat-square&labelColor=1a1712)
 
-Accountable Surface lets an AI agent take only the file, command, web, or
-browser action a person has approved. It checks the request and authorization,
-blocks or pauses when needed, verifies the outcome, rolls back reversible
-failures, and records decisions and outcomes in a journal. Persisted journals
-are hash-chained so later edits, deletions, or reordering are detected.
+accountable-surface is a Python library and MCP server that sits between an AI agent and the things it can change. The agent asks to write a file, call an API, submit a web form or press a button in a Windows app. The request runs only if a permission grant you wrote covers it. After the action, the library reads the target again to confirm the change landed. An action that fails that check is undone where it can be. Every decision and outcome goes into a hash-chained log that a standalone script can check.
 
-The Python core uses only the standard library. Browser automation is an
-optional extra.
+It is for developers wiring an agent to real files, services or desktop apps who want a deny-by-default permission check and a result check in code they can test. The package and its two required packages use only the Python standard library.
 
-## Try it
+## Quickstart
 
-After [cloning the three repositories and installing Accountable
-Surface](#install), run the complete local file-action example:
-
-```powershell
-python examples/actuate_demo.py
+```
+pip install accountable-surface
 ```
 
-The example refuses an unapproved write, performs an approved write, detects a
-wrong result, restores the previous file, and prints the journal entries.
+Save this as `quickstart.py` and run it with `python quickstart.py`:
 
-## Verified Today
+```python
+import tempfile
+from pathlib import Path
+from accountable_surface import AccountableSurface, FilesystemEffector
 
-The published GitHub `v0.2.0` release is available from commit
-`b2ae9be77038753d9bdbda861e9908542883ff2c`. Its release assets are:
+sandbox = Path(tempfile.mkdtemp())
+grant = {
+    "authorization_version": "0.1",
+    "receipt_id": "grant-1",
+    "kind": "authorization-grant",
+    "principal": {"id": "alice", "role": "owner"},
+    "agent": {"id": "my-agent"},
+    "intent": "write the report file",
+    "scope": {"allowed_actions": ["fs.write"], "allowed_targets": []},
+    "granted_at": "2026-01-01T00:00:00+00:00",
+    "expires_at": "2030-01-01T00:00:00+00:00",
+    "revoked": False,
+}
 
-- `accountable_surface-0.2.0-py3-none-any.whl`
-  (`sha256:f2fb09ac66d00bb188da7fdd6fd1ba37485f5fe245c0596902adc355f6bccdfa`).
-- `accountable_surface-0.2.0.tar.gz`
-  (`sha256:47a126a821861ce49581b49eb67892220a61633de8b71323e41749e8fa6538c6`).
-- `SHA256SUMS.txt`
-  (`sha256:b7acee277353171f79865a32640bf64b48efcfbb919a4e7c2143a4a71c845855`).
+surface = AccountableSurface(journal_path=sandbox / "journal.jsonl")
+effector = FilesystemEffector(str(sandbox))
+target = str(sandbox / "report.txt")
 
-The release was verified from a clean isolated worktree with these checks:
+denied = surface.actuate(effector, target=target, content=b"hello", authorization={})
+print(denied.acted, denied.decision)
 
-- `python -m pytest`: Python suite passed.
-- `node --test web/*.test.mjs`: browser-interface tests passed.
-- `python tools/check_repo_art.py --json`, `python tools/check_repo_card.py`,
-  and `python tools/check_repo_flow.py`: repository documentation/art gates passed.
-- `python -m build --sdist --wheel`: built the local sdist and wheel.
-- `python -m twine check dist/*`: passed with Twine 7.x.
-- A fresh virtual environment installed the wheel, checked both console scripts,
-  and ran a private synthetic durable-authority control against a disposable
-  authority-state database.
+allowed = surface.actuate(effector, target=target, content=b"hello", authorization=grant)
+print(allowed.acted, allowed.decision, allowed.verified)
+print(sandbox / "journal.jsonl")
+```
 
-These checks cover the repository's deterministic local paths. They do not
-establish safety in every host environment or validate every third-party
-browser, website, or model provider.
+Output:
 
-## Features
+```
+False deny
+True allow True
+```
 
-- **Third-party API actuation.** `ApiEffector` writes through a service's official API under the same contract as the rest. The caller hands in an intent and a body; the host, method, route shape, and credential belong to the effector, so an agent can ask to post a comment and cannot reach an admin route or read the token back. Verification re-reads the resource, so a service that answers 201 and stores nothing is refuted rather than believed. `FakeApiDriver` makes the whole path testable with no network and no credential.
-- **Native web actuation, no browser.** `WebEffector` navigates, fills fields by their visible label, and submits forms on live server-rendered pages, driven by a stdlib HTTP and HTML parser backend (`HttpDriver`). Origin-bounded by construction.
-- **JS-capable browser actuation, optional.** `BrowserEffector` clicks by accessible label, follows navigation, and runs JavaScript on single-page apps. Tests and offline demos use the deterministic `FakeBrowserDriver`; production can inject `PlaywrightDriver` (the `[browser]` extra, lazily imported, never a hard dependency).
-- **OS command actuation.** `CommandEffector` runs allowlisted commands only, as argv with `shell=False`, in a bounded working directory. Irreversible commands escalate to needs-human.
-- **Filesystem actuation with rollback.** `FilesystemEffector` is bounded to a root, verifies its own writes by re-perceiving, and rolls back a reversible action that fails verification.
-- **Windows application actuation, by label not by pixel.** `UiaEffector` reads a window's control tree and acts on one control by its accessible name: press a button, set a field. It is built for a single window and refuses a target naming another. A click cannot be undone, so the caller declares what should follow it (a control appears, disappears, or carries some text) and a plan without that is refused before anything is touched. Verification re-reads the window, so an application that accepts a click and does nothing with it is refuted rather than believed. `FakeUiaDriver` runs the whole path on any operating system, with no window open.
-- **A ladder that says what it cost.** Reaching a desktop application starts with the control tree and falls to pixels only when the cheap instrument cannot answer. The escalator asks each rung in that rung's own terms and records why it fell: the tree was clipped, the label named two controls, the window did not read. Falling does not buy an answer. When the ladder runs out you get NEEDS_HUMAN, the whole trace, and the witnessed sight the deepest rung produced, because a perceptual hash is a real receipt for an image and no answer at all about a control named `Save`.
-- **Structured perception.** Organs read a target as a content-addressed structural observation with a falsifiable self-test, not a screenshot.
-- **Grounding.** A reference cortex (`ReferenceCortex`) scores reference relevance for a subject and reports "ungrounded" instead of guessing, with native arXiv lookup via the stdlib. An action can carry a justification; an ungrounded premise escalates to needs-human.
-- **Bounded autonomy.** `pursue` runs a multi-step plan under one grant envelope with no per-step prompt, halting the instant a step is denied or fails verification.
-- **Shared world server.** A zero-dependency live server (stdlib `http.server` plus SSE) where proposed actions run the real loop and stream to every open browser tab, with a small web UI in `web/`. Optional pilots connect a model (Claude or Ollama) to drive it.
-- **Durable, tamper-evident memory.** An append-only JSONL journal that replays across sessions, hash-chained so an edited, deleted, or reordered entry is caught on reload even though it still parses (corruption and tamper are counted separately, never conflated). `verify_journal()` re-derives the chain and returns the verdict; `interocept()` is a content-addressed view of the surface's own conduct.
-- **Live MCP server.** `perceive`, `propose`, `actuate`, `session_journal`, and `interocept` exposed over MCP stdio (the `[server]` extra). `actuate` reaches only the effectors the operator exposed, and nothing is exposed by default.
-- **Interoperable MCP server (no FastMCP).** A zero-third-party-dependency stdio server, `accountable_surface.interop_mcp`, carries the six accountable primitives (`perceive`, `propose`/gate, `actuate`, `journal`, `receipt`) plus the shipped read-only verb `device_ls`, so other harnesses (Claude Code, Codex, Cursor, the Flywheel bundled lane) adopt one seam. See `docs/interop-mcp.md` and `interop/`.
-- **Action certificates.** `certify` composes the gate, effect, and grounding verdicts into one certificate token; a denial or failed effect makes the whole action REFUTED, and an escalation yields UNVERIFIABLE, never a rounded-up pass.
+The third line it prints is the path of `journal.jsonl` in a new temporary folder.
 
-The gate is default-deny: with no operator grant loaded, nothing acts. The model cannot supply its own authorization.
+With no grant the write is refused and no file is created. With the grant it runs, and `verified` is `True` because the file was read back and matched. To check the log, run `verify_journal.py` from a clone of this repository on the printed path. It prints `MATCH  chain intact over 4 entries`. Change one byte of the log and it prints `DRIFT` and exits 1.
+
+For a demo that also shows a faulty write being caught and rolled back, clone the repository and run `python examples/actuate_demo.py` with `src` on `PYTHONPATH`.
+
+## What it can do
+
+Each kind of action has its own effector, built with a fixed reach (a root folder, an origin, one API service, one window):
+
+- **Files.** `FilesystemEffector` writes inside one root, reads the result back, and rolls back a write that fails the check.
+- **Commands.** `CommandEffector` runs allowlisted programs as argv with `shell=False`. Every command counts as irreversible, so it stops for a person unless allowed.
+- **Web forms without a browser.** `WebEffector` fills fields by their visible label and submits forms on server-rendered pages, using only the standard library. It stays on one origin.
+- **Browser pages.** `BrowserEffector` clicks by accessible label on JavaScript pages. Install `accountable-surface[browser]` to drive it with Playwright; tests use a built-in fake driver.
+- **Third-party APIs.** `ApiEffector` calls one declared service through named operations. The agent supplies the intent and body; the host, route and credential stay in the effector, and the credential is read from an environment variable at call time.
+- **Windows apps.** `UiaEffector` presses a button or sets a field by its accessible name in one window, then reads the window again to check the result. A fake driver runs the same path on any OS.
+- **Logs.** The journal is append-only JSONL. Each entry is chained to the previous one, so an edited, deleted or reordered entry is detected on reload and by `verify_journal.py`.
+- **MCP.** `accountable-surface-server` (install `accountable-surface[server]`) exposes `perceive`, `propose`, `actuate`, `session_journal`, `interocept`, `status` and `doctor`. Remote `actuate` reaches only the effectors you list in a registry file, and only filesystem and API effectors can be listed.
+
+Limits that apply to the list above:
+
+- Alpha. The API may change between 0.x releases. One maintainer.
+- A grant with no `scope.allowed_bounds` says nothing about reach. The effector's own construction bound is then the only limit.
+- Rollback runs when a reversible action fails its check: file writes, browser navigation and form fills, and API operations that declare an undo call. Commands, page scripts, Windows app clicks and API calls with no undo are irreversible. They stop for a person unless allowed, and a failed check on one is reported, not reversed.
+- The second, dependency-free MCP server (`accountable-surface-mcp`) wires one action today: a read-only directory listing that needs the separate Node native-control tool. Its other tools inspect, gate and check logs.
+- The shared world server and its web UI run from a source checkout only; the `web/` files are not in the wheel.
+- Changes on `main` after 0.3.1 are not on PyPI yet: irreversible actions need the grant to list them in `scope.allowed_irreversible_actions`, and the world server requires a per-run token and refuses cross-origin requests. In 0.3.1 the caller flag `allow_irreversible=True` alone is enough.
+
+## How it compares
+
+- **Claude Code permissions and hooks, Codex approval modes.** These ask a person or match a rule before a tool runs, inside one agent client. accountable-surface is a library you call from your own code or any MCP client. It also checks the result after the action and keeps a log you can verify offline.
+- **LangGraph human-in-the-loop interrupts.** LangGraph pauses a graph so a person can approve a step. accountable-surface decides from a grant written ahead of time and stops only when a grant is missing or an action cannot be undone.
+- **Open Policy Agent.** OPA is a general policy engine with its own language and wide adoption. accountable-surface has a fixed grant format aimed at agent actions, and it also runs the action, checks it and rolls it back.
+- **Playwright MCP and computer-use tools.** These give an agent a browser or a screen with no permission layer. accountable-surface can drive Playwright behind a grant, with fewer actions available.
 
 ## Install
 
 ```bash
 pip install accountable-surface
+pip install "accountable-surface[server]"    # adds the MCP server
+pip install "accountable-surface[browser]"   # adds Playwright for BrowserEffector
 ```
 
-Add the MCP server with `pip install "accountable-surface[server]"`. Use a source checkout when you need current `main` branch features, or a GitHub release asset when you want a wheel with a published checksum.
+Requires Python 3.10+. PyPI 0.3.1 is published by a trusted-publisher workflow with PEP 740 attestations, so the index records which workflow built the files.
 
-Current PyPI release: `0.3.1`, published by an OIDC trusted publisher with PEP 740 attestations, so the index records which workflow built the bytes. `v0.2.0` and `v0.1.0` remain older tagged GitHub packages. The package is still alpha.
+From source, with the examples and the web UI:
 
-Install the released wheel with the published checksum file:
+```powershell
+git clone https://github.com/HarperZ9/accountable-surface.git
+cd accountable-surface
+python -m pip install -e ".[test,server]"
+$env:PYTHONPATH = "src"
+python examples/actuate_demo.py
+python -m pytest
+```
+
+The editable install pulls `coherence-membrane` and `proof-surface` from PyPI. CI puts sibling checkouts of both repositories on `PYTHONPATH` to test against their `main` branches.
+
+GitHub releases for 0.1.0 and 0.2.0 carry the wheel, the sdist and a checksum file. To install the 0.2.0 wheel and check it against the published checksum:
 
 ```powershell
 & {
@@ -123,34 +148,21 @@ Install the released wheel with the published checksum file:
 }
 ```
 
-Current source checkout, including the durable-authority work in 0.2.0:
+## More examples
 
-```powershell
-git clone https://github.com/HarperZ9/accountable-surface.git
-git clone https://github.com/HarperZ9/coherence-membrane.git
-git clone https://github.com/HarperZ9/proof-surface.git
-cd accountable-surface
-$env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
-python -m pip install -e ".[test]"
-```
+From a source checkout with `src` on `PYTHONPATH`:
 
-Requires Python 3.10+. The package declares `coherence-membrane` and `proof-surface` as runtime dependencies, because `accountable_surface` imports both. `mcp` stays optional under the `[server]` extra, since only the MCP server path needs it.
-
-## Quickstart
-
-```powershell
-python examples/demo.py        # perceive, gate allow, gate deny, journal
-python examples/actuate_demo.py  # the full act-verify-rollback loop
-python -m pytest               # the Python test suite
-```
-
-`demo.py` prints a witnessed structural reading of a local page (title, links, sha256 digest), then a gate ALLOW for an action inside the grant, a gate DENY for one outside it, and the journal of every perception and decision.
-
-More transcripts: `web_actuate_demo.py` (native web actuation against a real localhost server), `spa_actuate_demo.py` (the JS-capable browser path, offline), `goal_demo.py` (bounded autonomy), `grounding_demo.py` and `grounded_actuate_demo.py` (the reference cortex), `smoke_mcp.py` (a real MCP stdio round-trip).
+- `examples/demo.py`: reads a local page, then shows a grant allowing one action and refusing another, and prints the log.
+- `examples/actuate_demo.py`: a refused write, an allowed write, and a faulty write caught and rolled back.
+- `examples/web_actuate_demo.py`: form filling against a local server.
+- `examples/spa_actuate_demo.py`: the browser path on a JavaScript page, offline.
+- `examples/goal_demo.py`: a multi-step plan under one grant that halts at the first refused or failed step.
+- `examples/grounding_demo.py`, `examples/grounded_actuate_demo.py`: scoring whether an action's stated reason has supporting references.
+- `examples/smoke_mcp.py`, `examples/interop_mcp_demo.py`: MCP round trips.
 
 ## Worked example
 
-An operator grant is a plain JSON object. The surface acts only when the gate allows the exact plan, then verifies the effect on disk.
+A grant is a plain JSON object. The surface acts only when the gate allows the exact plan, then verifies the effect on disk.
 
 ```python
 from accountable_surface import AccountableSurface, FilesystemEffector
@@ -159,7 +171,7 @@ grant = {
     "authorization_version": "0.1",
     "receipt_id": "rcpt-example",
     "kind": "authorization-grant",
-    "principal": {"id": "operator-1", "role": "operator"},
+    "principal": {"id": "alice", "role": "owner"},
     "agent": {"id": "example-agent"},
     "intent": "write the report file",
     "scope": {"allowed_actions": ["fs.write"], "allowed_targets": []},
@@ -191,8 +203,8 @@ One actuation produces up to three verdicts: what the gate decided, what the re-
 ## Run as an MCP server
 
 ```powershell
-python -m pip install -e ".[server]"   # adds mcp
-python -m accountable_surface.server   # or: accountable-surface-server
+pip install "accountable-surface[server]"
+accountable-surface-server
 ```
 
 Client configuration:
@@ -201,13 +213,11 @@ Client configuration:
 {
   "mcpServers": {
     "accountable-surface": {
-      "command": "python",
-      "args": ["-m", "accountable_surface.server"],
+      "command": "accountable-surface-server",
       "env": {
-        "PYTHONPATH": "C:/path/to/accountable-surface/src;C:/path/to/coherence-membrane/src;C:/path/to/proof-surface/src",
-        "ACCOUNTABLE_SURFACE_GRANTS": "C:/path/to/operator-grants.json",
-        "ACCOUNTABLE_SURFACE_JOURNAL": "C:/path/to/session-journal.jsonl",
-        "ACCOUNTABLE_SURFACE_AUTHORITY_STATE": "C:/path/to/authority-state.sqlite3"
+        "ACCOUNTABLE_SURFACE_GRANTS": "/path/to/grants.json",
+        "ACCOUNTABLE_SURFACE_JOURNAL": "/path/to/session-journal.jsonl",
+        "ACCOUNTABLE_SURFACE_AUTHORITY_STATE": "/path/to/authority-state.sqlite3"
       }
     }
   }
@@ -217,29 +227,32 @@ Client configuration:
 ### Interoperable stdio server (no FastMCP)
 
 For adoption by other harnesses, `accountable_surface.interop_mcp` is a stdlib-only
-JSON-RPC-over-stdio server: no FastMCP, nothing to pip install for a harness to spawn
-it and list tools. It carries the six accountable primitives plus the shipped
-read-only verb and emits an offline-re-derivable `action-receipt/v1`.
+JSON-RPC-over-stdio server: no FastMCP, nothing extra to install for a client to spawn
+it and list tools. Its tools are `perceive`, `propose`, `actuate`, `device_ls`,
+`journal`, `receipt`, `status` and `doctor`. The only action wired today is a
+read-only directory listing (`device_ls`), which needs the separate Node
+native-control tool. Each action writes an `action-receipt/v1` record that
+`verify_action_receipts.py` checks offline.
 
 ```powershell
 python -m accountable_surface.interop_mcp   # or: accountable-surface-mcp
 ```
 
-Manifests for Claude Code, Codex, Cursor, and the Flywheel lane live in `interop/`;
-the overview and the evidence-bound comparison over ungated computer use are in
+Configuration snippets for Claude Code, Codex, Cursor and Flywheel live in `interop/`;
+the overview and a test-cited comparison with ungated computer use are in
 `docs/interop-mcp.md`. The hard exclusions (CAPTCHA solving, anti-bot stealth /
 fingerprint patching, reCAPTCHA token harvest, mass or obfuscated authenticated
 outreach) are unreachable through any tool and asserted by test.
 
-`ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one authorization grant
-or a list; with none loaded the gate is default-deny. Remote reads are scoped
+`ACCOUNTABLE_SURFACE_GRANTS` points to a JSON file with one grant or a list;
+with none loaded every action is refused. Remote reads are scoped
 separately from writes: `allowed_actions` may name `fs.write`, but the remote
 server still refuses until `allowed_reads` covers the target state phases it must
 read (`before`, `backup`, `after`, and `rollback` for filesystem writes).
 `ACCOUNTABLE_SURFACE_JOURNAL` points to an append-only JSONL file; when set, the
 journal replays on launch so the witnessed self-view spans sessions.
 
-`ACCOUNTABLE_SURFACE_AUTHORITY_STATE` points to an optional stdlib-SQLite state file for durable revocation, atomic usage reservations, and idempotency. With it set, remote `actuate` requires an `idempotency_key`, refuses protected grant/state/journal paths even under broad filesystem grants, and keeps unresolved precommit reservations unavailable until operator recovery. See [docs/durable-authority.md](docs/durable-authority.md).
+`ACCOUNTABLE_SURFACE_AUTHORITY_STATE` points to an optional stdlib-SQLite state file for durable revocation, atomic usage reservations, and idempotency. With it set, remote `actuate` requires an `idempotency_key`, refuses protected grant/state/journal paths even under broad filesystem grants, and keeps unresolved precommit reservations unavailable until you recover them manually. See [docs/durable-authority.md](docs/durable-authority.md).
 
 `ACCOUNTABLE_SURFACE_EFFECTORS` points to a JSON file naming which effectors a remote caller may reach:
 
@@ -250,7 +263,7 @@ journal replays on launch so the witnessed self-view spans sessions.
 ]}
 ```
 
-Three operator decisions guard remote `actuate` and all have to agree: the
+Three settings guard remote `actuate` and all have to agree: the
 registry exposes an effector, `allowed_actions` names the write, and
 `allowed_reads` names the state reads needed to precondition, verify, and roll
 back that write. With the variable unset, the file empty, or the action kind
@@ -262,29 +275,29 @@ down. MCP `perceive` likewise needs a `web.document` read grant, and full
 
 ## Shared world server
 
-A live surface you can watch in a browser: proposed actions run the real perceive-gate-act-verify loop and stream over SSE to every open subscriber.
+A local web UI where you can watch an agent work: each proposed action runs the full check, act and verify loop and streams over SSE to every open tab. It needs a source checkout, because the `web/` files are not in the wheel. The token, Host and Origin checks below are on `main` and not yet in PyPI 0.3.1.
 
 ```powershell
 python -m accountable_surface.world.server 8808
 ```
 
-It serves the web UI from `web/`. Open the URL it prints: the URL carries a token that is new on every run. The server binds loopback only and refuses any other host. Every API request needs the token (header `X-World-Token`), and a request whose Host or Origin is not the server's own is refused, so another web page you visit cannot drive the world. Grants are operator-supplied at startup; the built-in fallback is an explicit sandbox-scoped demo grant, and default-deny still holds.
+It serves the web UI from `web/`. Open the URL it prints: the URL carries a token that is new on every run. The server binds loopback only and refuses any other host. Every API request needs the token (header `X-World-Token`), and a request whose Host or Origin is not the server's own is refused, so another web page you visit cannot drive the world. Grants are loaded at startup. With none supplied, it uses a demo grant scoped to its sandbox folder, and anything outside that grant is refused.
 
 ## Layout
 
 - `src/accountable_surface/surface.py`: `AccountableSurface` with `perceive`, `propose`, `actuate`, `pursue`, `interocept`, and the durable journal.
-- `effector.py`, `web_effector.py`, `browser_effector.py`, `os_effector.py`, `api_effector.py`, `uia_effector.py`: the six effectors and their drivers.
+- `effector.py`, `web_effector.py`, `browser_effector.py`, `os_effector.py`, `api_effector.py`, `uia_effector.py`, `native_control_effector.py`: the effectors and their drivers.
 - `http_driver.py`: the stdlib HTTP and HTML backend behind native web actuation.
 - `playwright_driver.py`: the optional JS-capable browser driver.
 - `reference.py`: the grounding cortex, `certify.py`: action certificates, `grant.py`: grant helpers.
 - `server.py`: the MCP server. `world/`: the shared world session, server, sight, and pilots.
-- `tests/`: the Python test suite. `examples/`: eight runnable transcripts. `web/`: the shared world UI plus Node tests.
+- `tests/`: the Python test suite. `examples/`: nine runnable scripts. `web/`: the shared world UI plus Node tests.
 - `docs/`: design specs (`SPEC-actuation.md`, `SPEC-interoception.md`, `SPEC-persistence.md`), design notes, and [docs/INTRODUCTION.md](docs/INTRODUCTION.md), the first-ten-minutes guide.
 - `docs/art/`: the diagrams above, rendered from `accountable-surface.art.json` by `tools/render_repo_art.py` and checked by `tools/check_repo_art.py`. Brand assets: `docs/art/` (hero, social preview) and `docs/brand/` (mark, lockups).
 
 ## Status
 
-Alpha, version 0.2.0. The API is settling and may change between 0.x releases. CI runs the Python suite and the Node web tests on every push and pull request, with sibling checkouts of coherence-membrane and proof-surface. Local verification:
+Alpha. PyPI has 0.3.1; `main` carries the unreleased changes listed in [CHANGELOG.md](CHANGELOG.md). The API is settling and may change between 0.x releases. CI runs the Python suite and the Node web tests on every push and pull request, with sibling checkouts of coherence-membrane and proof-surface. Local verification:
 
 ```powershell
 $env:PYTHONPATH = "src;..\coherence-membrane\src;..\proof-surface\src"
@@ -306,9 +319,7 @@ Zain Dana Harper maintains this repository. AI-assisted tools are used for
 parts of development and documentation. Public source, tests, and release
 artifacts are the evidence for what ships; AI output is not treated as proof.
 
-## Why the gate and the journal
-
-Agent autonomy without silent authority: every action here is checked against an operator grant before it runs, verified against its intended effect after it runs, and recorded in a journal you can replay and re-check. The receipt is the floor; the features above are the point.
+## How the journal chain works
 
 A journal that can be quietly rewritten records nothing worth reading. Each entry is chained to the one before it, so an edit breaks the entry's own hash and a delete or a reorder breaks the link to its neighbour. `verify_journal.py` re-derives the whole chain with no import from this package, which means a stranger holding only the JSONL file can check it.
 
@@ -330,7 +341,7 @@ every surface: knowledge open to anyone who can attain the means; acceptance
 decided by external checks, never reputation; every result re-runnable;
 honest nulls first-class; ownership earned by comprehension; learning woven
 into the work. The full text lives in [CREDO.md](CREDO.md).
-The long form of this belief: [The Unbundling](https://github.com/HarperZ9/flywheel/blob/fix/release-model-identity/docs/essays/2026-07-13-the-unbundling.md).
+The long form of this belief: [The Unbundling](https://github.com/HarperZ9/flywheel/blob/main/docs/essays/2026-07-13-the-unbundling.md).
 
 ---
 
