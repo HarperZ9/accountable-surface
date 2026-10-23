@@ -14,8 +14,9 @@ and proof-surface (the gate).
 What you get in practice:
 
 - Four effectors: filesystem (bounded, reversible, self-verifying), native web
-  (navigate, fill by label, submit, no browser needed), JS-capable browser
-  (optional Playwright backend), and OS commands (allowlist only, no shell).
+  (navigate, fill by label, submit, over plain HTTP), JS-capable browser
+  (optional Playwright backend), and OS commands (run from an allowlist, as
+  direct processes).
 - A grounding cortex that scores reference relevance and says "ungrounded"
   instead of guessing, with native arXiv lookup.
 - Bounded autonomy: a multi-step plan under one grant, halting on the first
@@ -34,19 +35,20 @@ re-check. Autonomy stays useful because it stays reviewable.
 ## Core concepts
 
 **Observation.** Perception returns a content-addressed structural reading of
-the target (a sha256 digest plus a falsifiable self-test), not a screenshot.
-The same target re-perceived should produce the same digest; that is what
-makes verification possible.
+the target: a sha256 digest plus a falsifiable self-test. The same target
+re-perceived should produce the same digest; that is what makes verification
+possible.
 
 **Grant.** A plain JSON object supplied by the operator: who granted it, to
-which agent, for which actions and targets, valid for what window. The model
-cannot fabricate one. No grant loaded means the gate denies everything.
+which agent, for which actions and targets, valid for what window. The
+operator writes it and loads it; the gate denies every action until a grant is
+loaded.
 
 **Gate.** Every proposed action is checked by proof-surface's pre-execution
 gate. Three outcomes: allow, deny, needs-human. Irreversible actions (a POST,
-an OS command that cannot be undone) escalate to needs-human unless the grant
-names the action kind in `allowed_irreversible_actions` and the caller also
-passes `allow_irreversible=True`. The argument alone authorizes nothing.
+an OS command with a lasting effect) escalate to needs-human. They proceed when
+the grant names the action kind in `allowed_irreversible_actions` and the
+caller also passes `allow_irreversible=True`; both are required.
 
 **Effector.** The only thing that touches the world. Each effector is bounded
 by construction (a filesystem root, an origin list, a command allowlist) and
@@ -94,9 +96,17 @@ Run the full actuation loop:
 python examples/actuate_demo.py
 ```
 
-Three acts against a temp-dir sandbox: no grant (denied, no file created), a
-valid grant (written and verified, before and after digests printed), and a
-deliberately faulty effector (caught at verification and rolled back).
+Three acts against a temp-dir sandbox. The output, trimmed:
+
+```
+== ACT without an operator grant ==
+  acted: False   gate: DENY
+== ACT with an operator grant for fs.write ==
+  acted: True   gate: ALLOW   verified: True
+  before -> after digest: sha256:e3b0c44298fc1c14... -> sha256:e73e9e642b237df7...
+== ACT with a FAULTY effector (writes wrong bytes) ==
+  acted: True   verified: False   rolled_back: True
+```
 
 Confirm the suite passes:
 
@@ -109,7 +119,7 @@ Expect 223 tests passing in a few seconds.
 Then pick the transcript closest to your use case:
 
 - `examples/web_actuate_demo.py`: native web actuation against a real
-  localhost server, no browser.
+  localhost server, over plain HTTP.
 - `examples/spa_actuate_demo.py`: the JS-capable browser path, offline via the
   fake driver.
 - `examples/goal_demo.py`: a multi-step plan under one grant.
@@ -120,7 +130,7 @@ Then pick the transcript closest to your use case:
 
 To watch the surface act live, start the shared world server and open the
 printed URL. It carries a token that is new on every run; the server binds
-loopback only and refuses requests from any other origin:
+to loopback and accepts requests from its own origin:
 
 ```powershell
 python -m accountable_surface.world.server 8808
