@@ -9,7 +9,7 @@ Lets an AI agent take only the actions a person has approved.
 
 [![PyPI: 0.3.1](https://img.shields.io/badge/pypi-0.3.1-e6e1d6?style=flat-square&labelColor=1a1712)](https://pypi.org/project/accountable-surface/)
 [![CI](https://github.com/HarperZ9/accountable-surface/actions/workflows/ci.yml/badge.svg)](https://github.com/HarperZ9/accountable-surface/actions/workflows/ci.yml)
-[![license](https://img.shields.io/badge/license-FSL--1.1--MIT-e6e1d6?style=flat-square&labelColor=1a1712)](https://github.com/HarperZ9/accountable-surface/blob/main/LICENSE)
+[![license](https://img.shields.io/badge/license-MIT-e6e1d6?style=flat-square&labelColor=1a1712)](https://github.com/HarperZ9/accountable-surface/blob/main/LICENSE)
 ![python 3.10+](https://img.shields.io/badge/python-3.10%2B-e6e1d6?style=flat-square&labelColor=1a1712)
 
 accountable-surface is a Python library and MCP server that sits between an AI agent and the things it can change. The agent asks to write a file, call an API, submit a web form or press a button in a Windows app. The request runs only if a permission grant you wrote covers it. After the action, the library reads the target again to confirm the change landed. An action that fails that check is undone where it can be. Every decision and outcome goes into a hash-chained log that a standalone script can check.
@@ -327,12 +327,12 @@ A journal that can be quietly rewritten records nothing worth reading. Each entr
 
 ## License
 
-Text: CC BY 4.0. Code: FSL-1.1-MIT.
+Text: CC BY 4.0. Code: MIT.
 
 [`THESIS.md`](THESIS.md) is a written work and is licensed CC BY 4.0. Share and
 adapt it with credit to Zain Dana Harper; the terms are in
 [`LICENSE-TEXT`](LICENSE-TEXT). The code and the software documentation are
-FSL-1.1-MIT. Copyright (c) 2026 Zain Dana Harper. See [LICENSE](LICENSE).
+MIT. Copyright (c) 2026 Zain Dana Harper. See [LICENSE](LICENSE).
 
 ## What this believes
 

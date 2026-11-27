@@ -2,7 +2,7 @@
   "name": "accountable-surface",
   "description": "Accountable actuation over MCP: witnessed perception, a pre-execution gate (allow/deny/needs-human), a reach-bounded act, an independent self-verify (MATCH/DRIFT/UNVERIFIABLE), a tamper-evident journal, and an offline-re-derivable action receipt. Read-only device ls is wired today; write-class actuation and broad browser/app/device breadth are target, not shipped.",
   "homepage": "https://github.com/HarperZ9/accountable-surface",
-  "license": "LicenseRef-FSL-1.1-MIT",
+  "license": "MIT",
   "protocolVersion": "2025-06-18",
   "transport": {
     "type": "stdio",
